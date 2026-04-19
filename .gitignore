@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+
+# Data directories (large files)
+notes/
+images/
+chroma_data/
+
+# Large data files
+calendar-export.json
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
