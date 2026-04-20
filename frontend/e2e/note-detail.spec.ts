@@ -207,4 +207,46 @@ test.describe("Note Detail Page", () => {
     await suggestion.click();
     await expect(page.locator("text=Valentin Cekov").first()).toBeVisible();
   });
+
+  // Re-fetch verification: edits persist across GET-after-PATCH
+  test("should persist tag removal after page re-fetch", async ({ page }) => {
+    const removeBtn = page.locator("[aria-label='Remove tag management']");
+    await removeBtn.click();
+    await expect(page.locator("[aria-label='Remove tag management']")).toHaveCount(0);
+
+    await page.reload();
+    await page.locator("[data-testid='editable-title']").waitFor();
+    await expect(page.locator("[aria-label='Remove tag management']")).toHaveCount(0);
+  });
+
+  test("should persist participant addition after page re-fetch", async ({ page }) => {
+    const personInput = page.locator("[data-testid='person-add-input']");
+    await personInput.click();
+    await personInput.fill("Bob");
+    const suggestion = page.locator("button:has-text('Bob Jones')").first();
+    await expect(suggestion).toBeVisible({ timeout: 10000 });
+    await suggestion.click();
+
+    await expect(page.locator("text=Bob Jones").first()).toBeVisible();
+
+    await page.reload();
+    await page.locator("[data-testid='editable-title']").waitFor();
+    await expect(page.locator("text=Bob Jones").first()).toBeVisible();
+  });
+
+  test("should persist title edit after page re-fetch", async ({ page }) => {
+    const titleEl = page.locator("[data-testid='editable-title']");
+    await titleEl.hover();
+    await page.locator("[aria-label='Edit title']").click({ force: true });
+    const input = page.locator("[data-testid='title-input']");
+    await input.clear();
+    await input.fill("Persisted Title");
+    await page.locator("[aria-label='Save title']").click();
+
+    await expect(page.locator("[data-testid='editable-title']").filter({ hasText: "Persisted Title" })).toBeVisible();
+
+    await page.reload();
+    await page.locator("[data-testid='editable-title']").waitFor();
+    await expect(page.locator("[data-testid='editable-title']").filter({ hasText: "Persisted Title" })).toBeVisible();
+  });
 });

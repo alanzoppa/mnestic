@@ -203,6 +203,112 @@ def test_update_note_modifies_file(app_client_with_files):
     assert found_renamed
 
 
+def test_reingest_chunks_contain_updated_content(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    new_body = "This is the updated body that should appear in reingested chunks."
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"content": new_body})
+    assert res.status_code == 200
+
+    mock_store.add_notes.assert_called_once()
+    call_args = mock_store.add_notes.call_args
+    chunks = call_args[0][1]
+    assert any(new_body in chunk for chunk in chunks), f"Updated content not found in reingested chunks: {chunks}"
+
+
+def test_reingest_metadata_has_comma_separated_tags(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"tags": ["alpha", "beta", "gamma"]})
+    assert res.status_code == 200
+
+    mock_store.add_notes.assert_called_once()
+    call_args = mock_store.add_notes.call_args
+    metadatas = call_args[0][3]
+    for md in metadatas:
+        assert md["tags"] == "alpha,beta,gamma", f"Tags should be comma-serialized in chunk metadata, got: {md['tags']}"
+        assert "alpha" not in md["tags"] or "," in md["tags"], "Tags should not be an array in ChromaDB metadata"
+
+
+def test_reingest_metadata_has_comma_separated_participants(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"participants": ["Alice", "Bob", "Carol"]})
+    assert res.status_code == 200
+
+    mock_store.add_notes.assert_called_once()
+    call_args = mock_store.add_notes.call_args
+    metadatas = call_args[0][3]
+    for md in metadatas:
+        assert md["participants"] == "Alice,Bob,Carol", f"Participants should be comma-serialized, got: {md['participants']}"
+
+
+def test_reingest_chunk_text_includes_updated_title(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"title": "Brand New Title"})
+    assert res.status_code == 200
+
+    mock_store.add_notes.assert_called_once()
+    call_args = mock_store.add_notes.call_args
+    chunks = call_args[0][1]
+    assert chunks[0].startswith("Title: Brand New Title"), f"First chunk should contain updated title, got: {chunks[0][:80]}"
+
+
+def test_reingest_uses_correct_note_id(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"tags": ["solo"]})
+    assert res.status_code == 200
+
+    mock_store.delete_note_chunks.assert_called_once_with("x-coredata---test-note-1")
+    mock_store.add_notes.assert_called_once()
+    call_args = mock_store.add_notes.call_args
+    metadatas = call_args[0][3]
+    for md in metadatas:
+        assert md["note_id"] == "x-coredata---test-note-1"
+    ids = call_args[0][0]
+    for cid in ids:
+        assert "x-coredata---test-note-1" in cid
+
+
+def test_title_rename_creates_new_file_and_removes_old(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    old_files = set(os.listdir(notes_dir))
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"title": "Renamed Note File"})
+    assert res.status_code == 200
+
+    new_files = set(os.listdir(notes_dir))
+    added = new_files - old_files
+    removed = old_files - new_files
+    assert len(added) == 1, f"Expected 1 new file, got {added}"
+    assert len(removed) == 1, f"Expected 1 removed file, got {removed}"
+    assert "Renamed_Note_File.md" in added or "Renamed-Note-File.md" in added
+
+
+def test_combined_update_propagates_all_fields(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={
+        "title": "Combined Update",
+        "content": "Updated body for combined test.",
+        "tags": ["combined", "multi"],
+        "participants": ["Dana"],
+    })
+    assert res.status_code == 200
+
+    call_args = mock_store.add_notes.call_args
+    chunks = call_args[0][1]
+    metadatas = call_args[0][3]
+
+    assert chunks[0].startswith("Title: Combined Update")
+    assert "Updated body for combined test." in chunks[0]
+    assert metadatas[0]["tags"] == "combined,multi"
+    assert metadatas[0]["participants"] == "Dana"
+    assert metadatas[0]["title"] == "Combined Update"
+
+
 def test_get_people(app_client_with_files, tmp_path):
     c, mock_store, notes_dir = app_client_with_files
 

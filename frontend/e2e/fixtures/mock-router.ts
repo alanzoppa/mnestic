@@ -30,30 +30,31 @@ export async function mockApiRoutes(page: Page) {
     });
   });
 
+  let currentNote = { ...mockNoteDetail };
+
   // Note detail - matches pattern /api/notes/{id}
   await page.route("**/api/notes/*", async (route) => {
     if (route.request().method() === "PATCH") {
       const body = route.request().postDataJSON();
-      const updated = { ...mockNoteDetail };
       if (body?.title) {
-        updated.metadata = { ...updated.metadata, title: body.title };
+        currentNote = { ...currentNote, metadata: { ...currentNote.metadata, title: body.title } };
       }
       if (body?.tags) {
-        updated.metadata = { ...updated.metadata, tags: body.tags };
+        currentNote = { ...currentNote, metadata: { ...currentNote.metadata, tags: body.tags } };
       }
       if (body?.participants) {
-        updated.metadata = { ...updated.metadata, participants: body.participants };
+        currentNote = { ...currentNote, metadata: { ...currentNote.metadata, participants: body.participants } };
       }
       if (body?.content) {
-        updated.content = body.content;
+        currentNote = { ...currentNote, content: body.content };
       }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          id: updated.id,
-          metadata: updated.metadata,
-          content: updated.content,
+          id: currentNote.id,
+          metadata: currentNote.metadata,
+          content: currentNote.content,
         }),
       });
       return;
@@ -61,7 +62,7 @@ export async function mockApiRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(mockNoteDetail),
+      body: JSON.stringify(currentNote),
     });
   });
 
