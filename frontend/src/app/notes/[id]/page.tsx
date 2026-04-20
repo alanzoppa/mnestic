@@ -158,6 +158,15 @@ useEffect(() => {
     return () => { cancelled = true }
   }, [id])
 
+  const refreshNote = async (nid?: string) => {
+    const fetchId = nid || note?.metadata?.note_id || note?.id || id
+    const fresh = await getNote(fetchId)
+    setNote(fresh)
+    const { content: cleanedContent, images } = extractImages(fresh.content || '')
+    setContent(cleanedContent)
+    setAttachments(images)
+  }
+
   const handleStartEdit = () => {
     setEditDraft(note?.content || '')
     setEditError(null)
@@ -171,10 +180,7 @@ useEffect(() => {
     setEditError(null)
     try {
       const result = await updateNote(nid, { content: editDraft })
-      setNote({ ...note!, metadata: result.metadata, content: result.content ?? editDraft })
-      const { content: cleanedContent, images } = extractImages(result.content ?? editDraft)
-      setContent(cleanedContent)
-      setAttachments(images)
+      await refreshNote(nid)
       setEditing(false)
     } catch (e: any) {
       setEditError(e?.message || 'Failed to save')
@@ -232,8 +238,8 @@ useEffect(() => {
                     <EditableTitle
                       value={meta.title || 'Untitled'}
                       onSave={async (newTitle) => {
-                        const result = await updateNote(noteId, { title: newTitle })
-                        setNote({ ...note, metadata: result.metadata, content: result.content ?? note.content })
+                        await updateNote(noteId, { title: newTitle })
+                        await refreshNote(noteId)
                       }}
                     />
                     <FavoriteButton noteId={noteId} isFavorite={isFav(noteId)} onToggle={toggle} />
@@ -278,8 +284,8 @@ useEffect(() => {
                     allTags={allTagNames}
                     onChange={async (newTags) => {
                       const nid = note.metadata?.note_id || note.id
-                      const result = await updateNote(nid, { tags: newTags })
-                      setNote({ ...note, metadata: { ...note.metadata, ...result.metadata } })
+                      await updateNote(nid, { tags: newTags })
+                      await refreshNote(nid)
                     }}
                   />
 
@@ -289,8 +295,8 @@ useEffect(() => {
                     people={allPeople}
                     onChange={async (newParticipants) => {
                       const nid = note.metadata?.note_id || note.id
-                      const result = await updateNote(nid, { participants: newParticipants })
-                      setNote({ ...note, metadata: { ...note.metadata, ...result.metadata } })
+                      await updateNote(nid, { participants: newParticipants })
+                      await refreshNote(nid)
                     }}
                   />
                 </div>

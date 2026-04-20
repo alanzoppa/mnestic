@@ -273,7 +273,6 @@ async def get_note(note_id: str) -> dict:
 
 
 def _reingest_note(note_id: str, md_path: str) -> None:
-    store.delete_note_chunks(note_id)
     post = frontmatter.load(md_path)
     fm = post.metadata
     body = post.content
@@ -334,6 +333,7 @@ def _reingest_note(note_id: str, md_path: str) -> None:
 
     embeddings = embed_texts_sync(chunks)
     if embeddings:
+        store.delete_note_chunks(note_id)
         store.add_notes(ids, chunks, embeddings, metadatas)
 
 
@@ -372,7 +372,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
         renamed = new_path != md_path
 
     if body.content is not None:
-        pass
+        post.content = body.content
 
     if body.tags is not None:
         post.metadata["tags"] = body.tags

@@ -103,6 +103,47 @@ def test_update_note_content(app_client_with_files):
     mock_store.add_notes.assert_called_once()
 
 
+def test_update_content_writes_to_file(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    new_content = "Completely rewritten note body."
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"content": new_content})
+    assert res.status_code == 200
+
+    found = False
+    for f in os.listdir(notes_dir):
+        if f.endswith(".md"):
+            post = frontmatter.load(os.path.join(notes_dir, f))
+            if post.content.strip() == new_content:
+                found = True
+                break
+    assert found, "Content PATCH should write new body to the markdown file"
+
+
+def test_reingest_deletes_old_chunks_after_embedding(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    call_order = []
+    mock_store.delete_note_chunks.side_effect = lambda *a, **kw: call_order.append("delete")
+    mock_store.add_notes.side_effect = lambda *a, **kw: call_order.append("add")
+
+    res = c.patch("/api/notes/x-coredata---test-note-1", json={"title": "Atomic Test"})
+    assert res.status_code == 200
+
+    assert call_order == ["delete", "add"], f"delete should happen after embedding succeeds, got {call_order}"
+
+
+def test_reingest_preserves_chunks_on_embedding_failure(app_client_with_files):
+    c, mock_store, notes_dir = app_client_with_files
+
+    with patch("main.embed_texts_sync", return_value=None):
+        res = c.patch("/api/notes/x-coredata---test-note-1", json={"title": "Fail Embed"})
+
+    assert res.status_code == 200
+    mock_store.delete_note_chunks.assert_not_called()
+    mock_store.add_notes.assert_not_called()
+
+
 def test_update_note_tags(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
