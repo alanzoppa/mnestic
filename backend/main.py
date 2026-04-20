@@ -67,6 +67,11 @@ def find_note_file(source_id: str) -> str | None:
     filename = _source_id_to_file.get(source_id)
     if filename:
         return os.path.join(NOTES_DIR, filename)
+    # Fallback: try matching source_id or note_id directly as a filename
+    for ext in (".md", ".txt", ""):
+        candidate = os.path.join(NOTES_DIR, source_id + ext)
+        if os.path.exists(candidate):
+            return candidate
     return None
 
 
