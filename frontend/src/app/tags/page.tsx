@@ -2,16 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getTags } from '@/lib/api'
-import type { TagInfo, CoOccurrence } from '@/lib/api'
+import { getTags, type TagInfo, type CoOccurrence } from '@/lib/api'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { SectionHeader } from '@/components/ui/SectionHeader'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Input'
+import { DonutChart, PieChartComponent } from '@/components/charts/PieCharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
+
+const TAG_CATEGORIES = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'structural', label: 'Structural' },
+  { value: 'content', label: 'Content' },
+  { value: 'management', label: 'Management' },
+  { value: 'engineering', label: 'Engineering' },
+  { value: 'personal', label: 'Personal' },
+]
+
+const SORT_OPTIONS = [
+  { value: 'count', label: 'By Count' },
+  { value: 'name', label: 'By Name' },
+]
 
 export default function TagsPage() {
   const router = useRouter()
   const [tags, setTags] = useState<TagInfo[]>([])
   const [coOccurrence, setCoOccurrence] = useState<CoOccurrence[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('count')
 
   useEffect(() => {
     getTags().then((res) => {
@@ -21,80 +44,280 @@ export default function TagsPage() {
     })
   }, [])
 
+  // Filter and sort tags
+  const filteredTags = tags.filter(tag => {
+    // Search filter
+    if (searchQuery && !tag.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false
+    }
+    
+    // Category filter
+    if (categoryFilter === 'structural') {
+      return STRUCTURAL_TAGS.includes(tag.name)
+    } else if (categoryFilter === 'content') {
+      return !STRUCTURAL_TAGS.includes(tag.name)
+    } else if (categoryFilter === 'management') {
+      return ['1-on-1', 'team-lead', 'promotion', 'feedback', 'hiring', 'interviewing'].some(t => 
+        tag.name.includes(t) || ['1:1', 'handwritten'].includes(tag.name)
+      )
+    } else if (categoryFilter === 'engineering') {
+      return ['react', 'redux', 'ember', 'frontend', 'backend', 'api', 'system-design', 'architecture', 'testing'].some(t => 
+        tag.name.includes(t)
+      )
+    } else if (categoryFilter === 'personal') {
+      return ['mental-health', 'family', 'childhood', 'self-reflection', 'therapy', 'personal'].some(t => 
+        tag.name.includes(t)
+      )
+    }
+    
+    return true
+  }).sort((a, b) => {
+    if (sortBy === 'count') {
+      return b.count - a.count
+    }
+    return a.name.localeCompare(b.name)
+  })
+
+  // Prepare chart data
+  const topTagsData = filteredTags.slice(0, 10).map((tag, i) => ({
+    name: tag.name,
+    value: tag.count,
+  }))
+
+  const barChartData = filteredTags.slice(0, 15).map(tag => ({
+    name: tag.name.length > 15 ? tag.name.slice(0, 15) + '...' : tag.name,
+    fullName: tag.name,
+    count: tag.count,
+  })).reverse()
+
+  // Calculate category stats
+  const structuralCount = tags.filter(t => STRUCTURAL_TAGS.includes(t.name)).length
+  const contentCount = tags.filter(t => !STRUCTURAL_TAGS.includes(t.name)).length
+  const categoryData = [
+    { name: 'Structural', value: structuralCount, color: '#3b82f6' },
+    { name: 'Content', value: contentCount, color: '#10b981' },
+  ]
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-zinc-500">Loading tags...</div>
       </div>
     )
   }
 
-  const maxCount = Math.max(...tags.map((t) => t.count), 1)
-  const minSize = 12
-  const maxSize = 32
-
-  const getFontSize = (count: number) => {
-    const ratio = count / maxCount
-    return minSize + (maxSize - minSize) * ratio
-  }
-
-  const getTagColor = (name: string) => {
-    if (STRUCTURAL_TAGS.includes(name)) {
-      return 'text-blue-400 hover:text-blue-300'
-    }
-    return 'text-green-400 hover:text-green-300'
-  }
-
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Tag Explorer</h1>
+    <div className="max-w-7xl space-y-6">
+      <SectionHeader
+        title="Tag Explorer"
+        description={`Browse and filter through ${tags.length.toLocaleString()} unique tags`}
+      />
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-medium mb-4 text-zinc-200">Tag Cloud</h2>
-          <div className="flex flex-wrap gap-4 items-center justify-center">
-            {tags.map((tag) => (
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-zinc-500">Total Tags</p>
+            <p className="text-3xl font-bold mt-1 bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent">
+              {tags.length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-zinc-500">Structural Tags</p>
+            <p className="text-3xl font-bold mt-1 text-blue-400">{structuralCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-zinc-500">Content Tags</p>
+            <p className="text-3xl font-bold mt-1 text-emerald-400">{contentCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-zinc-500">Tag Pairs</p>
+            <p className="text-3xl font-bold mt-1 text-purple-400">{coOccurrence.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder="Search tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                icon={
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                }
+              />
+            </div>
+            <div className="w-48">
+              <Select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                options={TAG_CATEGORIES}
+              />
+            </div>
+            <div className="w-40">
+              <Select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                options={SORT_OPTIONS}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tag Distribution Bar Chart */}
+        <Card hover>
+          <CardHeader>
+            <CardTitle>Top 15 Tags by Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {barChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={barChartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
+                  <XAxis type="number" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={100}
+                    stroke="#52525b" 
+                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#18181b',
+                      border: '1px solid #27272a',
+                      borderRadius: '0.5rem',
+                      color: '#fafafa',
+                    }}
+                    formatter={(value: number, name: string, props: any) => [value, props.payload.fullName]}
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    fill="#3b82f6" 
+                    radius={[0, 4, 4, 0]}
+                    onClick={(data) => {
+                      router.push(`/tags/${data.fullName}`)
+                    }}
+                    className="cursor-pointer hover:fill-blue-400"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-zinc-500">
+                No tags match your filters
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Category Distribution */}
+        <Card hover>
+          <CardHeader>
+            <CardTitle>Tag Categories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DonutChart
+              data={categoryData}
+              height={250}
+              showLegend={true}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tag Cloud */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tag Cloud</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3 items-center justify-center py-6">
+            {filteredTags.slice(0, 60).map((tag) => (
               <button
                 key={tag.name}
                 onClick={() => router.push(`/tags/${tag.name}`)}
-                className={`transition-colors ${getTagColor(tag.name)}`}
-                style={{ fontSize: getFontSize(tag.count) }}
+                className="transition-all duration-200 hover:scale-110 group"
+                style={{ 
+                  fontSize: `${Math.max(12, Math.min(32, 12 + (tag.count / Math.max(...tags.map(t => t.count))) * 20))}px`
+                }}
               >
-                {tag.name}
-                <span className="text-zinc-500 text-xs ml-1">({tag.count})</span>
+                <Badge
+                  variant={STRUCTURAL_TAGS.includes(tag.name) ? 'blue' : 'green'}
+                  className="cursor-pointer group-hover:shadow-lg group-hover:shadow-blue-500/20"
+                >
+                  {tag.name}
+                  <span className="ml-1.5 opacity-60">({tag.count})</span>
+                </Badge>
               </button>
             ))}
           </div>
-          <div className="flex gap-6 mt-4 justify-center text-xs">
-            <span className="text-blue-400">■ Structural</span>
-            <span className="text-green-400">■ Content</span>
+          
+          <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-zinc-800">
+            <div className="flex items-center gap-2">
+              <Badge variant="blue">Structural</Badge>
+              <span className="text-xs text-zinc-500">Folder/source tags</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="green">Content</Badge>
+              <span className="text-xs text-zinc-500">Topic-based tags</span>
+            </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {coOccurrence.length > 0 && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4 text-zinc-200">Top Co-occurring Tags</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-zinc-400 text-left border-b border-zinc-800">
-                  <th className="pb-2 font-medium">Tag 1</th>
-                  <th className="pb-2 font-medium">Tag 2</th>
-                  <th className="pb-2 font-medium text-right">Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {coOccurrence.slice(0, 20).map((pair, i) => (
-                  <tr key={i} className="border-b border-zinc-800/50">
-                    <td className="py-2 text-zinc-300">{pair.tag1}</td>
-                    <td className="py-2 text-zinc-300">{pair.tag2}</td>
-                    <td className="py-2 text-zinc-400 text-right">{pair.count}</td>
+      {/* Co-occurrence Table */}
+      {coOccurrence.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Co-occurring Tags</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Tag 1</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Tag 2</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-zinc-400">Co-occurrences</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {coOccurrence.slice(0, 15).map((pair, i) => (
+                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                      <td className="py-3 px-4">
+                        <Badge variant={STRUCTURAL_TAGS.includes(pair.tag1) ? 'blue' : 'green'}>
+                          {pair.tag1}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={STRUCTURAL_TAGS.includes(pair.tag2) ? 'blue' : 'green'}>
+                          {pair.tag2}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-right text-zinc-400">{pair.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     },
   },
   turbopack: {},
-  allowedDevOrigins: ["alan.local", "alan.local:3000"],
+  allowedDevOrigins: ["alan.local", "alan.local:3000", "localhost", "localhost:3000", "127.0.0.1", "127.0.0.1:3000"],
   async rewrites() {
     return [
       {

@@ -1,11 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { search } from '@/lib/api'
+import Link from 'next/link'
+import { search, getSchema } from '@/lib/api'
 import type { SearchResult } from '@/lib/api'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Input, Select } from '@/components/ui/Input'
+import { SectionHeader } from '@/components/ui/SectionHeader'
 
 const PAGE_SIZE = 50
+
+const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
 
 function asArray(val: unknown): string[] {
   if (Array.isArray(val)) return val
@@ -17,24 +25,90 @@ export default function BrowsePage() {
   const router = useRouter()
   const [allResults, setAllResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [schema, setSchema] = useState<{ folders?: string[]; tags?: string[] } | null>(null)
+  
+  // Filters
   const [sourceFilter, setSourceFilter] = useState('')
   const [folderFilter, setFolderFilter] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     setLoading(true)
-    search('').then((res) => {
+    Promise.all([
+      search(''),
+      getSchema().catch(() => null)
+    ]).then(([res, schemaData]) => {
       setAllResults(res.results.filter((r) => r.type === 'note'))
+      setSchema(schemaData)
       setLoading(false)
     })
   }, [])
 
-  const filtered = allResults.filter((r) => {
-    const meta = r.metadata || {}
-    if (sourceFilter && meta.source !== sourceFilter) return false
-    if (folderFilter && meta.folder !== folderFilter) return false
-    return true
-  })
+  // Calculate facet counts
+  const facets = useMemo(() => {
+    const sources = new Map<string, number>()
+    const folders = new Map<string, number>()
+    const tags = new Map<string, number>()
+
+    allResults.forEach((r) => {
+      const meta = r.metadata || {}
+      
+      // Sources
+      if (meta.source) {
+        sources.set(meta.source, (sources.get(meta.source) || 0) + 1)
+      }
+      
+      // Folders
+      if (meta.folder) {
+        folders.set(meta.folder, (folders.get(meta.folder) || 0) + 1)
+      }
+      
+      // Tags
+      const noteTags = asArray(meta.tags)
+      noteTags.forEach((tag) => {
+        tags.set(tag, (tags.get(tag) || 0) + 1)
+      })
+    })
+
+    return {
+      sources: Array.from(sources.entries()).sort((a, b) => b[1] - a[1]),
+      folders: Array.from(folders.entries()).sort((a, b) => b[1] - a[1]),
+      tags: Array.from(tags.entries()).sort((a, b) => b[1] - a[1]).slice(0, 20),
+    }
+  }, [allResults])
+
+  // Apply filters
+  const filtered = useMemo(() => {
+    return allResults.filter((r) => {
+      const meta = r.metadata || {}
+      
+      // Source filter
+      if (sourceFilter && meta.source !== sourceFilter) return false
+      
+      // Folder filter
+      if (folderFilter && meta.folder !== folderFilter) return false
+      
+      // Tag filter
+      if (tagFilter) {
+        const noteTags = asArray(meta.tags)
+        if (!noteTags.includes(tagFilter)) return false
+      }
+      
+      // Search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const titleMatch = (meta.title || '').toLowerCase().includes(query)
+        const snippetMatch = (r.snippet || '').toLowerCase().includes(query)
+        if (!titleMatch && !snippetMatch) return false
+      }
+      
+      return true
+    })
+  }, [allResults, sourceFilter, folderFilter, tagFilter, searchQuery])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const start = (currentPage - 1) * PAGE_SIZE
@@ -45,104 +119,318 @@ export default function BrowsePage() {
     window.scrollTo(0, 0)
   }
 
+  const clearFilters = () => {
+    setSourceFilter('')
+    setFolderFilter('')
+    setTagFilter('')
+    setSearchQuery('')
+    setCurrentPage(1)
+  }
+
+  const activeFiltersCount = [sourceFilter, folderFilter, tagFilter].filter(Boolean).length
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-zinc-500">Loading notes...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Browse Notes</h1>
+    <div className="max-w-7xl space-y-6">
+      <SectionHeader
+        title="Browse Notes"
+        description={`${filtered.length.toLocaleString()} of ${allResults.length.toLocaleString()} notes`}
+      />
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          <select
-            value={sourceFilter}
-            onChange={(e) => { setSourceFilter(e.target.value); setCurrentPage(1) }}
-            className="bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-zinc-100 focus:outline-none focus:border-zinc-700"
-          >
-            <option value="">All Sources</option>
-            <option value="Apple Notes">Apple Notes</option>
-            <option value="Evernote">Evernote</option>
-          </select>
+      {/* Search & Filter Controls */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex-1 min-w-[280px]">
+              <Input
+                placeholder="Search in notes..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+                icon={
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                }
+              />
+            </div>
+            
+            <Button
+              variant="secondary"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+            </Button>
+            
+            {activeFiltersCount > 0 && (
+              <Button variant="ghost" onClick={clearFilters}>
+                Clear
+              </Button>
+            )}
+          </div>
 
-          <input
-            type="text"
-            value={folderFilter}
-            onChange={(e) => { setFolderFilter(e.target.value); setCurrentPage(1) }}
-            placeholder="Filter by folder"
-            className="bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 w-48"
-          />
-
-          <span className="ml-auto text-zinc-400 self-center">
-            {filtered.length} notes
-          </span>
-        </div>
-
-        <div className="grid gap-3">
-          {pageResults.map((result) => {
-            const meta = result.metadata || {}
-            const tags = asArray(meta.tags)
-            return (
-              <button
-                key={result.id}
-                onClick={() => router.push(`/notes/${result.id}`)}
-                className="w-full text-left bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-zinc-100">{meta.title || 'Untitled'}</h3>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
-                      <span className="px-2 py-0.5 bg-zinc-800 rounded">{meta.folder || 'Unknown'}</span>
-                      <span>{meta.created || ''}</span>
-                    </div>
-                    <p className="text-sm text-zinc-400 mt-2 line-clamp-2">
-                      {result.snippet?.substring(0, 100) || ''}
-                    </p>
-                    {tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {tags.slice(0, 5).map((tag: string) => (
-                          <span key={tag} className="px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded text-xs">
-                            {tag}
-                          </span>
-                        ))}
-                        {tags.length > 5 && (
-                          <span className="text-zinc-500 text-xs">+{tags.length - 5}</span>
-                        )}
-                      </div>
-                    )}
+          {/* Facets Panel */}
+          {showFilters && (
+            <div className="pt-4 border-t border-zinc-800 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Source Facet */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => { setSourceFilter(''); setCurrentPage(1) }}
+                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                        !sourceFilter ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-zinc-800/50 text-zinc-400'
+                      }`}
+                    >
+                      <span>All Sources</span>
+                      <span className="text-xs text-zinc-500">{allResults.length}</span>
+                    </button>
+                    {facets.sources.map(([source, count]) => (
+                      <button
+                        key={source}
+                        onClick={() => { setSourceFilter(source); setCurrentPage(1) }}
+                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sourceFilter === source ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-zinc-800/50 text-zinc-400'
+                        }`}
+                      >
+                        <span>{source}</span>
+                        <span className="text-xs text-zinc-500">{count}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </button>
-            )
-          })}
-        </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-8">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded hover:border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                {/* Folder Facet */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Folder</label>
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    <button
+                      onClick={() => { setFolderFilter(''); setCurrentPage(1) }}
+                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                        !folderFilter ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-zinc-800/50 text-zinc-400'
+                      }`}
+                    >
+                      <span>All Folders</span>
+                    </button>
+                    {facets.folders.map(([folder, count]) => (
+                      <button
+                        key={folder}
+                        onClick={() => { setFolderFilter(folder); setCurrentPage(1) }}
+                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                          folderFilter === folder ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-zinc-800/50 text-zinc-400'
+                        }`}
+                      >
+                        <span className="truncate">{folder}</span>
+                        <span className="text-xs text-zinc-500 ml-2">{count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tags Facet */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Popular Tags</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => { setTagFilter(''); setCurrentPage(1) }}
+                      className={`transition-all ${!tagFilter ? 'ring-2 ring-purple-500/50' : ''}`}
+                    >
+                      <Badge variant="zinc">All</Badge>
+                    </button>
+                    {facets.tags.map(([tag, count]) => (
+                      <button
+                        key={tag}
+                        onClick={() => { setTagFilter(tag); setCurrentPage(1) }}
+                        className={`transition-all ${tagFilter === tag ? 'ring-2 ring-purple-500/50' : ''}`}
+                      >
+                        <Badge 
+                          variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'}
+                          className="cursor-pointer"
+                        >
+                          {tag}
+                          <span className="ml-1.5 opacity-60">({count})</span>
+                        </Badge>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Active Filters Display */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sourceFilter && (
+            <Badge variant="blue" className="flex items-center gap-1">
+              Source: {sourceFilter}
+              <button 
+                onClick={() => setSourceFilter('')}
+                className="ml-1 hover:text-white"
+              ></button>
+            </Badge>
+          )}
+          {folderFilter && (
+            <Badge variant="green" className="flex items-center gap-1">
+              Folder: {folderFilter}
+            </Badge>
+          )}
+          {tagFilter && (
+            <Badge variant="purple" className="flex items-center gap-1">
+              Tag: {tagFilter}
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {/* Results Grid */}
+      <div className="grid gap-4">
+        {pageResults.map((result) => {
+          const meta = result.metadata || {}
+          const tags = asArray(meta.tags)
+          const isHandwritten = tags.includes('handwritten')
+          
+          return (
+            <Link 
+              key={result.id}
+              href={`/notes/${result.id}`}
+              className="block no-underline"
             >
-              Previous
-            </button>
-            <span className="px-4 py-2 text-zinc-400">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded hover:border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        )}
+              <Card hover>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="blue">{meta.source || 'Unknown'}</Badge>
+                        <span className="text-zinc-600">·</span>
+                        <Badge variant="zinc">{meta.folder || 'Unknown'}</Badge>
+                        {isHandwritten && (
+                          <>
+                            <span className="text-zinc-600">·</span>
+                            <Badge variant="amber">Handwritten</Badge>
+                          </>
+                        )}
+                      </div>
+                      
+                      <h3 className="font-semibold text-zinc-100 text-lg group-hover:text-blue-400 transition-colors">
+                        {meta.title || 'Untitled'}
+                      </h3>
+                      
+                      <p className="text-sm text-zinc-500 mt-1">
+                        {meta.created ? new Date(meta.created).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : ''}
+                      </p>
+                      
+                      <p className="text-sm text-zinc-400 mt-3 line-clamp-2">
+                        {result.snippet?.substring(0, 150) || ''}
+                      </p>
+                      
+                      {tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-4">
+                          {tags.filter((t: string) => !STRUCTURAL_TAGS.includes(t)).slice(0, 6).map((tag: string) => (
+                            <Badge key={tag} variant="green" size="sm">{tag}</Badge>
+                          ))}
+                          {tags.filter((t: string) => !STRUCTURAL_TAGS.includes(t)).length > 6 && (
+                            <span className="text-zinc-500 text-xs">+{tags.length - 6}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-zinc-600 group-hover:text-blue-400 transition-colors">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          )
+        })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="secondary"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              
+              <div className="flex items-center gap-2">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
+                  if (page > totalPages) return null
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => goToPage(page)}
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                        page === currentPage
+                          ? 'bg-blue-600 text-white'
+                          : 'hover:bg-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                })}
+              </div>
+              
+              <Button
+                variant="secondary"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+            <p className="text-center text-sm text-zinc-500 mt-3">
+              Showing {start + 1}-{Math.min(start + PAGE_SIZE, filtered.length)} of {filtered.length} notes
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {filtered.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="text-zinc-500">
+              <svg className="w-12 h-12 mx-auto mb-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-lg font-medium">No notes found</p>
+              <p className="text-sm mt-1">Try adjusting your filters</p>
+              {activeFiltersCount > 0 && (
+                <Button variant="secondary" onClick={clearFilters} className="mt-4">
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

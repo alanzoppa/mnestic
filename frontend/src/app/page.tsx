@@ -1,19 +1,72 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { getStats, search, triggerIngest, type Stats, type SearchResult } from "@/lib/api";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getStats, search, getTags, getTimeline, triggerIngest, type Stats, type SearchResult, type TagInfo, type TimelinePeriod } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { StatCard, StatsGrid } from '@/components/ui/StatCard';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { DonutChart } from '@/components/charts/PieCharts';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer, 
+  CartesianGrid 
+} from 'recharts';
+
+// Icons
+const DocumentIcon = () => (
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const TagIcon = () => (
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [query, setQuery] = useState("");
+  const [tags, setTags] = useState<TagInfo[]>([]);
+  const [timelineData, setTimelineData] = useState<TimelinePeriod[]>([]);
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [ingesting, setIngesting] = useState(false);
   const [ingestResult, setIngestResult] = useState<string | null>(null);
 
   useEffect(() => {
+    // Load stats
     getStats().then(setStats).catch(() => {});
+    
+    // Load tags for distribution
+    getTags().then(res => {
+      setTags(res.tags.slice(0, 10));
+    }).catch(() => {});
+    
+    // Load timeline data
+    getTimeline('month').then(res => {
+      setTimelineData(res.periods.slice(-12)); // Last 12 months
+    }).catch(() => {});
   }, []);
 
   const handleIngest = async (full: boolean) => {
@@ -23,7 +76,9 @@ export default function Dashboard() {
       const result = await triggerIngest(full);
       const n = result.notes_result || {};
       const c = result.calendar_result || {};
-      setIngestResult(`Notes: ${n.notes_ingested || 0} ingested, ${n.notes_skipped || 0} skipped, ${n.chunks_created || 0} chunks. Calendar: ${c.events_ingested || 0} events.`);
+      setIngestResult(
+        `Notes: ${n.notes_ingested || 0} ingested, ${n.notes_skipped || 0} skipped, ${n.chunks_created || 0} chunks. Calendar: ${c.events_ingested || 0} events.`
+      );
       getStats().then(setStats);
     } catch (e: any) {
       setIngestResult(`Error: ${e.message}`);
@@ -42,96 +97,258 @@ export default function Dashboard() {
     setSearching(false);
   };
 
+  // Prepare tag distribution data for chart
+  const tagDistributionData = tags.map(tag => ({
+    name: tag.name,
+    value: tag.count,
+  }));
+
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Notes Browser</h1>
-
-      <form onSubmit={handleSearch} className="flex gap-2 mb-8">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search notes..."
-          className="flex-1 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
-        />
-        <button
-          type="submit"
-          disabled={searching}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white font-medium disabled:opacity-50"
-        >
-          {searching ? "..." : "Search"}
-        </button>
-      </form>
-
-      {results.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-3">Results</h2>
-          <div className="space-y-2">
-            {results.map((r) => (
-              <Link
-                key={r.id}
-                href={r.type === "note" ? `/notes/${r.id}` : `/calendar`}
-                className="block p-3 bg-zinc-900 rounded border border-zinc-800 hover:border-zinc-600"
+    <div className="max-w-7xl space-y-8">
+      {/* Header with Search */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
+        <Card className="relative">
+          <CardContent className="p-8">
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+              Notes Browser
+            </h1>
+            <p className="text-zinc-500 mb-6">Search and explore your archived notes with semantic understanding</p>
+            
+            <form onSubmit={handleSearch} className="flex gap-3">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search your notes..."
+                  data-testid="dashboard-search-input"
+                  className="h-12"
+                  icon={
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  }
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={searching}
               >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{r.title}</span>
-                  <span className="text-xs text-zinc-500">{r.type}</span>
-                </div>
-                <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{r.snippet}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+                Search
+              </Button>
+            </form>
 
+            {/* Quick Search Results */}
+            {results.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h3 className="text-sm font-medium text-zinc-400 mb-3">Quick Results</h3>
+                {results.map((r) => (
+                  <Link
+                    key={r.id}
+                    href={r.type === 'note' ? `/notes/${r.id}` : `/calendar`}
+                    className="block p-4 bg-zinc-950/50 border border-zinc-800/60 rounded-lg hover:border-zinc-700/60 transition-colors"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-zinc-100">{r.title}</h4>
+                        <p className="text-sm text-zinc-500 mt-1 line-clamp-2">{r.snippet}</p>
+                      </div>
+                      <span className={`ml-4 px-2 py-1 rounded text-xs ${
+                        r.type === 'calendar' 
+                          ? 'bg-purple-500/10 text-purple-400' 
+                          : 'bg-blue-500/10 text-blue-400'
+                      }`}>
+                        {r.type}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Notes" value={stats.total_notes} />
-          <StatCard label="Tags" value={stats.total_tags} />
-          <StatCard label="Calendar Events" value={stats.total_calendar_events} />
+        <StatsGrid>
           <StatCard
-            label="Date Range"
-            value={stats.date_range[0] ? `${stats.date_range[0]?.slice(0, 4)}–${stats.date_range[1]?.slice(0, 4)}` : "N/A"}
+            value={stats.total_notes.toLocaleString()}
+            label="Total Notes"
+            icon={<DocumentIcon />}
           />
-        </div>
+          <StatCard
+            value={stats.total_tags.toLocaleString()}
+            label="Unique Tags"
+            icon={<TagIcon />}
+          />
+          <StatCard
+            value={stats.total_calendar_events.toLocaleString()}
+            label="Calendar Events"
+            icon={<CalendarIcon />}
+          />
+          <StatCard
+            value={stats.date_range[0] ? `${stats.date_range[0]?.slice(0, 4)}–${stats.date_range[1]?.slice(0, 4)}` : 'N/A'}
+            label="Date Range"
+            icon={<ClockIcon />}
+          />
+        </StatsGrid>
       )}
 
-      <div className="mt-8 p-4 bg-zinc-900 rounded border border-zinc-800">
-        <h2 className="text-sm font-semibold text-zinc-400 mb-3">Index Management</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleIngest(false)}
-            disabled={ingesting}
-            className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded text-sm text-zinc-100 disabled:opacity-50"
-          >
-            {ingesting ? "Ingesting..." : "Incremental Ingest"}
-          </button>
-          <button
-            onClick={() => handleIngest(true)}
-            disabled={ingesting}
-            className="px-4 py-2 bg-amber-700 hover:bg-amber-600 rounded text-sm text-zinc-100 disabled:opacity-50"
-          >
-            {ingesting ? "Ingesting..." : "Full Re-ingest"}
-          </button>
-        </div>
-        {ingestResult && (
-          <p className="mt-3 text-sm text-zinc-400">{ingestResult}</p>
-        )}
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Activity Timeline */}
+        <Card hover>
+          <CardHeader>
+            <CardTitle>Activity Timeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timelineData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={timelineData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                  <XAxis
+                    dataKey="period"
+                    stroke="#52525b"
+                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                    tickFormatter={(value) => value.slice(0, 7)} // YYYY-MM
+                  />
+                  <YAxis
+                    stroke="#52525b"
+                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#18181b',
+                      border: '1px solid #27272a',
+                      borderRadius: '0.5rem',
+                      color: '#fafafa',
+                    }}
+                    cursor={{ fill: '#27272a', opacity: 0.5 }}
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    fill="url(#activityGradient)" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <defs>
+                    <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#8b5cf6" />
+                    </linearGradient>
+                  </defs>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-zinc-500">
+                No activity data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tag Distribution */}
+        <Card hover>
+          <CardHeader>
+            <CardTitle>Top Tags Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {tagDistributionData.length > 0 ? (
+              <DonutChart
+                data={tagDistributionData}
+                height={250}
+                showLegend={true}
+              />
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-zinc-500">
+                No tag data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="mt-6 flex gap-3">
-        <Link href="/search" className="text-blue-400 hover:underline text-sm">Advanced Search →</Link>
-        <Link href="/browse" className="text-blue-400 hover:underline text-sm">Browse All →</Link>
-      </div>
-    </div>
-  );
-}
+      {/* Quick Actions & Index Management */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Explore</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-zinc-500">Navigate through your notes using different views</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Link href="/search">
+                <Button variant="secondary" className="w-full justify-start">
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Advanced Search
+                </Button>
+              </Link>
+              <Link href="/browse">
+                <Button variant="secondary" className="w-full justify-start">
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  Browse All
+                </Button>
+              </Link>
+              <Link href="/tags">
+                <Button variant="secondary" className="w-full justify-start">
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  Tags
+                </Button>
+              </Link>
+              <Link href="/graph">
+                <Button variant="secondary" className="w-full justify-start">
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Graph
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="p-4 bg-zinc-900 rounded border border-zinc-800">
-      <div className="text-sm text-zinc-400">{label}</div>
-      <div className="text-2xl font-bold mt-1">{value}</div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Index Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-zinc-500 mb-4">Update the search index with new or modified notes</p>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => handleIngest(false)}
+                loading={ingesting}
+                disabled={ingesting}
+              >
+                Incremental Ingest
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => handleIngest(true)}
+                loading={ingesting}
+                disabled={ingesting}
+              >
+                Full Re-ingest
+              </Button>
+            </div>
+            
+            {ingestResult && (
+              <div className="mt-4 p-3 bg-zinc-950/50 border border-zinc-800 rounded-lg">
+                <p className="text-sm text-zinc-400">{ingestResult}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

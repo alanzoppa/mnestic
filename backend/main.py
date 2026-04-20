@@ -5,6 +5,7 @@ from typing import Any
 import frontmatter
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from embed import embed_query_sync
@@ -21,6 +22,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for images
+images_dir = os.path.join(NOTES_DIR, "images")
+if os.path.exists(images_dir):
+    app.mount("/images", StaticFiles(directory=images_dir), name="images")
 
 store = NoteStore()
 
@@ -434,6 +440,42 @@ async def get_calendar_by_date(date: str) -> dict:
             )
 
     return {"date": date, "events": events, "notes": notes}
+
+
+@app.get("/api/images/{image_path:path}")
+async def get_image(image_path: str):
+    """Serve image files from the notes and images directories."""
+    from fastapi.responses import FileResponse
+    
+    # Sanitize the path to prevent directory traversal
+    safe_path = os.path.normpath(image_path).lstrip("/")
+    if safe_path.startswith("..") or safe_path.startswith("/"):
+        raise HTTPException(status_code=403, detail="Invalid image path")
+    
+    # Check if it's an image file before doing filesystem lookups
+    allowed_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.pdf')
+    if not safe_path.lower().endswith(allowed_extensions):
+        raise HTTPException(status_code=403, detail="Invalid file type")
+    
+    # Search in: notes/, notes/../images/ (project-level images dir)
+    search_dirs = [NOTES_DIR, os.path.join(NOTES_DIR, "..", "images")]
+    
+    for search_dir in search_dirs:
+        full_path = os.path.join(search_dir, safe_path)
+        if os.path.exists(full_path) and os.path.isfile(full_path):
+            return FileResponse(full_path)
+    
+    # Fallback: search recursively in each search dir by basename
+    basename = os.path.basename(safe_path)
+    for search_dir in search_dirs:
+        for root, dirs, files in os.walk(search_dir):
+            for file in files:
+                if file.lower() == basename.lower():
+                    full_path = os.path.join(root, file)
+                    if os.path.exists(full_path) and os.path.isfile(full_path):
+                        return FileResponse(full_path)
+    
+    raise HTTPException(status_code=404, detail="Image not found")
 
 
 if __name__ == "__main__":
