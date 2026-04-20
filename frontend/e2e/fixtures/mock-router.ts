@@ -32,6 +32,32 @@ export async function mockApiRoutes(page: Page) {
 
   // Note detail - matches pattern /api/notes/{id}
   await page.route("**/api/notes/*", async (route) => {
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON();
+      const updated = { ...mockNoteDetail };
+      if (body?.title) {
+        updated.metadata = { ...updated.metadata, title: body.title };
+      }
+      if (body?.tags) {
+        updated.metadata = { ...updated.metadata, tags: body.tags };
+      }
+      if (body?.participants) {
+        updated.metadata = { ...updated.metadata, participants: body.participants };
+      }
+      if (body?.content) {
+        updated.content = body.content;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: updated.id,
+          metadata: updated.metadata,
+          content: updated.content,
+        }),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -110,6 +136,21 @@ export async function mockApiRoutes(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockSchema),
+    });
+  });
+
+  // People
+  await page.route("**/api/people", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        people: [
+          { name: "Alice Smith", aliases: ["Alice"], context: "direct report" },
+          { name: "Bob Jones", aliases: ["Bob"], context: "colleague" },
+          { name: "Valentin Cekov", aliases: ["Val"], context: "principal engineer" },
+        ],
+      }),
     });
   });
 
@@ -223,6 +264,20 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
       status: 200,
       contentType: "application/json",
       body: await mockWithDelay(mockSchema),
+    });
+  });
+
+  await page.route("**/api/people", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay({
+        people: [
+          { name: "Alice Smith", aliases: ["Alice"], context: "direct report" },
+          { name: "Bob Jones", aliases: ["Bob"], context: "colleague" },
+          { name: "Valentin Cekov", aliases: ["Val"], context: "principal engineer" },
+        ],
+      }),
     });
   });
 

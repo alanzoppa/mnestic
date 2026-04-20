@@ -152,3 +152,34 @@ export async function getGraph(tag?: string, folder?: string, threshold?: number
   const qs = params.toString();
   return fetchAPI(`/graph${qs ? `?${qs}` : ""}`);
 }
+
+export interface UpdateNoteRequest {
+  title?: string;
+  content?: string;
+  tags?: string[];
+  participants?: string[];
+}
+
+export interface UpdateNoteResponse {
+  id: string;
+  metadata: Record<string, any>;
+  content: string;
+}
+
+export async function updateNote(noteId: string, data: UpdateNoteRequest): Promise<UpdateNoteResponse> {
+  return fetchAPI(`/notes/${encodeURIComponent(noteId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export interface PersonInfo {
+  name: string;
+  aliases: string[];
+  context: string;
+}
+
+export async function getPeople(): Promise<{ people: PersonInfo[] }> {
+  return fetchAPI("/people");
+}

@@ -1,15 +1,16 @@
 # Notes Browser
 
-Private notes browser with semantic search for ~1,600 markdown notes with YAML frontmatter.
+Private notes browser with semantic search for ~2,200 markdown notes with YAML frontmatter (215+ image-only notes AI-captioned).
 
 ## Features
 
 - **Semantic search** via local embeddings (Ollama + nomic-embed-text-v2-moe)
+- **AI image captioning** for image-only notes using Kimi k2.5:cloud
 - **Tag filtering** with cloud visualization
 - **Timeline view** for exploring notes chronologically
 - **Calendar integration** with note correlation
 - **Similarity graph** for visual note relationships
-- **Markdown rendering** with image support
+- **Markdown rendering** with image support and sidebar attachments
 
 ## Quick Start
 
@@ -81,7 +82,27 @@ python3 -c "from ingest import reindex_all; reindex_all()"
 curl -X POST http://localhost:8000/api/ingest
 ```
 
-### 6. Run Tests
+### 6. Caption Image-Only Notes (Optional)
+
+Generate AI descriptions for notes containing only images (no text):
+
+```bash
+# Install Pillow for image resizing
+pip install Pillow
+
+# Caption all image-only notes
+python3 scripts/caption_images.py
+
+# Preview without modifying files
+python3 scripts/caption_images.py --dry-run
+
+# Re-caption notes with existing captions
+python3 scripts/caption_images.py --force
+```
+
+This sends images to Ollama Cloud's `kimi-k2.5:cloud` model and prepends captions as `[AI caption]: <description>` before each image. After captioning, re-run the ingest step to update embeddings.
+
+### 7. Run Tests
 
 ```bash
 # Backend tests
@@ -96,7 +117,7 @@ pytest tests/test_ingest.py -v
 pytest tests/ --cov=. --cov-report=html
 ```
 
-### 7. Start Services
+### 8. Start Services
 
 In separate terminals:
 
@@ -185,7 +206,8 @@ notes-browser/
 │   ├── src/components/# React components
 │   └── src/lib/       # API client
 ├── scripts/           # Utility scripts
-│   └── sync_notes.py  # Note normalization
+│   ├── sync_notes.py  # Note normalization
+│   └── caption_images.py  # AI captioning for image-only notes
 ├── notes/             # Synced markdown files (gitignored)
 ├── images/            # Image assets (gitignored)
 ├── chroma_data/       # Vector DB storage (gitignored)

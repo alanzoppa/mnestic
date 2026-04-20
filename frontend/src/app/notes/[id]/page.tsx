@@ -6,8 +6,8 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { getNote } from '@/lib/api'
-import type { NoteDetail } from '@/lib/api'
+import { getNote, updateNote, getTags, getPeople } from '@/lib/api'
+import type { NoteDetail, TagInfo, PersonInfo } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -15,6 +15,9 @@ import { SkeletonNoteDetail } from '@/components/ui/Skeleton'
 import { TableOfContents } from '@/components/TableOfContents'
 import { ImageGallery } from '@/components/ImageGallery'
 import { FavoriteButton } from '@/components/FavoriteButton'
+import { EditableTitle } from '@/components/EditableTitle'
+import { TagInput } from '@/components/TagInput'
+import { PersonInput } from '@/components/PersonInput'
 import { useFavorites } from '@/lib/favorites'
 
 function asArray(val: unknown): string[] {
@@ -102,6 +105,12 @@ export default function NotePage() {
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ExtractedImage[]>([])
   const [content, setContent] = useState<string>('')
+  const [editing, setEditing] = useState(false)
+  const [editDraft, setEditDraft] = useState<string>('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [allTagNames, setAllTagNames] = useState<string[]>([])
+  const [allPeople, setAllPeople] = useState<PersonInfo[]>([])
   const { isFav, toggle } = useFavorites()
 
 useEffect(() => {
@@ -133,9 +142,52 @@ useEffect(() => {
         setError('Failed to load note')
         setLoading(false)
       })
+
+    getTags()
+      .then((data) => {
+        if (!cancelled) setAllTagNames(data.tags.map((t: TagInfo) => t.name))
+      })
+      .catch(() => {})
+
+    getPeople()
+      .then((data) => {
+        if (!cancelled) setAllPeople(data.people)
+      })
+      .catch(() => {})
       
     return () => { cancelled = true }
   }, [id])
+
+  const handleStartEdit = () => {
+    setEditDraft(note?.content || '')
+    setEditError(null)
+    setEditing(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!note) return
+    const nid = note.metadata?.note_id || note.id
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const result = await updateNote(nid, { content: editDraft })
+      setNote({ ...note!, metadata: result.metadata, content: result.content ?? editDraft })
+      const { content: cleanedContent, images } = extractImages(result.content ?? editDraft)
+      setContent(cleanedContent)
+      setAttachments(images)
+      setEditing(false)
+    } catch (e: any) {
+      setEditError(e?.message || 'Failed to save')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditDraft('')
+    setEditError(null)
+    setEditing(false)
+  }
 
   if (loading) {
     return <SkeletonNoteDetail />
@@ -177,9 +229,13 @@ useEffect(() => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                      {meta.title || 'Untitled'}
-                    </h1>
+                    <EditableTitle
+                      value={meta.title || 'Untitled'}
+                      onSave={async (newTitle) => {
+                        const result = await updateNote(noteId, { title: newTitle })
+                        setNote({ ...note, metadata: result.metadata, content: result.content ?? note.content })
+                      }}
+                    />
                     <FavoriteButton noteId={noteId} isFavorite={isFav(noteId)} onToggle={toggle} />
                   </div>
 
@@ -217,35 +273,26 @@ useEffect(() => {
                   </div>
 
                   {/* Tags */}
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {tags.filter(t => !['handwritten', 'image-only'].includes(t)).map((tag: string) => (
-                        <Link 
-                          key={tag} 
-                          href={`/tags/${encodeURIComponent(tag)}`}
-                          className="no-underline"
-                        >
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 cursor-pointer hover:bg-purple-500/20 transition-colors">
-                            {tag}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  <TagInput
+                    tags={tags}
+                    allTags={allTagNames}
+                    onChange={async (newTags) => {
+                      const nid = note.metadata?.note_id || note.id
+                      const result = await updateNote(nid, { tags: newTags })
+                      setNote({ ...note, metadata: { ...note.metadata, ...result.metadata } })
+                    }}
+                  />
 
                   {/* Participants */}
-                  {participants.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {participants.map((p: string) => (
-                        <Badge key={p} variant="zinc">
-                          <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          {p}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <PersonInput
+                    participants={participants}
+                    people={allPeople}
+                    onChange={async (newParticipants) => {
+                      const nid = note.metadata?.note_id || note.id
+                      const result = await updateNote(nid, { participants: newParticipants })
+                      setNote({ ...note, metadata: { ...note.metadata, ...result.metadata } })
+                    }}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -253,16 +300,75 @@ useEffect(() => {
 
           {/* Note Content */}
           <Card>
-            <CardContent className="p-6">
-              <div className="markdown-body">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
-                  components={MarkdownComponents}
-                >
-                  {content || ''}
-                </ReactMarkdown>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">
+                {editing ? 'Editing' : 'Content'}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {editing ? (
+                  <>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={editSaving}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      {editSaving ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={editSaving}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleStartEdit}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 text-sm font-medium transition-colors border border-zinc-700"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit
+                  </button>
+                )}
               </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {editing ? (
+                <>
+                  <textarea
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    disabled={editSaving}
+                    className="w-full min-h-[400px] bg-zinc-900 border border-zinc-800 rounded-lg p-4 text-zinc-100 font-mono text-sm leading-relaxed resize-y focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  {editError && (
+                    <p className="text-red-400 text-sm mt-2">{editError}</p>
+                  )}
+                </>
+              ) : (
+                <div className="markdown-body">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                    components={MarkdownComponents}
+                  >
+                    {content || ''}
+                  </ReactMarkdown>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

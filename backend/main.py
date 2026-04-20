@@ -1,4 +1,7 @@
 import os
+import re
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -8,9 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from embed import embed_texts_sync
 from embed import embed_query_sync
 from store import NoteStore
 from schema import discover_schema
+from ingest import make_note_id, make_doc_id, chunk_text
 
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
@@ -75,6 +80,27 @@ def find_note_file(source_id: str) -> str | None:
     return None
 
 
+def _invalidate_source_id_cache() -> None:
+    global _source_id_to_file
+    _source_id_to_file = {}
+
+
+def _sanitize_filename(title: str) -> str:
+    sanitized = re.sub(r'[:/\\]', '-', title)
+    sanitized = sanitized.strip()
+    if not sanitized:
+        sanitized = "untitled"
+    base = sanitized[:200]
+    filepath = os.path.join(NOTES_DIR, f"{base}.md")
+    if not os.path.exists(filepath):
+        return base
+    for i in range(2, 100):
+        candidate = f"{base}__{i}"
+        if not os.path.exists(os.path.join(NOTES_DIR, f"{candidate}.md")):
+            return candidate
+    return base
+
+
 def _normalize_meta(meta: dict) -> dict:
     if "tags" in meta and isinstance(meta["tags"], str):
         meta["tags"] = [t.strip() for t in meta["tags"].split(",") if t.strip()]
@@ -87,6 +113,13 @@ class SearchRequest(BaseModel):
     filters: dict = {}
     n: int = 20
     include_calendar: bool = True
+
+
+class UpdateNoteRequest(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    tags: list[str] | None = None
+    participants: list[str] | None = None
 
 
 class SearchResult(BaseModel):
@@ -237,6 +270,176 @@ async def get_note(note_id: str) -> dict:
         "calendar_events": calendar_events,
         "similar_notes": similar_notes,
     }
+
+
+def _reingest_note(note_id: str, md_path: str) -> None:
+    store.delete_note_chunks(note_id)
+    post = frontmatter.load(md_path)
+    fm = post.metadata
+    body = post.content
+    source_id = fm.get("source_id", "")
+    title = fm.get("title", "")
+    folder = fm.get("folder", "")
+    tags = fm.get("tags", [])
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",") if t.strip()]
+    tags_str = ",".join(tags) if tags else ""
+    participants = fm.get("participants", [])
+    if isinstance(participants, str):
+        participants = [p.strip() for p in participants.split(",") if p.strip()]
+    participants_str = ",".join(participants) if participants else ""
+    created_str = fm.get("created", "")
+    modified_str = fm.get("modified", "")
+    source = fm.get("source", "Apple Notes")
+
+    tier1_text = f"Title: {title}\nFolder: {folder}\nTags: {tags_str}\nParticipants: {participants_str}\n\n{body[:2000]}"
+    chunk_id_0 = make_doc_id(note_id, 0, os.path.basename(md_path))
+    tier1_metadata = {
+        "note_id": note_id,
+        "filename": os.path.basename(md_path),
+        "chunk_index": 0,
+        "title": title,
+        "folder": folder,
+        "tags": tags_str,
+        "participants": participants_str,
+        "created": created_str,
+        "modified": modified_str,
+        "source": source,
+        "source_id": source_id,
+    }
+
+    chunks = [tier1_text]
+    metadatas = [tier1_metadata]
+    ids = [chunk_id_0]
+
+    if len(body) > 2000:
+        remainder = body[1600:]
+        for i, chunk in enumerate(chunk_text(remainder, 2000, 400)):
+            if chunk.strip():
+                chunk_index = i + 1
+                chunks.append(chunk)
+                metadatas.append({
+                    "note_id": note_id,
+                    "chunk_index": chunk_index,
+                    "title": title,
+                    "folder": folder,
+                    "tags": tags_str,
+                    "participants": participants_str,
+                    "created": created_str,
+                    "modified": modified_str,
+                    "source": source,
+                    "source_id": source_id,
+                })
+                ids.append(make_doc_id(note_id, chunk_index, os.path.basename(md_path)))
+
+    embeddings = embed_texts_sync(chunks)
+    if embeddings:
+        store.add_notes(ids, chunks, embeddings, metadatas)
+
+
+@app.patch("/api/notes/{note_id}")
+async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
+    if all(v is None for v in [body.title, body.content, body.tags, body.participants]):
+        raise HTTPException(status_code=422, detail="No fields to update")
+
+    note = store.get_note(note_id)
+    if not note:
+        note = store.get_note_by_note_id(note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    metadata = note["metadata"]
+    _normalize_meta(metadata)
+    source_id = metadata.get("source_id", "")
+
+    md_path = find_note_file(source_id)
+    if not md_path or not os.path.exists(md_path):
+        raise HTTPException(status_code=404, detail="Note file not found on disk")
+
+    try:
+        post = frontmatter.load(md_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read note file: {e}")
+
+    renamed = False
+    new_path = md_path
+
+    if body.title is not None:
+        post.metadata["title"] = body.title
+        new_base = _sanitize_filename(body.title)
+        new_filename = f"{new_base}.md"
+        new_path = os.path.join(NOTES_DIR, new_filename)
+        renamed = new_path != md_path
+
+    if body.content is not None:
+        pass
+
+    if body.tags is not None:
+        post.metadata["tags"] = body.tags
+
+    if body.participants is not None:
+        post.metadata["participants"] = body.participants
+
+    post.metadata["modified"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    logical_note_id = metadata.get("note_id", note_id)
+
+    try:
+        if renamed:
+            with open(new_path, "wb") as f:
+                frontmatter.dump(post, f, allow_unicode=True)
+            os.remove(md_path)
+        else:
+            with open(md_path, "wb") as f:
+                frontmatter.dump(post, f, allow_unicode=True)
+
+        _invalidate_source_id_cache()
+        _reingest_note(logical_note_id, new_path if renamed else md_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save note: {e}")
+
+    updated_note = store.get_note_by_note_id(logical_note_id)
+    updated_meta = updated_note["metadata"] if updated_note else {}
+    _normalize_meta(updated_meta)
+    updated_source_id = updated_meta.get("source_id", "")
+    updated_md_path = find_note_file(updated_source_id)
+    updated_content = ""
+    if updated_md_path and os.path.exists(updated_md_path):
+        updated_content = frontmatter.load(updated_md_path).content
+
+    return {
+        "id": logical_note_id,
+        "metadata": updated_meta,
+        "content": updated_content,
+    }
+
+
+PEOPLE_REGISTRY_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "Desktop", "notes", "people_registry.json"
+)
+if not os.path.exists(PEOPLE_REGISTRY_PATH):
+    PEOPLE_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "people_registry.json")
+
+
+@app.get("/api/people")
+async def get_people() -> dict:
+    if not os.path.exists(PEOPLE_REGISTRY_PATH):
+        return {"people": []}
+    try:
+        with open(PEOPLE_REGISTRY_PATH, "r") as f:
+            data = json.load(f)
+        people = []
+        for name, info in data.items():
+            if name.startswith("_"):
+                continue
+            people.append({
+                "name": name,
+                "aliases": info.get("aliases", []),
+                "context": info.get("context", ""),
+            })
+        return {"people": people}
+    except Exception:
+        return {"people": []}
 
 
 @app.get("/api/tags")

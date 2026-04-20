@@ -137,4 +137,57 @@ describe("API Module", () => {
       expect(stats.total_tags).toBe(20);
     });
   });
+
+  describe("updateNote", () => {
+    it("should send PATCH request with title", async () => {
+      const mockResponse = {
+        id: "note-001",
+        metadata: { title: "Updated Title" },
+        content: "body",
+      };
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const { updateNote } = await import("@/lib/api");
+      const result = await updateNote("note-001", { title: "Updated Title" });
+
+      const calls = (global.fetch as any).mock.calls;
+      expect(calls[0][0]).toContain("/api/notes/note-001");
+      const opts = calls[0][1];
+      expect(opts.method).toBe("PATCH");
+      const body = JSON.parse(opts.body);
+      expect(body.title).toBe("Updated Title");
+      expect(result.metadata.title).toBe("Updated Title");
+    });
+
+    it("should send PATCH request with tags", async () => {
+      const mockResponse = {
+        id: "note-001",
+        metadata: { tags: ["work", "new-tag"] },
+        content: "body",
+      };
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const { updateNote } = await import("@/lib/api");
+      await updateNote("note-001", { tags: ["work", "new-tag"] });
+
+      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      expect(body.tags).toEqual(["work", "new-tag"]);
+    });
+
+    it("should throw on API error", async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      });
+
+      const { updateNote } = await import("@/lib/api");
+      await expect(updateNote("bad-id", { title: "x" })).rejects.toThrow("API error: 404");
+    });
+  });
 });

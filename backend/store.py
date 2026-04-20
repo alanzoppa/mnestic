@@ -304,6 +304,16 @@ class NoteStore:
             "total_calendar_events": total_calendar_events,
         }
 
+    def delete_note_chunks(self, note_id: str) -> int:
+        existing = self._notes.get(
+            where={"note_id": note_id},
+            include=["metadatas"],
+        )
+        if existing["ids"]:
+            self._notes.delete(ids=existing["ids"])
+            return len(existing["ids"])
+        return 0
+
     def delete_notes(self, ids: list[str]) -> None:
         self._notes.delete(ids=ids)
 

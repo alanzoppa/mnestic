@@ -59,7 +59,8 @@ notes-browser/
 ├── data/                         Processed data (calendar.json etc.)
 ├── chroma_data/                 ChromaDB persistent storage
 ├── scripts/
-│   └── sync_notes.py            Copy + normalize notes from source
+│   ├── sync_notes.py            Copy + normalize notes from source
+│   └── caption_images.py        AI captioning for image-only notes (Kimi k2.5:cloud)
 └── deploy/
     ├── nginx.conf               NGINX reverse proxy config
     ├── notes-browser-backend.service
@@ -68,7 +69,7 @@ notes-browser/
 
 ## Data sources
 
-- **Notes**: `~/Desktop/notes/Apple Notes/` → flattened into `notes/` with date normalization
+- **Notes**: `~/Desktop/notes/Apple Notes/` → flattened into `notes/` with date normalization (2260 notes, ~215 image-only notes now AI-captioned)
 - **Calendar**: `~/Downloads/calendar-export.json` (2324 events, 2005–2026)
 - **People registry**: `~/Desktop/notes/people_registry.json` (118+ people with aliases)
 
@@ -79,6 +80,14 @@ notes-browser/
 - **Max input**: 512 tokens (~2000 chars approximation)
 - **Prefix convention**: `search_document:` for docs, `search_query:` for queries
 - **ChromaDB**: local persistent at `chroma_data/`
+
+## Vision model (image captioning)
+
+- **Model**: `kimi-k2.5:cloud` via Ollama Cloud
+- **Purpose**: Generate text descriptions for image-only notes
+- **Process**: `scripts/caption_images.py` sends images to API, receives captions, prepends to note body as `[AI caption]: <description>`
+- **Coverage**: 215 image-only notes now have searchable text descriptions
+- **Format**: Captions are inserted before each image reference: `[AI caption]: <generated description>` followed by `\n\n![image](...)`
 
 ## Chunking strategy
 
@@ -132,6 +141,17 @@ python ~/Codes/notes-browser/scripts/sync_notes.py           # Incremental
 python ~/Codes/notes-browser/scripts/sync_notes.py --force    # Full re-copy
 ```
 
+### Caption image-only notes
+```bash
+cd ~/Codes/notes-browser/backend
+source .venv/bin/activate
+pip install Pillow  # Required for image resizing
+
+python ~/Codes/notes-browser/scripts/caption_images.py              # Caption all image-only notes
+python ~/Codes/notes-browser/scripts/caption_images.py --dry-run    # Preview what would be captioned
+python ~/Codes/notes-browser/scripts/caption_images.py --force      # Re-caption notes with existing captions
+```
+
 ## API endpoints
 
 | Endpoint | Method | Purpose |
@@ -155,10 +175,11 @@ None at the app level. Designed to run behind NGINX on a Tailscale tailnet. Tail
 
 ## TODO
 
-- [ ] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
+- [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
+- [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
 - [ ] Incremental re-ingest on file change (watchdog)
 - [ ] Incremental Evernote sync once that agent finishes
 - [ ] Re-tag notes with only structural tags (82 notes)
 - [ ] Merge duplicate people in registry (e.g., Damen / Damen Turnbull)
 - [ ] Full-text search fallback (for exact token matches that embeddings miss)
-- [ ] Image serving in note detail (currently `../images/` relative links)
+- [x] Image serving in note detail (via `/api/images/` endpoint + sidebar Attachments section)

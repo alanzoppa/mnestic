@@ -1,4 +1,29 @@
 #!/usr/bin/env python3
+"""
+Caption image-only notes using Kimi k2.5:cloud vision model.
+
+This script scans markdown notes that contain only image references (no text content),
+sends each image to Ollama Cloud's kimi-k2.5:cloud model for description generation,
+and prepends the generated caption to the note body.
+
+Usage:
+    python caption_images.py                    # Caption all image-only notes
+    python caption_images.py --dry-run          # Preview what would be captioned
+    python caption_images.py --force            # Re-caption notes with existing captions
+    python caption_images.py --limit 10         # Process only 10 notes
+    python caption_images.py --delay 2.0        # 2 second delay between API calls
+
+Requirements:
+    - Ollama running with access to kimi-k2.5:cloud model
+    - Pillow (pip install Pillow) for image resizing
+    - httpx (pip install httpx)
+
+The script handles:
+    - PDF filtering (vision models don't support PDFs)
+    - Image resizing for large files (>5MB)
+    - Timeout retries (up to 5 minutes per image)
+    - Multi-image notes (per-image captions)
+"""
 import argparse
 import base64
 import os
@@ -60,9 +85,44 @@ def resolve_image_path(ref: str) -> str | None:
     return None
 
 
+def resize_image_if_needed(image_path: str, max_size_mb: float = 5.0) -> bytes:
+    """Resize image if it's too large for API."""
+    import io
+    from PIL import Image
+    
+    file_size = os.path.getsize(image_path)
+    max_bytes = max_size_mb * 1024 * 1024
+    
+    if file_size <= max_bytes:
+        with open(image_path, "rb") as f:
+            return f.read()
+    
+    # Resize needed
+    img = Image.open(image_path)
+    
+    # Calculate new dimensions to get under max size
+    # Rough heuristic: halve dimensions until size should fit
+    scale = 0.7
+    while True:
+        new_width = int(img.width * scale)
+        new_height = int(img.height * scale)
+        img_resized = img.resize((new_width, new_height), Image.LANCZOS)
+        
+        # Convert to bytes
+        buf = io.BytesIO()
+        if img.mode in ('RGBA', 'LA', 'P'):
+            img_resized = img_resized.convert('RGB')
+        img_resized.save(buf, format='JPEG', quality=85)
+        img_bytes = buf.getvalue()
+        
+        if len(img_bytes) <= max_bytes or scale < 0.3:
+            return img_bytes
+        scale *= 0.7
+
+
 def caption_image(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        img_b64 = base64.b64encode(f.read()).decode()
+    img_bytes = resize_image_if_needed(image_path)
+    img_b64 = base64.b64encode(img_bytes).decode()
     resp = httpx.post(
         OLLAMA_URL,
         json={
@@ -76,7 +136,7 @@ def caption_image(image_path: str) -> str:
             ],
             "stream": False,
         },
-        timeout=120,
+        timeout=300,
     )
     resp.raise_for_status()
     data = resp.json()

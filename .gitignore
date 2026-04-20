@@ -51,3 +51,7 @@ logs/
 .env
 .env.local
 .env.*.local
+
+# Test artifacts
+playwright-report/
+test-results/
