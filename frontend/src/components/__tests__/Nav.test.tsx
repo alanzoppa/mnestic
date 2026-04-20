@@ -24,7 +24,6 @@ describe("Nav Component", () => {
     mockUsePathname.mockReturnValue("/");
     render(<Nav />);
 
-    expect(screen.getByText("Notes")).toBeInTheDocument();
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Search")).toBeInTheDocument();
     expect(screen.getByText("Browse")).toBeInTheDocument();
@@ -38,8 +37,10 @@ describe("Nav Component", () => {
     mockUsePathname.mockReturnValue("/search");
     const { container } = render(<Nav />);
 
-    const activeLink = container.querySelector(".bg-zinc-700");
+    // New design uses bg-blue-500/20 and text-blue-400 for active state
+    const activeLink = container.querySelector(".text-blue-400");
     expect(activeLink).toHaveTextContent("Search");
+    expect(activeLink).toHaveClass("border-blue-500/30");
   });
 
   it("does not highlight non-active pages", () => {
@@ -48,7 +49,7 @@ describe("Nav Component", () => {
 
     const links = container.querySelectorAll("a");
     const nonActiveLinks = Array.from(links).filter(
-      (link) => !link.classList.contains("bg-zinc-700")
+      (link) => !link.classList.contains("text-blue-400")
     );
 
     // Dashboard should be active, others should not
@@ -70,10 +71,25 @@ describe("Nav Component", () => {
 
   it("applies hover classes to inactive links", () => {
     mockUsePathname.mockReturnValue("/");
-    const { container } = render(<Nav />);
+    render(<Nav />);
 
     const searchLink = screen.getByText("Search").closest("a");
     expect(searchLink).toHaveClass("hover:text-zinc-200");
-    expect(searchLink).toHaveClass("hover:bg-zinc-800");
+    expect(searchLink).toHaveClass("hover:bg-zinc-900/50");
+  });
+
+  it("renders the logo and brand", () => {
+    mockUsePathname.mockReturnValue("/");
+    render(<Nav />);
+
+    expect(screen.getByText("Notes")).toBeInTheDocument();
+    expect(screen.getByText("Archive Browser")).toBeInTheDocument();
+  });
+
+  it("renders status indicator", () => {
+    mockUsePathname.mockReturnValue("/");
+    render(<Nav />);
+
+    expect(screen.getByText("System Ready")).toBeInTheDocument();
   });
 });
