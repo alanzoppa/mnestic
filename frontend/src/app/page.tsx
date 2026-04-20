@@ -148,7 +148,7 @@ export default function Dashboard() {
                 {results.map((r) => (
                   <Link
                     key={r.id}
-                    href={r.type === 'note' ? `/notes/${r.id}` : `/calendar`}
+                    href={r.type === 'note' ? `/notes/${r.note_id || r.metadata?.note_id || r.id}` : `/calendar`}
                     className="block p-4 bg-zinc-950/50 border border-zinc-800/60 rounded-lg hover:border-zinc-700/60 transition-colors"
                   >
                     <div className="flex justify-between items-start">

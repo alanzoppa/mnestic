@@ -13,6 +13,7 @@ export interface SearchResult {
   metadata: Record<string, any>;
   score: number;
   type: "note" | "calendar";
+  note_id?: string;
 }
 
 export interface NoteDetail {
@@ -25,6 +26,7 @@ export interface NoteDetail {
 
 export interface SimilarNote {
   id: string;
+  note_id: string;
   title: string;
   score: number;
 }

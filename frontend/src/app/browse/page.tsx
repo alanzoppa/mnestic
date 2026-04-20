@@ -305,7 +305,7 @@ export default function BrowsePage() {
           return (
             <Link 
               key={result.id}
-              href={`/notes/${result.id}`}
+              href={`/notes/${result.note_id || result.metadata?.note_id || result.id}`}
               className="block no-underline"
             >
               <Card hover>

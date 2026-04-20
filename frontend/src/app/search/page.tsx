@@ -368,7 +368,7 @@ export default function SearchPage() {
                       router.push('/calendar')
                     }
                   } else {
-                    router.push(`/notes/${result.id}`)
+                    router.push(`/notes/${result.note_id || result.metadata?.note_id || result.id}`)
                   }
                 }}
               >

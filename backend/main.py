@@ -163,23 +163,33 @@ async def search(body: SearchRequest) -> dict:
             )
 
     id_to_best: dict[str, dict] = {}
+    seen_note_ids: dict[str, dict] = {}
     for r in all_results:
         rid = r["id"]
-        if rid not in id_to_best or r["score"] > id_to_best[rid]["score"]:
-            id_to_best[rid] = r
+        rmeta = r.get("metadata", {})
+        note_id = rmeta.get("note_id", rid)
+        r["note_id"] = note_id
+        if note_id in seen_note_ids:
+            if r["score"] > seen_note_ids[note_id]["score"]:
+                seen_note_ids[note_id] = r
+        else:
+            seen_note_ids[note_id] = r
 
-    return {"results": list(id_to_best.values())}
+    return {"results": list(seen_note_ids.values())}
 
 
 @app.get("/api/notes/{note_id}")
 async def get_note(note_id: str) -> dict:
     note = store.get_note(note_id)
     if not note:
+        note = store.get_note_by_note_id(note_id)
+    if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
     metadata = note["metadata"]
     _normalize_meta(metadata)
     source_id = metadata.get("source_id", "")
+    logical_note_id = metadata.get("note_id", note["id"])
 
     content = ""
     note_file = find_note_file(source_id)
@@ -195,11 +205,27 @@ async def get_note(note_id: str) -> dict:
         cal = get_calendar()
         calendar_events = cal.get_events_for_date(date_str)
 
-    similar = store.get_similar(note_id, n=10)
-    similar_notes = [{"id": s["id"], "title": s["metadata"].get("title", ""), "score": 1 - s["distance"]} for s in similar if s.get("distance") is not None]
+    similar = store.get_similar(note["id"], n=10)
+    similar_notes = []
+    seen_similar = set()
+    for s in similar:
+        if s.get("distance") is None:
+            continue
+        s_meta = s["metadata"]
+        _normalize_meta(s_meta)
+        s_note_id = s_meta.get("note_id", s["id"])
+        if s_note_id == logical_note_id or s_note_id in seen_similar:
+            continue
+        seen_similar.add(s_note_id)
+        similar_notes.append({
+            "id": s["id"],
+            "note_id": s_note_id,
+            "title": s_meta.get("title", ""),
+            "score": 1 - s["distance"],
+        })
 
     return {
-        "id": note_id,
+        "id": logical_note_id,
         "metadata": metadata,
         "content": content,
         "calendar_events": calendar_events,
@@ -222,11 +248,24 @@ async def get_timeline(group_by: str = "month", tag: str | None = None) -> dict:
 @app.get("/api/similar/{note_id}")
 async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) -> dict:
     similar = store.get_similar(note_id, n=n, threshold=threshold)
-    notes = [
-        {"id": s["id"], "title": s["metadata"].get("title", ""), "score": 1 - s["distance"]}
-        for s in similar
-        if s.get("distance") is not None and (1 - s["distance"]) >= threshold
-    ]
+    query_note = store.get_note(note_id) or store.get_note_by_note_id(note_id)
+    query_note_id = query_note["metadata"].get("note_id", note_id) if query_note else note_id
+    seen = {query_note_id}
+    notes = []
+    for s in similar:
+        if s.get("distance") is not None and (1 - s["distance"]) >= threshold:
+            s_meta = s["metadata"]
+            _normalize_meta(s_meta)
+            s_nid = s_meta.get("note_id", s["id"])
+            if s_nid in seen:
+                continue
+            seen.add(s_nid)
+            notes.append({
+                "id": s["id"],
+                "note_id": s_nid,
+                "title": s_meta.get("title", ""),
+                "score": 1 - s["distance"],
+            })
     return {"notes": notes}
 
 
@@ -284,12 +323,18 @@ async def get_graph(tag: str | None = None, folder: str | None = None, n_neighbo
     all_meta = {}
     if sample_ids:
         batch = store._notes.get(ids=sample_ids, include=["metadatas"])
+        seen_note_ids = set()
         for i, mid in enumerate(batch["ids"]):
             meta = batch["metadatas"][i] if batch["metadatas"] else {}
             _normalize_meta(meta)
+            nid = meta.get("note_id", mid)
+            if nid in seen_note_ids:
+                continue
+            seen_note_ids.add(nid)
             all_meta[mid] = meta
     else:
         all_data = store._notes.get(include=["metadatas"])
+        seen_note_ids = set()
         for i, mid in enumerate(all_data["ids"]):
             meta = all_data["metadatas"][i] if all_data["metadatas"] else {}
             if not meta:
@@ -301,6 +346,10 @@ async def get_graph(tag: str | None = None, folder: str | None = None, n_neighbo
             if folder and meta.get("folder", "") != folder:
                 continue
             _normalize_meta(meta)
+            nid = meta.get("note_id", mid)
+            if nid in seen_note_ids:
+                continue
+            seen_note_ids.add(nid)
             all_meta[mid] = meta
             if len(all_meta) >= 500:
                 break
@@ -324,13 +373,21 @@ async def get_graph(tag: str | None = None, folder: str | None = None, n_neighbo
     emb_normed = emb_array / norms
     sim_matrix = emb_normed @ emb_normed.T
 
+    id_to_note_id = {}
+    for mid, meta in all_meta.items():
+        id_to_note_id[mid] = meta.get("note_id", mid)
+
     edge_set = set()
     edges = []
     for i in range(len(query_ids)):
         for j in range(i + 1, len(query_ids)):
             sim = float(sim_matrix[i][j])
             if sim >= threshold:
-                pair = tuple(sorted([query_ids[i], query_ids[j]]))
+                src_nid = id_to_note_id.get(query_ids[i], query_ids[i])
+                tgt_nid = id_to_note_id.get(query_ids[j], query_ids[j])
+                if src_nid == tgt_nid:
+                    continue
+                pair = tuple(sorted([src_nid, tgt_nid]))
                 if pair not in edge_set:
                     edge_set.add(pair)
                     edges.append({"source": pair[0], "target": pair[1], "weight": round(sim, 3)})
@@ -344,7 +401,7 @@ async def get_graph(tag: str | None = None, folder: str | None = None, n_neighbo
     for nid in connected:
         meta = all_meta.get(nid, {})
         nodes.append({
-            "id": nid,
+            "id": meta.get("note_id", nid),
             "title": meta.get("title", ""),
             "folder": meta.get("folder", ""),
             "tags": meta.get("tags", []) if isinstance(meta.get("tags"), list) else [],
@@ -398,13 +455,19 @@ async def get_calendar_event(event_id: str) -> dict:
 
     date_str = event["date"]
     linked_notes = []
+    seen_note_ids = set()
     if date_str:
         all_notes = store._notes.get(include=["metadatas"])
         for i, meta in enumerate(all_notes.get("metadatas", [])):
             if meta and meta.get("created", "").startswith(date_str):
+                nid = meta.get("note_id", "")
+                if nid and nid in seen_note_ids:
+                    continue
+                if nid:
+                    seen_note_ids.add(nid)
                 linked_notes.append(
                     {
-                        "id": all_notes["ids"][i],
+                        "id": nid or all_notes["ids"][i],
                         "title": meta.get("title", ""),
                         "date": meta.get("created", "")[:10],
                     }
@@ -429,11 +492,18 @@ async def get_calendar_by_date(date: str) -> dict:
 
     all_notes = store._notes.get(include=["metadatas"])
     notes = []
+    seen_note_ids = set()
     for i, meta in enumerate(all_notes.get("metadatas", [])):
         if meta and meta.get("created", "").startswith(date):
+            nid = meta.get("note_id", "")
+            if nid and nid in seen_note_ids:
+                continue
+            if nid:
+                seen_note_ids.add(nid)
+            _normalize_meta(meta)
             notes.append(
                 {
-                    "id": all_notes["ids"][i],
+                    "id": nid or all_notes["ids"][i],
                     "title": meta.get("title", ""),
                     "metadata": meta,
                 }

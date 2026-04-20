@@ -50,7 +50,7 @@ export default function TagPage() {
             return (
               <button
                 key={result.id}
-                onClick={() => router.push(`/notes/${result.id}`)}
+                onClick={() => router.push(`/notes/${result.note_id || result.metadata?.note_id || result.id}`)}
                 className="w-full text-left bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-colors"
               >
                 <h3 className="font-medium text-zinc-100">{meta.title || 'Untitled'}</h3>

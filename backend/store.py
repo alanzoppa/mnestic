@@ -158,6 +158,54 @@ class NoteStore:
             "document": result["documents"][0] if result["documents"] else "",
         }
 
+    def get_note_by_note_id(self, logical_note_id: str) -> dict | None:
+        """Look up a note by its logical note_id metadata field, preferring _chunk_0."""
+        try:
+            results = self._notes.get(
+                where={"note_id": logical_note_id},
+                include=["metadatas", "documents"],
+            )
+        except Exception:
+            return None
+        if not results["ids"]:
+            return None
+        for i, mid in enumerate(results["ids"]):
+            if mid.endswith("_chunk_0"):
+                return {
+                    "id": mid,
+                    "metadata": results["metadatas"][i] if results["metadatas"] else {},
+                    "document": results["documents"][i] if results["documents"] else "",
+                }
+        return {
+            "id": results["ids"][0],
+            "metadata": results["metadatas"][0] if results["metadatas"] else {},
+            "document": results["documents"][0] if results["documents"] else "",
+        }
+
+    def get_unique_notes(self, include: list[str] | None = None) -> dict:
+        """Get all notes, deduplicated by note_id, keeping only _chunk_0."""
+        if include is None:
+            include = ["metadatas"]
+        all_notes = self._notes.get(include=include)
+        seen_note_ids = set()
+        result = {"ids": [], "metadatas": []}
+        for i, meta in enumerate(all_notes.get("metadatas", [])):
+            if not meta:
+                continue
+            nid = meta.get("note_id", "")
+            if nid and nid in seen_note_ids:
+                continue
+            if nid:
+                seen_note_ids.add(nid)
+            result["ids"].append(all_notes["ids"][i])
+            result["metadatas"].append(meta)
+            for field in include:
+                if field != "metadatas" and field in all_notes:
+                    if field not in result:
+                        result[field] = []
+                    result[field].append(all_notes[field][i] if i < len(all_notes[field]) else None)
+        return result
+
     def get_similar(self, note_id: str, n: int = 10, threshold: float = 0.75) -> list[dict]:
         note = self.get_note(note_id)
         if not note:
@@ -169,11 +217,11 @@ class NoteStore:
         return self.search_notes(embeddings[0], n=n)
 
     def get_tags(self) -> tuple[list[dict], list[dict]]:
-        all_notes = self._notes.get(include=["metadatas"])
+        unique = self.get_unique_notes(include=["metadatas"])
         tag_counts: dict[str, int] = {}
         co_occur: dict[tuple[str, str], int] = {}
 
-        for meta in all_notes.get("metadatas", []):
+        for meta in unique.get("metadatas", []):
             if not meta:
                 continue
             tags_str = meta.get("tags", "")
@@ -194,13 +242,13 @@ class NoteStore:
         return tag_list, co_occur_list
 
     def get_timeline(self, group_by: str = "month", tag: str | None = None) -> list[dict]:
-        all_notes = self._notes.get(include=["metadatas"])
-        all_note_ids = all_notes["ids"]
+        unique = self.get_unique_notes(include=["metadatas"])
+        all_note_ids = unique["ids"]
         buckets: dict[str, dict] = {}
-        for i, meta in enumerate(all_notes.get("metadatas", [])):
+        for i, meta in enumerate(unique.get("metadatas", [])):
             if not meta:
                 continue
-            note_id = all_note_ids[i]
+            note_id = meta.get("note_id", all_note_ids[i]) if i < len(all_note_ids) else ""
             created = meta.get("created", "")
             if not created:
                 continue
@@ -221,8 +269,9 @@ class NoteStore:
             if period not in buckets:
                 buckets[period] = {"count": 0, "sample_ids": []}
             buckets[period]["count"] += 1
+            canonical_id = note_id or all_note_ids[i]
             if len(buckets[period]["sample_ids"]) < 5:
-                buckets[period]["sample_ids"].append(note_id)
+                buckets[period]["sample_ids"].append(canonical_id)
 
         return [
             {"period": k, "count": v["count"], "sample_ids": v["sample_ids"]}
@@ -230,15 +279,15 @@ class NoteStore:
         ]
 
     def get_stats(self) -> dict:
-        all_notes = self._notes.get(include=["documents", "metadatas"])
+        unique = self.get_unique_notes(include=["documents", "metadatas"])
         all_calendar = self._calendar.get(include=[])
-        total_notes = len(all_notes["ids"])
+        total_notes = len(unique["ids"])
         total_calendar_events = len(all_calendar["ids"])
 
         dates = []
         total_len = 0
-        documents = all_notes.get("documents", [])
-        for idx, meta in enumerate(all_notes.get("metadatas", [])):
+        documents = unique.get("documents", [])
+        for idx, meta in enumerate(unique.get("metadatas", [])):
             if meta and meta.get("created"):
                 dates.append(meta["created"][:10])
             if idx < len(documents) and documents[idx]:
