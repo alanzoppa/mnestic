@@ -65,7 +65,7 @@ export function RadarChartComponent({
               borderRadius: '0.5rem',
               color: '#fafafa',
             }}
-            formatter={(value: number) => [value, '']}
+            formatter={(value: unknown) => [Number(value), '']}
           />
         </RadarChart>
       </ResponsiveContainer>

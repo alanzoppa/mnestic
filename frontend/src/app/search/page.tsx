@@ -10,6 +10,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { DonutChart } from '@/components/charts/PieCharts'
+import { SkeletonNoteCard } from '@/components/ui/Skeleton'
+import { SearchAutocomplete } from '@/components/SearchAutocomplete'
+import { HighlightText } from '@/components/HighlightText'
+import { DateRangePicker } from '@/components/DateRangePicker'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
@@ -29,6 +33,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [allTags, setAllTags] = useState<TagInfo[]>([])
+  const [noteTitles, setNoteTitles] = useState<{ id: string; title: string; note_id?: string }[]>([])
   const [showFilters, setShowFilters] = useState(false)
   
   const [filters, setFilters] = useState<SearchFilters>({
@@ -42,6 +47,17 @@ export default function SearchPage() {
   // Load tags on mount
   useEffect(() => {
     getTags().then(res => setAllTags(res.tags)).catch(() => {})
+  }, [])
+
+  // Cache note titles for autocomplete
+  useEffect(() => {
+    search('').then(res => {
+      setNoteTitles(res.results.map(r => ({
+        id: r.id,
+        title: r.title,
+        note_id: r.note_id || r.metadata?.note_id,
+      })))
+    }).catch(() => {})
   }, [])
 
   const doSearch = async () => {
@@ -107,11 +123,11 @@ export default function SearchPage() {
   const resultTags = results
     .flatMap(r => r.metadata?.tags || [])
     .reduce((acc, tag) => {
-      acc[tag] = (acc[tag] || 0) + 1
+      acc[tag as string] = (acc[tag as string] || 0) + 1
       return acc
     }, {} as Record<string, number>)
   
-  const topResultTags = Object.entries(resultTags)
+  const topResultTags = (Object.entries(resultTags) as [string, number][])
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([name, value]) => ({ name, value }))
@@ -132,17 +148,14 @@ export default function SearchPage() {
           <form onSubmit={handleSubmit}>
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
-                <Input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                <SearchAutocomplete
+                  query={query}
+                  onQueryChange={setQuery}
+                  tags={allTags}
+                  noteTitles={noteTitles}
+                  onSubmit={doSearch}
                   placeholder="Enter your search query..."
                   className="h-12"
-                  icon={
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  }
                 />
               </div>
               <Button
@@ -169,6 +182,11 @@ export default function SearchPage() {
                 Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
               </Button>
               
+              <DateRangePicker
+                value={{ from: filters.dateFrom, to: filters.dateTo }}
+                onChange={({ from, to }) => setFilters(prev => ({ ...prev, dateFrom: from, dateTo: to }))}
+              />
+
               {!searched && popularTags.length > 0 && (
                 <>
                   <span className="text-sm text-zinc-500">Popular:</span>
@@ -197,7 +215,7 @@ export default function SearchPage() {
             {/* Expanded Filters */}
             {showFilters && (
               <div className="mt-6 pt-6 border-t border-zinc-800 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Source */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
@@ -227,25 +245,6 @@ export default function SearchPage() {
                       value={filters.folder}
                       onChange={(e) => setFilters(prev => ({ ...prev, folder: e.target.value }))}
                       placeholder="Filter by folder..."
-                    />
-                  </div>
-
-                  {/* Date Range */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-2">From Date</label>
-                    <Input
-                      type="date"
-                      value={filters.dateFrom}
-                      onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-2">To Date</label>
-                    <Input
-                      type="date"
-                      value={filters.dateTo}
-                      onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -385,10 +384,12 @@ export default function SearchPage() {
                       </div>
                       
                       <h3 className="font-medium text-zinc-100 group-hover:text-blue-400 transition-colors">
-                        {result.title}
+                        <HighlightText text={result.title} query={query} />
                       </h3>
                       
-                      <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{result.snippet}</p>
+                      <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
+                        <HighlightText text={result.snippet} query={query} />
+                      </p>
                       
                       {(result.metadata?.tags?.length > 0) && (
                         <div className="flex flex-wrap gap-1 mt-3">

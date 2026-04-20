@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 
 export const metadata: Metadata = {
   title: "Notes Browser",
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Nav />
           <main className="flex-1 p-6 overflow-auto" data-testid="main-content">
             <ErrorBoundary>
+              <KeyboardShortcuts />
               {children}
             </ErrorBoundary>
           </main>

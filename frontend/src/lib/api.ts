@@ -29,6 +29,7 @@ export interface SimilarNote {
   note_id: string;
   title: string;
   score: number;
+  created: string;
 }
 
 export interface CalendarEvent {

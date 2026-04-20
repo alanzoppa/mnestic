@@ -17,6 +17,14 @@
     color: #d4d4d8;
   }
 
+  mark {
+    background-color: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+    border-radius: 0.125rem;
+    padding-left: 0.125rem;
+    padding-right: 0.125rem;
+  }
+
   a {
     color: #60a5fa;
     transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);

@@ -70,8 +70,8 @@ export default function GraphPage() {
           .nodeColor((node: any) => getNodeColor(node))
           .nodeVal((node: any) => {
             const links = data.edges.filter(e => 
-              (e.source === node.id || e.target === node.id) ||
-              (e.source?.id === node.id || e.target?.id === node.id)
+              e.source === node.id || e.target === node.id ||
+              ((e.source as any)?.id === node.id || (e.target as any)?.id === node.id)
             )
             return Math.max(1, links.length * 0.5)
           })

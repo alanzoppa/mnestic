@@ -1,0 +1,167 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
+import { getTimeline, type TimelinePeriod } from '@/lib/api'
+
+const COLORS = [
+  'bg-zinc-800',
+  'bg-blue-900/60',
+  'bg-blue-800/70',
+  'bg-blue-700/80',
+  'bg-blue-600',
+  'bg-blue-500',
+]
+
+interface DayData {
+  date: string
+  count: number
+  dayOfWeek: number
+  week: number
+}
+
+export function CalendarHeatmap() {
+  const [data, setData] = useState<TimelinePeriod[]>([])
+  const [year, setYear] = useState(() => new Date().getFullYear())
+  const [tooltip, setTooltip] = useState<{ date: string; count: number; x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    getTimeline('day').then(res => setData(res.periods)).catch(() => {})
+  }, [])
+
+  const yearData = useMemo(() => {
+    const dayMap = new Map<string, number>()
+    for (const p of data) {
+      dayMap.set(p.period.slice(0, 10), p.count)
+    }
+
+    const start = new Date(year, 0, 1)
+    const end = new Date(year, 11, 31)
+    const days: DayData[] = []
+
+    const current = new Date(start)
+    while (current <= end) {
+      const dateStr = current.toISOString().slice(0, 10)
+      const count = dayMap.get(dateStr) || 0
+      const dayOfWeek = current.getDay()
+      const weekNum = Math.floor((current.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000))
+      days.push({ date: dateStr, count, dayOfWeek, week: weekNum })
+      current.setDate(current.getDate() + 1)
+    }
+
+    return { days, maxCount: Math.max(...days.map(d => d.count), 1) }
+  }, [data, year])
+
+  const totalNotes = data.reduce((sum, p) => sum + p.count, 0)
+  const activeDays = yearData.days.filter(d => d.count > 0).length
+
+  const getColor = (count: number) => {
+    if (count === 0) return COLORS[0]
+    const ratio = count / yearData.maxCount
+    if (ratio <= 0.25) return COLORS[1]
+    if (ratio <= 0.5) return COLORS[2]
+    if (ratio <= 0.75) return COLORS[3]
+    return COLORS[4]
+  }
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const availableYears = useMemo(() => {
+    if (data.length === 0) return [new Date().getFullYear()]
+    const years = new Set(data.map(p => parseInt(p.period.slice(0, 4))))
+    return [...years].sort().reverse()
+  }, [data])
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <select
+            value={year}
+            onChange={(e) => setYear(parseInt(e.target.value))}
+            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-300"
+          >
+            {availableYears.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <span className="text-xs text-zinc-500">
+            {activeDays} active days · {totalNotes.toLocaleString()} notes
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-zinc-500">
+          Less
+          {COLORS.map((color, i) => (
+            <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />
+          ))}
+          More
+        </div>
+      </div>
+
+      {/* Month labels */}
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-[720px]">
+          <div className="flex mb-1 ml-[22px]">
+            {months.map((m, i) => (
+              <div key={m} className="text-xs text-zinc-500" style={{ width: `${100 / 12}%` }}>
+                {m}
+              </div>
+            ))}
+          </div>
+
+          {/* Grid */}
+          <div className="relative">
+            <svg width="720" height="112" className="block">
+              {yearData.days.map((day) => {
+                const x = 22 + day.week * 13
+                const y = day.dayOfWeek * 15 + 2
+                const color = getColor(day.count)
+
+                return (
+                  <rect
+                    key={day.date}
+                    x={x}
+                    y={y}
+                    width={11}
+                    height={11}
+                    rx={2}
+                    className={`${color} cursor-pointer hover:ring-1 hover:ring-white/30 transition-all`}
+                    onMouseEnter={(e) => {
+                      setTooltip({
+                        date: day.date,
+                        count: day.count,
+                        x: e.clientX,
+                        y: e.clientY,
+                      })
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                    onClick={() => {
+                      window.location.href = `/calendar/${day.date}`
+                    }}
+                  />
+                )
+              })}
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {tooltip && (
+        <div
+          className="fixed z-50 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm pointer-events-none"
+          style={{ left: tooltip.x + 10, top: tooltip.y - 30 }}
+        >
+          <div className="font-medium text-zinc-200">
+            {new Date(tooltip.date + 'T12:00:00').toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </div>
+          <div className="text-zinc-400">
+            {tooltip.count} {tooltip.count === 1 ? 'note' : 'notes'}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -2,22 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getStats, search, getTags, getTimeline, triggerIngest, type Stats, type SearchResult, type TagInfo, type TimelinePeriod } from '@/lib/api';
+import { getStats, search, getTags, triggerIngest, type Stats, type SearchResult, type TagInfo } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { StatCard, StatsGrid } from '@/components/ui/StatCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DonutChart } from '@/components/charts/PieCharts';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  CartesianGrid 
-} from 'recharts';
+import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton';
+import { SearchAutocomplete } from '@/components/SearchAutocomplete';
+import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 
 // Icons
 const DocumentIcon = () => (
@@ -47,7 +40,7 @@ const ClockIcon = () => (
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [tags, setTags] = useState<TagInfo[]>([]);
-  const [timelineData, setTimelineData] = useState<TimelinePeriod[]>([]);
+  const [allNoteTitles, setAllNoteTitles] = useState<{ id: string; title: string; note_id?: string }[]>([]);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -58,14 +51,18 @@ export default function Dashboard() {
     // Load stats
     getStats().then(setStats).catch(() => {});
     
-    // Load tags for distribution
+    // Load tags for distribution and autocomplete
     getTags().then(res => {
       setTags(res.tags.slice(0, 10));
     }).catch(() => {});
-    
-    // Load timeline data
-    getTimeline('month').then(res => {
-      setTimelineData(res.periods.slice(-12)); // Last 12 months
+
+    // Load note titles for autocomplete
+    search('').then(res => {
+      setAllNoteTitles(res.results.map(r => ({
+        id: r.id,
+        title: r.title,
+        note_id: r.note_id || r.metadata?.note_id,
+      })));
     }).catch(() => {});
   }, []);
 
@@ -86,8 +83,7 @@ export default function Dashboard() {
     setIngesting(false);
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSearch = async () => {
     if (!query.trim()) return;
     setSearching(true);
     try {
@@ -95,6 +91,11 @@ export default function Dashboard() {
       setResults(data.results.slice(0, 5));
     } catch {}
     setSearching(false);
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    doSearch();
   };
 
   // Prepare tag distribution data for chart
@@ -115,31 +116,14 @@ export default function Dashboard() {
             </h1>
             <p className="text-zinc-500 mb-6">Search and explore your archived notes with semantic understanding</p>
             
-            <form onSubmit={handleSearch} className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search your notes..."
-                  data-testid="dashboard-search-input"
-                  className="h-12"
-                  icon={
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  }
-                />
-              </div>
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={searching}
-              >
-                Search
-              </Button>
-            </form>
+            <SearchAutocomplete
+              query={query}
+              onQueryChange={setQuery}
+              tags={tags}
+              noteTitles={allNoteTitles}
+              onSubmit={doSearch}
+              placeholder="Search your notes..."
+            />
 
             {/* Quick Search Results */}
             {results.length > 0 && (
@@ -173,7 +157,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      {stats && (
+      {stats ? (
         <StatsGrid>
           <StatCard
             value={stats.total_notes.toLocaleString()}
@@ -196,57 +180,19 @@ export default function Dashboard() {
             icon={<ClockIcon />}
           />
         </StatsGrid>
+      ) : (
+        <SkeletonStatCards />
       )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Activity Timeline */}
+        {/* Calendar Heatmap */}
         <Card hover>
           <CardHeader>
-            <CardTitle>Activity Timeline</CardTitle>
+            <CardTitle>Activity Calendar</CardTitle>
           </CardHeader>
           <CardContent>
-            {timelineData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={timelineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis
-                    dataKey="period"
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
-                    tickFormatter={(value) => value.slice(0, 7)} // YYYY-MM
-                  />
-                  <YAxis
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: '1px solid #27272a',
-                      borderRadius: '0.5rem',
-                      color: '#fafafa',
-                    }}
-                    cursor={{ fill: '#27272a', opacity: 0.5 }}
-                  />
-                  <Bar 
-                    dataKey="count" 
-                    fill="url(#activityGradient)" 
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <defs>
-                    <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#8b5cf6" />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[250px] flex items-center justify-center text-zinc-500">
-                No activity data available
-              </div>
-            )}
+            <CalendarHeatmap />
           </CardContent>
         </Card>
 

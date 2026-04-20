@@ -227,6 +227,7 @@ async def get_note(note_id: str) -> dict:
             "note_id": s_note_id,
             "title": s_meta.get("title", ""),
             "score": 1 - s["distance"],
+            "created": s_meta.get("created", ""),
         })
 
     return {
@@ -270,6 +271,7 @@ async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) 
                 "note_id": s_nid,
                 "title": s_meta.get("title", ""),
                 "score": 1 - s["distance"],
+                "created": s_meta.get("created", ""),
             })
     return {"notes": notes}
 

@@ -11,6 +11,11 @@ import type { NoteDetail } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { SkeletonNoteDetail } from '@/components/ui/Skeleton'
+import { TableOfContents } from '@/components/TableOfContents'
+import { ImageGallery } from '@/components/ImageGallery'
+import { FavoriteButton } from '@/components/FavoriteButton'
+import { useFavorites } from '@/lib/favorites'
 
 function asArray(val: unknown): string[] {
   if (Array.isArray(val)) return val
@@ -70,6 +75,21 @@ function getImageUrl(src: string): string {
 const MarkdownComponents = {
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
     return <a href={href} className="text-blue-400 hover:text-blue-300 transition-colors">{children}</a>
+  },
+  h1: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
+    const text = typeof children === 'string' ? children : ''
+    const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
+    return <h1 id={headingId} className="scroll-mt-20">{children}</h1>
+  },
+  h2: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
+    const text = typeof children === 'string' ? children : ''
+    const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
+    return <h2 id={headingId} className="scroll-mt-20">{children}</h2>
+  },
+  h3: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
+    const text = typeof children === 'string' ? children : ''
+    const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
+    return <h3 id={headingId} className="scroll-mt-20">{children}</h3>
   }
 }
 
@@ -82,6 +102,7 @@ export default function NotePage() {
   const [error, setError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ExtractedImage[]>([])
   const [content, setContent] = useState<string>('')
+  const { isFav, toggle } = useFavorites()
 
 useEffect(() => {
     if (!id) {
@@ -117,17 +138,7 @@ useEffect(() => {
   }, [id])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-3 text-zinc-500">
-          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-          Loading...
-        </div>
-      </div>
-    )
+    return <SkeletonNoteDetail />
   }
 
   if (error || !note) {
@@ -145,6 +156,7 @@ useEffect(() => {
   const tags = asArray(meta.tags)
   const participants = asArray(meta.participants)
   const isHandwritten = tags.includes('handwritten')
+  const noteId = meta.note_id || note.id
 
   return (
     <div className="space-y-6">
@@ -164,9 +176,12 @@ useEffect(() => {
             <CardContent className="p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                    {meta.title || 'Untitled'}
-                  </h1>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+                      {meta.title || 'Untitled'}
+                    </h1>
+                    <FavoriteButton noteId={noteId} isFavorite={isFav(noteId)} onToggle={toggle} />
+                  </div>
 
                   {/* Metadata badges */}
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -255,6 +270,13 @@ useEffect(() => {
         {/* Sidebar */}
         <div className="note-sidebar">
           <div className="sticky top-6 space-y-6">
+            {/* Table of Contents */}
+            <Card>
+              <CardContent className="p-4">
+                <TableOfContents content={content} />
+              </CardContent>
+            </Card>
+
             {/* Attachments */}
             {attachments.length > 0 && (
               <Card>
@@ -267,23 +289,31 @@ useEffect(() => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
+                  <ImageGallery
+                    images={attachments.map(a => ({ src: a.src, alt: a.alt }))}
+                    getImageUrl={getImageUrl}
+                  />
+                  <div className="grid grid-cols-2 gap-3 mt-3">
                     {attachments.map((attachment, idx) => {
                       const imageUrl = getImageUrl(attachment.src)
                       const filename = attachment.src.split('/').pop() || `image-${idx + 1}`
                       return (
                         <div key={idx} className="space-y-2">
-                          <a
-                            href={imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block group"
+                          <button
+                            onClick={() => {
+                              const gallery = document.querySelector('[data-gallery-open]')
+                              if (!gallery) {
+                                const event = new CustomEvent('open-gallery', { detail: { index: idx } })
+                                window.dispatchEvent(event)
+                              }
+                            }}
+                            className="block w-full text-left group"
                           >
                             <div className="aspect-square rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors">
                               <img
                                 src={imageUrl}
                                 alt={attachment.alt || filename}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover cursor-zoom-in"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display = 'none'
                                 }}
@@ -292,7 +322,7 @@ useEffect(() => {
                             <p className="text-xs text-zinc-500 mt-1 truncate group-hover:text-zinc-400">
                               {filename}
                             </p>
-                          </a>
+                          </button>
                         </div>
                       )
                     })}
@@ -349,14 +379,16 @@ useEffect(() => {
                       <Link
                         key={n.id}
                         href={`/notes/${encodeURIComponent(n.note_id || n.id)}`}
-                        className="block w-full text-left text-sm text-zinc-300 hover:text-zinc-100 transition-colors group no-underline"
+                        style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '0.5rem' }}
+                        className="text-sm font-medium py-1.5 text-zinc-300 hover:text-zinc-100 transition-colors group no-underline"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="truncate flex-1">{n.title}</span>
-                          <span className="text-zinc-500 text-xs ml-2 group-hover:text-zinc-400">
-                            {typeof n.score === 'number' ? `${(n.score * 100).toFixed(0)}%` : ''}
-                          </span>
-                        </div>
+                        <span className="break-words min-w-0">{n.title}</span>
+                        <span className="shrink-0 text-zinc-500 text-xs group-hover:text-zinc-400 flex items-baseline gap-2">
+                          {n.created && (
+                            <span>{new Date(n.created).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</span>
+                          )}
+                          {typeof n.score === 'number' && <span>{(n.score * 100).toFixed(0)}%</span>}
+                        </span>
                       </Link>
                     ))}
                   </div>

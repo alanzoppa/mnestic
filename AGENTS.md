@@ -27,18 +27,21 @@ notes-browser/
 ├── frontend/                    Next.js app (App Router, Tailwind v4)
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx         Dashboard
-│   │   │   ├── search/page.tsx  Search with filters
+│   │   │   ├── page.tsx         Dashboard (hero, stats, charts)
+│   │   │   ├── search/page.tsx  Search with filters + visualizations
 │   │   │   ├── notes/[id]/      Note detail (markdown + sidebar)
-│   │   │   ├── browse/page.tsx  Paginated note list
-│   │   │   ├── tags/page.tsx    Tag cloud + co-occurrence
+│   │   │   ├── browse/page.tsx  Paginated note list with facet filters
+│   │   │   ├── tags/page.tsx    Tag explorer with charts
 │   │   │   ├── tags/[tag]/      Notes by tag
-│   │   │   ├── timeline/        Timeline chart (recharts)
+│   │   │   ├── timeline/        Activity timeline with chart toggle
 │   │   │   ├── calendar/        Calendar grid view
 │   │   │   ├── calendar/[date]/ Day detail (events + notes)
 │   │   │   └── graph/           Interactive similarity graph (force-graph)
 │   │   ├── components/
-│   │   │   └── Nav.tsx          Sidebar navigation
+│   │   │   ├── ui/              Glass-morphism UI components (Card, Button, Badge, etc.)
+│   │   │   ├── charts/          Recharts wrappers (Pie, Line, Area, Radar, Donut)
+│   │   │   ├── Nav.tsx          Sidebar navigation
+│   │   │   └── ErrorBoundary.tsx React error boundary
 │   │   └── lib/
 │   │       └── api.ts           FastAPI client
 │   └── package.json

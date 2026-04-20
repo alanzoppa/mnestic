@@ -9,6 +9,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Input'
 import { DonutChart, PieChartComponent } from '@/components/charts/PieCharts'
+import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
@@ -100,8 +101,13 @@ export default function TagsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-500">Loading tags...</div>
+      <div className="max-w-7xl space-y-6">
+        <SectionHeader title="Tag Explorer" description="Loading..." />
+        <SkeletonStatCards count={4} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonChart />
+          <SkeletonChart />
+        </div>
       </div>
     )
   }
@@ -204,13 +210,12 @@ export default function TagsPage() {
                       borderRadius: '0.5rem',
                       color: '#fafafa',
                     }}
-                    formatter={(value: number, name: string, props: any) => [value, props.payload.fullName]}
                   />
                   <Bar 
                     dataKey="count" 
                     fill="#3b82f6" 
                     radius={[0, 4, 4, 0]}
-                    onClick={(data) => {
+                    onClick={(data: any) => {
                       router.push(`/tags/${data.fullName}`)
                     }}
                     className="cursor-pointer hover:fill-blue-400"

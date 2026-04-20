@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton';
 import {
   BarChart,
   Bar,
@@ -163,8 +164,14 @@ export default function TimelinePage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="h-[400px] flex items-center justify-center text-zinc-500">
-              Loading...
+            <div className="h-[400px] flex items-end gap-2">
+              {Array.from({ length: 12 }, (_, i) => (
+                <div
+                  key={i}
+                  className="flex-1 animate-pulse bg-zinc-800 rounded-t"
+                  style={{ height: `${20 + Math.random() * 80}%` }}
+                />
+              ))}
             </div>
           ) : data.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>

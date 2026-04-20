@@ -68,9 +68,9 @@ export function DonutChart({
               borderRadius: '0.5rem',
               color: '#fafafa',
             }}
-            formatter={(value: number, name: string) => [
-              `${value} (${((value / total) * 100).toFixed(1)}%)`,
-              name,
+            formatter={(value: unknown, name: unknown) => [
+              `${value} (${((Number(value) / total) * 100).toFixed(1)}%)`,
+              String(name),
             ]}
           />
           {showLegend && (
@@ -135,9 +135,9 @@ export function PieChartComponent({
               borderRadius: '0.5rem',
               color: '#fafafa',
             }}
-            formatter={(value: number, name: string) => [
-              `${value} (${((value / total) * 100).toFixed(1)}%)`,
-              name,
+            formatter={(value: unknown, name: unknown) => [
+              `${value} (${((Number(value) / total) * 100).toFixed(1)}%)`,
+              String(name),
             ]}
           />
           {showLegend && (
