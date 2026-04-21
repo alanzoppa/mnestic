@@ -5,28 +5,65 @@ import { useState, useEffect, useCallback } from 'react'
 interface ImageGalleryProps {
   images: { src: string; alt?: string }[]
   getImageUrl: (src: string) => string
+  externalOpen?: boolean
+  externalIndex?: number
+  onOpenChange?: (isOpen: boolean) => void
+  onIndexChange?: (index: number) => void
 }
 
-export function ImageGallery({ images, getImageUrl }: ImageGalleryProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
+export function ImageGallery({ 
+  images, 
+  getImageUrl,
+  externalOpen,
+  externalIndex,
+  onOpenChange,
+  onIndexChange
+}: ImageGalleryProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const [internalIndex, setInternalIndex] = useState(0)
 
-  const open = (index: number) => {
-    setCurrentIndex(index)
-    setIsOpen(true)
-  }
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalOpen !== undefined ? externalOpen : internalIsOpen
+  const currentIndex = externalIndex !== undefined ? externalIndex : internalIndex
+
+  const open = useCallback((index: number) => {
+    if (externalIndex === undefined) {
+      setInternalIndex(index)
+    } else if (onIndexChange) {
+      onIndexChange(index)
+    }
+    if (externalOpen === undefined) {
+      setInternalIsOpen(true)
+    } else if (onOpenChange) {
+      onOpenChange(true)
+    }
+  }, [externalOpen, externalIndex, onOpenChange, onIndexChange])
 
   const close = useCallback(() => {
-    setIsOpen(false)
-  }, [])
+    if (externalOpen === undefined) {
+      setInternalIsOpen(false)
+    } else if (onOpenChange) {
+      onOpenChange(false)
+    }
+  }, [externalOpen, onOpenChange])
 
   const goNext = useCallback(() => {
-    setCurrentIndex(i => (i + 1) % images.length)
-  }, [images.length])
+    const nextIndex = (currentIndex + 1) % images.length
+    if (externalIndex === undefined) {
+      setInternalIndex(nextIndex)
+    } else if (onIndexChange) {
+      onIndexChange(nextIndex)
+    }
+  }, [currentIndex, images.length, externalIndex, onIndexChange])
 
   const goPrev = useCallback(() => {
-    setCurrentIndex(i => (i - 1 + images.length) % images.length)
-  }, [images.length])
+    const prevIndex = (currentIndex - 1 + images.length) % images.length
+    if (externalIndex === undefined) {
+      setInternalIndex(prevIndex)
+    } else if (onIndexChange) {
+      onIndexChange(prevIndex)
+    }
+  }, [currentIndex, images.length, externalIndex, onIndexChange])
 
   useEffect(() => {
     if (!isOpen) return
@@ -84,6 +121,7 @@ export function ImageGallery({ images, getImageUrl }: ImageGalleryProps) {
             <img
               src={getImageUrl(current.src)}
               alt={current.alt || `Image ${currentIndex + 1}`}
+              loading="eager"
               className="max-w-full max-h-[85vh] object-contain rounded-lg"
             />
 

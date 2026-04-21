@@ -190,7 +190,8 @@ export default function GraphPage() {
         <div 
           ref={containerRef} 
           className="w-full" 
-          style={{ minHeight: 'calc(100vh - 140px)' }} 
+          style={{ minHeight: 'calc(100vh - 140px)' }}
+          data-testid="graph-container"
         />
 
         {hoverNode && (
@@ -207,7 +208,7 @@ export default function GraphPage() {
           </div>
         )}
 
-        <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20">
+        <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20" data-testid="graph-legend">
           <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
           {Object.entries(FOLDER_COLORS).map(([folder, color]) => (
             <div key={folder} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
@@ -220,7 +221,7 @@ export default function GraphPage() {
             Other
           </div>
           {data && (
-            <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">
+            <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500" data-testid="graph-stats">
               {data.nodes.length} nodes · {data.edges.length} edges
             </div>
           )}

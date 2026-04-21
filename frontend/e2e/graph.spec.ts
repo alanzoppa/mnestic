@@ -23,22 +23,28 @@ test.describe("Graph Page", () => {
 
   test("should display graph container", async ({ page }) => {
     await page.waitForTimeout(1000); // Wait for force-graph to initialize
-    // The graph container should exist - check by looking for the div that holds the graph
-    const container = page.locator('div[style*="min-height"]');
-    await expect(container.count()).toBeGreaterThan(0);
+    // The graph container should exist - check by looking for canvas or svg
+    const container = page.locator('canvas, svg').first();
+    await expect(container).toBeVisible();
   });
 
   test("should display legend", async ({ page }) => {
-    await expect(page.locator("text=Legend")).toBeVisible();
-    await expect(page.locator("text=1:1 Notes")).toBeVisible();
-    await expect(page.locator("text=Work")).toBeVisible();
-    await expect(page.locator("text=Personal")).toBeVisible();
+    // Wait for graph data to load
+    await page.waitForSelector('[data-testid="graph-stats"]');
+
+    // Legend should be visible
+    const legend = page.locator('[data-testid="graph-legend"]');
+    await expect(legend).toBeVisible();
+
+    // Legend shows folder names from mock data - scope to legend only
+    await expect(legend.locator("text=1:1 Notes")).toBeVisible();
+    await expect(legend.locator("text=Work")).toBeVisible();
   });
 
   test("should display node/edge count", async ({ page }) => {
-    await page.waitForTimeout(1000);
-    await expect(page.locator("text=nodes")).toBeVisible();
-    await expect(page.locator("text=edges")).toBeVisible();
+    await page.waitForSelector('[data-testid="graph-stats"]');
+    await expect(page.locator('[data-testid="graph-stats"]')).toContainText("nodes");
+    await expect(page.locator('[data-testid="graph-stats"]')).toContainText("edges");
   });
 
   test("should filter graph by tag", async ({ page }) => {

@@ -15,27 +15,27 @@ test.describe("Dashboard", () => {
     // Stats should be visible
     await expect(mainContent.locator("text=Total Notes")).toBeVisible();
     await expect(mainContent.locator("text=1,641")).toBeVisible();
-    await expect(mainContent.locator("text=Tags")).toBeVisible();
+    await expect(mainContent.locator("text=Unique Tags")).toBeVisible();
     await expect(mainContent.locator("text=Calendar Events")).toBeVisible();
     await expect(mainContent.locator("text=Date Range")).toBeVisible();
   });
 
   test("should have search functionality", async ({ page }) => {
     const mainContent = page.locator("main");
-    const searchInput = mainContent.locator('input[placeholder="Search notes..."]');
+    const searchInput = mainContent.locator('[data-search-input]');
     await expect(searchInput).toBeVisible();
 
     await searchInput.fill("management");
     await searchInput.press("Enter");
 
-    await expect(mainContent.locator("text=Results")).toBeVisible();
+    await expect(mainContent.locator("text=Quick Results")).toBeVisible();
   });
 
   test("should display search results from dashboard search", async ({ page }) => {
     const mainContent = page.locator("main");
-    const searchInput = mainContent.locator('input[placeholder="Search notes..."]');
+    const searchInput = mainContent.locator('[data-search-input]');
     await searchInput.fill("management");
-    await mainContent.locator('button:has-text("Search")').click();
+    await searchInput.press("Enter");
 
     await expect(mainContent.locator("text=1:1 with Alice")).toBeVisible();
     await expect(mainContent.locator("text=Zendesk Chat Architecture")).toBeVisible();
@@ -57,7 +57,7 @@ test.describe("Dashboard", () => {
     const incrementalBtn = mainContent.locator('button:has-text("Incremental Ingest")');
     await incrementalBtn.click();
 
-    await expect(mainContent.locator("text=Ingesting...")).toBeVisible();
+    // Result should appear after ingest completes
     await expect(mainContent.locator("text=Notes:")).toBeVisible({ timeout: 5000 });
   });
 

@@ -85,6 +85,58 @@ export const mockSearchResults = {
   ],
 };
 
+export const mockNoteDetailWithImages = {
+  id: "note-with-images",
+  metadata: {
+    title: "Meeting with Screenshots",
+    folder: "Work",
+    created: "2024-03-15T14:30:00",
+    modified: "2024-03-15T15:45:00",
+    source: "Apple Notes",
+    tags: ["work", "handwritten", "zendesk"],
+    participants: ["Alice", "Bob"],
+    source_id: "x-coredata://test-note-images",
+  },
+  content: `# Meeting with Screenshots
+
+Here's a diagram showing the architecture:
+
+![Architecture diagram](architecture_diagram.png)
+
+And here's a screenshot of the issue:
+
+[View original](screenshot_bug.png)
+
+## Discussion
+
+We went over the key points.
+`,
+  calendar_events: [],
+  similar_notes: [],
+};
+
+export const mockNoteDetailSingleImage = {
+  id: "note-single-image",
+  metadata: {
+    title: "Quick Sketch",
+    folder: "Notes",
+    created: "2024-03-10T10:00:00",
+    modified: "2024-03-10T10:15:00",
+    source: "Apple Notes",
+    tags: ["notes", "handwritten"],
+    participants: [],
+    source_id: "x-coredata://test-note-single",
+  },
+  content: `# Quick Sketch
+
+Had an idea and drew it out.
+
+![Idea sketch](idea_sketch.png)
+`,
+  calendar_events: [],
+  similar_notes: [],
+};
+
 export const mockNoteDetail = {
   id: "note-001",
   metadata: {

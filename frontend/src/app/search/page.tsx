@@ -175,6 +175,7 @@ export default function SearchPage() {
                 variant="secondary"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
+                data-testid="filter-toggle"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -189,7 +190,7 @@ export default function SearchPage() {
 
               {!searched && popularTags.length > 0 && (
                 <>
-                  <span className="text-sm text-zinc-500">Popular:</span>
+                  <span className="text-sm text-zinc-500" data-testid="popular-tags-label">Popular:</span>
                   <div className="flex gap-1 overflow-x-auto">
                     {popularTags.slice(0, 8).map(tag => (
                       <button
@@ -214,23 +215,25 @@ export default function SearchPage() {
 
             {/* Expanded Filters */}
             {showFilters && (
-              <div className="mt-6 pt-6 border-t border-zinc-800 space-y-6">
+              <div className="mt-6 pt-6 border-t border-zinc-800 space-y-6" data-testid="filter-panel">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Source */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
                     <div className="flex gap-2">
                       {['', 'Apple Notes', 'Evernote'].map((source) => (
-                        <button
-                          key={source || 'all'}
-                          type="button"
-                          onClick={() => setFilters(prev => ({ ...prev, source }))}
-                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            filters.source === source
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                          }`}
-                        >
+                      <button
+                        key={source || 'all'}
+                        type="button"
+                        onClick={() => setFilters(prev => ({ ...prev, source }))}
+                        data-testid={`filter-source-${source || 'all'}`}
+                        data-active={filters.source === source}
+                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          filters.source === source
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                        }`}
+                      >
                           {source || 'All'}
                         </button>
                       ))}

@@ -16,19 +16,19 @@ test.describe("Timeline Page", () => {
   });
 
   test("should have tag filter dropdown", async ({ page }) => {
-    await expect(page.locator("select")).toBeVisible();
-    // The dropdown may contain different options based on the hardcoded TAGS list
+    // Timeline uses native select element
+    await expect(page.locator("select").first()).toBeVisible();
   });
 
   test("should display period count summary", async ({ page }) => {
-    await expect(page.locator("text=notes across")).toBeVisible();
-    await expect(page.locator("text=periods")).toBeVisible();
+    // Stats cards show Total Notes, Periods, etc.
+    await expect(page.locator("text=Total Notes")).toBeVisible();
+    await expect(page.locator("text=Periods")).toBeVisible();
   });
 
   test("should filter by tag", async ({ page }) => {
-    // Select the first available option (not "All tags")
-    await page.locator("select").selectOption({ index: 1 });
-    await page.waitForTimeout(100);
+    // Select a tag from the dropdown
+    await page.locator("select").first().selectOption({ index: 1 });
 
     // Chart should still be visible after filtering
     await expect(page.locator(".recharts-wrapper")).toBeVisible();

@@ -99,15 +99,17 @@ export default function CalendarPage() {
             <button
               onClick={prevMonth}
               className="bg-zinc-800 hover:bg-zinc-700 rounded p-2"
+              data-testid="month-nav-prev"
             >
               ←
             </button>
-            <span className="text-lg font-semibold w-40 text-center">
+            <span className="text-lg font-semibold w-40 text-center" data-testid="current-month">
               {MONTHS[month]} {year}
             </span>
             <button
               onClick={nextMonth}
               className="bg-zinc-800 hover:bg-zinc-700 rounded p-2"
+              data-testid="month-nav-next"
             >
               →
             </button>
@@ -124,7 +126,7 @@ export default function CalendarPage() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-px bg-zinc-800">
+          <div className="grid grid-cols-7 gap-px bg-zinc-800" data-testid="calendar-grid">
             {days.map((day, idx) => {
               if (day === null) {
                 return (
@@ -140,11 +142,12 @@ export default function CalendarPage() {
                   className="bg-zinc-900 min-h-24 p-2 cursor-pointer hover:bg-zinc-800"
                 >
                   <div className="font-medium text-sm mb-1">{day}</div>
-                  <div className="space-y-1">
+                  <div className="space-y-1" data-testid={`calendar-events-${dateStr}`}>
                     {dayEvents.slice(0, 3).map((event) => (
                       <div
                         key={event.id}
                         className="text-xs bg-zinc-700 rounded px-1 py-0.5 truncate"
+                        data-testid={`calendar-event-${event.id}`}
                       >
                         {event.summary}
                       </div>

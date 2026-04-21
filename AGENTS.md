@@ -173,13 +173,130 @@ python ~/Codes/notes-browser/scripts/caption_images.py --force      # Re-caption
 
 None at the app level. Designed to run behind NGINX on a Tailscale tailnet. Tailscale ACLs handle access control.
 
+## Testing
+
+All 110 E2E tests passing (105 mock, 5 live backend).
+
+### Test Projects
+
+- `mock` — Runs against mocked API responses (fast, no backend required)
+- `live` — Runs against live backend at `127.0.0.1:8000` (tagged with `@smoke`)
+
+### Running Tests
+
+```bash
+cd ~/Codes/notes-browser/frontend
+
+# All tests
+npx playwright test
+
+# Just mock tests
+npx playwright test --project=mock
+
+# Just smoke tests (live backend)
+npx playwright test --project=live
+
+# Specific test file
+npx playwright test e2e/search.spec.ts
+```
+
+### Test Patterns Learned
+
+**Prefer data-testid over text selectors**: Text changes break tests. Use `data-testid` for stable selectors:
+
+```tsx
+// Component
+<button data-testid="filter-toggle">Filters</button>
+<button data-testid="filter-source-all" data-active={isActive}>All</button>
+
+// Test
+await page.locator('[data-testid="filter-toggle"]').click();
+await expect(page.locator('[data-testid="filter-source-all"]')).toHaveAttribute("data-active", "true");
+```
+
+**Scope selectors to avoid false matches**: The Graph page legend test was finding "Work" in a `<select>` option instead of the legend:
+
+```typescript
+// Bad - finds any "Work" text on page
+await expect(page.locator("text=Work").first()).toBeVisible();
+
+// Good - scoped to legend only
+const legend = page.locator('[data-testid="graph-legend"]');
+await expect(legend.locator("text=Work")).toBeVisible();
+```
+
+**Wait for async data**: Graph data loads asynchronously. Wait for it before asserting:
+
+```typescript
+await page.waitForSelector('[data-testid="graph-stats"]');
+await expect(page.locator('[data-testid="graph-legend"]')).toBeVisible();
+```
+
+**Avoid brittle class assertions**: Don't check Tailwind classes for state:
+
+```typescript
+// Bad - breaks if styling changes
+await expect(button).toHaveClass(/bg-blue-600/);
+
+// Good - use data attributes
+await expect(button).toHaveAttribute("data-active", "true");
+```
+
+**Fresh state for filter tests**: Search page hides "Popular:" tags after a search. Start fresh:
+
+```typescript
+await page.goto("/search"); // Resets searched=false
+await page.locator('[data-testid="filter-toggle"]').click();
+await expect(page.locator('[data-testid="popular-tags-label"]')).toBeVisible();
+```
+
+**Date picker uses lowercase**: "Date range" not "Date Range":
+
+```typescript
+await expect(page.locator('[data-testid="date-range-picker"]')).toBeVisible();
+```
+
+### Current data-testid attributes
+
+| Component | data-testid |
+|-----------|-------------|
+| Calendar prev month | `month-nav-prev` |
+| Calendar next month | `month-nav-next` |
+| Calendar month display | `current-month` |
+| Calendar grid | `calendar-grid` |
+| Calendar events container | `calendar-events-{YYYY-MM-DD}` |
+| Calendar event item | `calendar-event-{event-id}` |
+| Graph container | `graph-container` |
+| Graph legend | `graph-legend` |
+| Graph stats | `graph-stats` |
+| Search filter toggle | `filter-toggle` |
+| Search filter panel | `filter-panel` |
+| Search popular tags label | `popular-tags-label` |
+| Search source filter buttons | `filter-source-all`, `filter-source-Apple Notes`, `filter-source-Evernote` |
+| Date range picker | `date-range-picker` |
+| Search autocomplete input | `data-search-input` (attribute, not testid) |
+
+## Component Conventions
+
+**StatCard** uses `.card-hover` class (not `[class*='StatCard']`). Test with:
+
+```typescript
+const pageText = await page.locator('.card-hover').allTextContents();
+```
+
+**Active filter buttons** have `data-active` attribute set to `"true"` when selected.
+
+**ImageGallery** is a controlled component:
+- Props: `externalOpen`, `externalIndex`, `onOpenChange`, `onIndexChange`
+- Thumbnail clicks open lightbox at correct index via parent state
+
 ## TODO
 
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
 - [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
+- [x] All E2E tests passing (110/110)
 - [ ] Incremental re-ingest on file change (watchdog)
 - [ ] Incremental Evernote sync once that agent finishes
 - [ ] Re-tag notes with only structural tags (82 notes)
 - [ ] Merge duplicate people in registry (e.g., Damen / Damen Turnbull)
 - [ ] Full-text search fallback (for exact token matches that embeddings miss)
-- [x] Image serving in note detail (via `/api/images/` endpoint + sidebar Attachments section)

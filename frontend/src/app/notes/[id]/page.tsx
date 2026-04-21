@@ -112,6 +112,8 @@ export default function NotePage() {
   const [allTagNames, setAllTagNames] = useState<string[]>([])
   const [allPeople, setAllPeople] = useState<PersonInfo[]>([])
   const { isFav, toggle } = useFavorites()
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [galleryIndex, setGalleryIndex] = useState(0)
 
 useEffect(() => {
     if (!id) {
@@ -404,41 +406,70 @@ useEffect(() => {
                   <ImageGallery
                     images={attachments.map(a => ({ src: a.src, alt: a.alt }))}
                     getImageUrl={getImageUrl}
+                    externalOpen={galleryOpen}
+                    externalIndex={galleryIndex}
+                    onOpenChange={setGalleryOpen}
+                    onIndexChange={setGalleryIndex}
                   />
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    {attachments.map((attachment, idx) => {
-                      const imageUrl = getImageUrl(attachment.src)
-                      const filename = attachment.src.split('/').pop() || `image-${idx + 1}`
-                      return (
-                        <div key={idx} className="space-y-2">
-                          <button
-                            onClick={() => {
-                              const gallery = document.querySelector('[data-gallery-open]')
-                              if (!gallery) {
-                                const event = new CustomEvent('open-gallery', { detail: { index: idx } })
-                                window.dispatchEvent(event)
-                              }
-                            }}
-                            className="block w-full text-left group"
-                          >
-                            <div className="aspect-square rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors">
-                              <img
-                                src={imageUrl}
-                                alt={attachment.alt || filename}
-                                className="w-full h-full object-cover cursor-zoom-in"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none'
-                                }}
-                              />
-                            </div>
-                            <p className="text-xs text-zinc-500 mt-1 truncate group-hover:text-zinc-400">
-                              {filename}
-                            </p>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  {attachments.length === 1 ? (
+                    // Single image: full width with proper aspect ratio
+                    <div
+                      onClick={() => {
+                        setGalleryIndex(0)
+                        setGalleryOpen(true)
+                      }}
+                      className="cursor-zoom-in group"
+                    >
+                      <div className="rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors">
+                        <img
+                          src={getImageUrl(attachments[0].src)}
+                          alt={attachments[0].alt || attachments[0].src.split('/').pop() || 'Attachment'}
+                          loading="lazy"
+                          className="w-full h-auto object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-2 truncate group-hover:text-zinc-400">
+                        {attachments[0].src.split('/').pop() || 'image-1'}
+                      </p>
+                    </div>
+                  ) : (
+                    // Multiple images: grid layout
+                    <div className="grid grid-cols-2 gap-3">
+                      {attachments.map((attachment, idx) => {
+                        const imageUrl = getImageUrl(attachment.src)
+                        const filename = attachment.src.split('/').pop() || `image-${idx + 1}`
+                        return (
+                          <div key={idx} className="space-y-2">
+                            <button
+                              onClick={() => {
+                                setGalleryIndex(idx)
+                                setGalleryOpen(true)
+                              }}
+                              className="block w-full text-left group"
+                            >
+                              <div className="aspect-square rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors">
+                                <img
+                                  src={imageUrl}
+                                  alt={attachment.alt || filename}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover cursor-zoom-in"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-zinc-500 mt-1 truncate group-hover:text-zinc-400">
+                                {filename}
+                              </p>
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

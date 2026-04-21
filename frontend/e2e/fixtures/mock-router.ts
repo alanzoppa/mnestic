@@ -11,6 +11,12 @@ import {
   mockSchema,
 } from "./api-fixtures";
 
+// 1x1 transparent PNG for mock images
+const MOCK_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64"
+);
+
 export async function mockApiRoutes(page: Page) {
   // Stats
   await page.route("**/api/stats", async (route) => {
@@ -170,6 +176,15 @@ export async function mockApiRoutes(page: Page) {
           events_ingested: 25,
         },
       }),
+    });
+  });
+
+  // Images - return a 1x1 transparent PNG
+  await page.route("**/api/images/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: MOCK_PNG,
     });
   });
 }

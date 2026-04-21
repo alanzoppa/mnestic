@@ -53,6 +53,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        data-testid="date-range-picker"
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           hasRange
             ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'

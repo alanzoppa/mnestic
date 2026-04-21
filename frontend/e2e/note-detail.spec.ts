@@ -1,10 +1,167 @@
 import { test, expect } from "@playwright/test";
 import { mockApiRoutes } from "./fixtures/mock-router";
+import { mockNoteDetailWithImages, mockNoteDetailSingleImage } from "./fixtures/api-fixtures";
 
 test.describe("Note Detail Page", () => {
   test.beforeEach(async ({ page }) => {
     await mockApiRoutes(page);
     await page.goto("/notes/note-001");
+  });
+
+  // Attachment tests
+  test("should display single attachment full-width", async ({ page }) => {
+    await mockApiRoutes(page);
+    // Override the note endpoint to return single image note
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailSingleImage),
+      });
+    });
+    await page.goto("/notes/note-single-image");
+    
+    // Single image should render full-width without aspect-square
+    const attachmentCard = page.locator("text=Attachments (1)").locator("..").locator("..");
+    const singleImage = attachmentCard.locator("img").first();
+    await expect(singleImage).toBeVisible();
+    // Should not have aspect-square container
+    await expect(attachmentCard.locator(".aspect-square")).toHaveCount(0);
+  });
+
+  test("should display multiple attachments in grid", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailWithImages),
+      });
+    });
+    await page.goto("/notes/note-with-images");
+    
+    // Should show "View all 2 images" button
+    await expect(page.locator("text=View all 2 images")).toBeVisible();
+    // Grid should have 2 image containers (aspect-square divs)
+    const gridImages = page.locator(".aspect-square").filter({ has: page.locator("img") });
+    await expect(gridImages).toHaveCount(2);
+  });
+
+  test("should open gallery lightbox when thumbnail clicked", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailWithImages),
+      });
+    });
+    await page.goto("/notes/note-with-images");
+    
+    // Click the first attachment thumbnail
+    const firstThumbnail = page.locator(".aspect-square").filter({ has: page.locator("img") }).first();
+    await firstThumbnail.click();
+    
+    // Lightbox overlay should appear
+    const lightbox = page.locator("div[class*='bg-black/90']");
+    await expect(lightbox).toBeVisible();
+    
+    // Should show image counter
+    await expect(page.locator("text=1 / 2")).toBeVisible();
+  });
+
+  test("should navigate lightbox with arrow keys", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailWithImages),
+      });
+    });
+    await page.goto("/notes/note-with-images");
+    
+    // Open lightbox
+    await page.locator("text=View all 2 images").click();
+    await expect(page.locator("text=1 / 2")).toBeVisible();
+    
+    // Press right arrow
+    await page.keyboard.press("ArrowRight");
+    // Should advance to second image
+    await expect(page.locator("text=2 / 2")).toBeVisible();
+    
+    // Press left arrow
+    await page.keyboard.press("ArrowLeft");
+    // Should go back to first image
+    await expect(page.locator("text=1 / 2")).toBeVisible();
+  });
+
+  test("should close lightbox on Escape key", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailWithImages),
+      });
+    });
+    await page.goto("/notes/note-with-images");
+    
+    // Open lightbox
+    await page.locator("text=View all 2 images").click();
+    await expect(page.locator("div[class*='bg-black/90']")).toBeVisible();
+    
+    // Press Escape
+    await page.keyboard.press("Escape");
+    
+    // Lightbox should close
+    await expect(page.locator("div[class*='bg-black/90']")).toHaveCount(0);
+  });
+
+  test("should close lightbox when clicking overlay", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailWithImages),
+      });
+    });
+    await page.goto("/notes/note-with-images");
+    
+    // Open lightbox
+    await page.locator("text=View all 2 images").click();
+    const lightbox = page.locator("div[class*='bg-black/90']");
+    await expect(lightbox).toBeVisible();
+    
+    // Click outside the image container (on the overlay)
+    await lightbox.click({ position: { x: 10, y: 10 } });
+    
+    // Lightbox should close
+    await expect(page.locator("div[class*='bg-black/90']")).toHaveCount(0);
+  });
+
+  test("should open single image lightbox when full-width image clicked", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailSingleImage),
+      });
+    });
+    await page.goto("/notes/note-single-image");
+    
+    // Click the full-width single attachment
+    const attachment = page.locator("text=Attachments (1)").locator("..").locator("..").locator("img").first();
+    await attachment.click();
+    
+    // Lightbox should open
+    const lightbox = page.locator("div[class*='bg-black/90']");
+    await expect(lightbox).toBeVisible();
+    
+    // Single image should show "1 / 1" counter
+    await expect(page.locator("text=1 / 1")).toBeVisible();
   });
 
   test("should display note title", async ({ page }) => {
