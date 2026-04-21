@@ -284,7 +284,7 @@ def test_title_rename_creates_new_file_and_removes_old(app_client_with_files):
     removed = old_files - new_files
     assert len(added) == 1, f"Expected 1 new file, got {added}"
     assert len(removed) == 1, f"Expected 1 removed file, got {removed}"
-    assert "Renamed_Note_File.md" in added or "Renamed-Note-File.md" in added
+    assert "Renamed Note File.md" in added
 
 
 def test_combined_update_propagates_all_fields(app_client_with_files):

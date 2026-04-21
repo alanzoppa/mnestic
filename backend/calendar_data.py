@@ -4,7 +4,12 @@ import json
 import os
 from datetime import datetime
 
-CALENDAR_EXPORT_PATH = os.path.expanduser("~/Downloads/calendar-export.json")
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CALENDAR_EXPORT_PATH = (
+    os.path.join(_PROJECT_ROOT, "calendar-export.json")
+    if os.path.exists(os.path.join(_PROJECT_ROOT, "calendar-export.json"))
+    else os.path.expanduser("~/Downloads/calendar-export.json")
+)
 PEOPLE_REGISTRY_PATH = os.path.expanduser("~/Desktop/notes/people_registry.json")
 
 

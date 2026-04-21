@@ -85,7 +85,9 @@ def test_search_with_calendar(app_client):
 def test_get_note_not_found(app_client):
     c, mock_store = app_client
     mock_store.get_note.return_value = None
-    res = c.get("/api/notes/nonexistent-id")
+    mock_store.get_note_by_note_id.return_value = None
+    with patch("main.get_calendar"):
+        res = c.get("/api/notes/nonexistent-id")
     assert res.status_code == 404
 
 
