@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { search, getTags } from '@/lib/api'
+import { search, getTags, getSchema } from '@/lib/api'
 import type { SearchResult, TagInfo } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -33,6 +33,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [allTags, setAllTags] = useState<TagInfo[]>([])
+  const [allSources, setAllSources] = useState<string[]>([])
   const [noteTitles, setNoteTitles] = useState<{ id: string; title: string; note_id?: string }[]>([])
   const [showFilters, setShowFilters] = useState(false)
   
@@ -44,9 +45,10 @@ export default function SearchPage() {
     dateTo: '',
   })
 
-  // Load tags on mount
+  // Load tags and sources on mount
   useEffect(() => {
     getTags().then(res => setAllTags(res.tags)).catch(() => {})
+    getSchema().then(s => setAllSources(s.sources || [])).catch(() => {})
   }, [])
 
   // Cache note titles for autocomplete
@@ -220,20 +222,20 @@ export default function SearchPage() {
                   {/* Source */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
-                    <div className="flex gap-2">
-                      {['', 'Apple Notes', 'Evernote'].map((source) => (
-                      <button
-                        key={source || 'all'}
-                        type="button"
-                        onClick={() => setFilters(prev => ({ ...prev, source }))}
-                        data-testid={`filter-source-${source || 'all'}`}
-                        data-active={filters.source === source}
-                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          filters.source === source
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                        }`}
-                      >
+                    <div className="flex flex-wrap gap-2">
+                      {(['', ...allSources]).map((source) => (
+                        <button
+                          key={source || 'all'}
+                          type="button"
+                          onClick={() => setFilters(prev => ({ ...prev, source }))}
+                          data-testid={`filter-source-${source || 'all'}`}
+                          data-active={filters.source === source}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            filters.source === source
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                          }`}
+                        >
                           {source || 'All'}
                         </button>
                       ))}

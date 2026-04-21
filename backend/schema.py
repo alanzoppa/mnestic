@@ -63,4 +63,7 @@ def discover_schema(notes_dir: str) -> dict:
             }
         )
 
-    return {"total_files": total_files, "fields": fields}
+    sources = sorted(v for v in unique_values["source"] if isinstance(v, str))
+    folders = sorted(v for v in unique_values["folder"] if isinstance(v, str))
+
+    return {"total_files": total_files, "fields": fields, "sources": sources, "folders": folders}
