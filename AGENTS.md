@@ -353,7 +353,25 @@ const pageText = await page.locator('.card-hover').allTextContents();
 - Props: `externalOpen`, `externalIndex`, `onOpenChange`, `onIndexChange`
 - Thumbnail clicks open lightbox at correct index via parent state
 
-## TODO
+## Note format
+
+Notes are flat `.md` files in `notes/` with YAML frontmatter. See `example-note.md` in the project root for a complete example with all fields. Quick reference:
+
+| Field | Required | Example |
+|-------|----------|---------|
+| `title` | Yes | `"Lunar regolith composting experiment — batch 47"` |
+| `folder` | Yes | `"Offworld Agriculture"` |
+| `created` | Yes | `2025-11-03T09:17:22-08:00` (Apple Notes) or `2017-02-25T21:33:55Z` (Evernote) |
+| `modified` | Yes | Same format as `created` |
+| `source` | Yes | `"Apple Notes"` or `"Evernote"` |
+| `source_id` | Yes | `x-coredata://...` (Apple Notes) or `evernote:note:<hex>` (Evernote) |
+| `tags` | Yes | YAML list of strings |
+| `participants` | Yes | YAML list of strings (can be empty `[]`) |
+| `source_url` | No | External URL (rare, mostly Evernote) |
+
+Duplicate filenames get `__2`, `__3`, etc. suffixes.
+
+## Changelog
 
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
 - [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
