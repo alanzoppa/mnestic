@@ -140,6 +140,7 @@ export default function CalendarPage() {
                   key={idx}
                   onClick={() => router.push(`/calendar/${dateStr}`)}
                   className="bg-zinc-900 min-h-24 p-2 cursor-pointer hover:bg-zinc-800"
+                  data-testid={`calendar-day-${dateStr}`}
                 >
                   <div className="font-medium text-sm mb-1">{day}</div>
                   <div className="space-y-1" data-testid={`calendar-events-${dateStr}`}>

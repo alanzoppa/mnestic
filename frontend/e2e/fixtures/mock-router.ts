@@ -145,38 +145,36 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
   // IMPORTANT: Order matters for calendar routes!
   // More specific patterns must be registered before generic ones
 
-  // Calendar date - specific pattern (must come before generic calendar patterns)
-  await page.route("**/api/calendar/date/*", async (route) => {
-    log(`→ ${route.request().method()} ${route.request().url()}`);
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(mockCalendarDate),
-    });
-    log(`← 200 ${route.request().url()}`);
-  });
-
-  // Calendar event detail - matches /api/calendar/{event_id}
-  // Use a more specific pattern to avoid matching /api/calendar/date/*
-  await page.route("**/api/calendar/[!d]*", async (route) => {
-    log(`→ ${route.request().method()} ${route.request().url()}`);
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(mockCalendarEvents.events[0]),
-    });
-    log(`← 200 ${route.request().url()}`);
-  });
-
-  // Calendar events list - generic pattern (must come last)
-  await page.route("**/api/calendar**", async (route) => {
-    log(`→ ${route.request().method()} ${route.request().url()}`);
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(mockCalendarEvents),
-    });
-    log(`← 200 ${route.request().url()}`);
+  // Calendar date - must come before generic calendar route
+  // Use function-based handler to check URL in order
+  await page.route("**/api/calendar/**", async (route) => {
+    const url = route.request().url();
+    if (url.includes("/api/calendar/date/")) {
+      log(`→ [date] ${route.request().method()} ${url}`);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockCalendarDate),
+      });
+      log(`← [date] 200 ${url}`);
+    } else if (url.includes("/api/calendar?") || url.endsWith("/api/calendar")) {
+      log(`→ [list] ${route.request().method()} ${url}`);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockCalendarEvents),
+      });
+      log(`← [list] 200 ${url}`);
+    } else {
+      // Calendar event detail: /api/calendar/{event_id}
+      log(`→ [detail] ${route.request().method()} ${url}`);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockCalendarEvents.events[0]),
+      });
+      log(`← [detail] 200 ${url}`);
+    }
   });
 
   // Schema
@@ -303,30 +301,19 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
     });
   });
 
-  // Calendar date - specific pattern (must come before generic)
-  await page.route("**/api/calendar/date/*", async (route) => {
+  // Calendar - single handler to disambiguate route patterns
+  await page.route("**/api/calendar/**", async (route) => {
+    const body = await mockWithDelay(
+      route.request().url().includes("/api/calendar/date/")
+        ? mockCalendarDate
+        : route.request().url().includes("/api/calendar?") || route.request().url().endsWith("/api/calendar")
+          ? mockCalendarEvents
+          : mockCalendarEvents.events[0]
+    );
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: await mockWithDelay(mockCalendarDate),
-    });
-  });
-
-  // Calendar event detail - matches /api/calendar/{event_id} but not /api/calendar/date/*
-  await page.route("**/api/calendar/[!d]*", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: await mockWithDelay(mockCalendarEvents.events[0]),
-    });
-  });
-
-  // Calendar events list - generic pattern (must come last)
-  await page.route("**/api/calendar**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: await mockWithDelay(mockCalendarEvents),
+      body,
     });
   });
 

@@ -71,13 +71,14 @@ export default function CalendarDatePage() {
         <button
           onClick={() => router.push("/calendar")}
           className="mb-6 text-blue-400 hover:text-blue-300 text-sm"
+          data-testid="back-to-calendar"
         >
           ← Back to Calendar
         </button>
 
-        <h1 className="text-2xl font-bold mb-6">{formatDate(date)}</h1>
+        <h1 className="text-2xl font-bold mb-6" data-testid="date-title">{formatDate(date)}</h1>
 
-        {loading && <p className="text-zinc-400">Loading...</p>}
+        {loading && <p className="text-zinc-400" data-testid="loading">Loading...</p>}
 
         <div className="space-y-6">
           <section>
