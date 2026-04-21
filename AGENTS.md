@@ -175,7 +175,7 @@ None at the app level. Designed to run behind NGINX on a Tailscale tailnet. Tail
 
 ## Testing
 
-All 110 E2E tests passing (105 mock, 5 live backend).
+All 106 E2E tests passing (101 mock, 5 live backend).
 
 ### IMPORTANT: Working Directory
 
@@ -272,6 +272,49 @@ await expect(page.locator('[data-testid="popular-tags-label"]')).toBeVisible();
 await expect(page.locator('[data-testid="date-range-picker"]')).toBeVisible();
 ```
 
+**Never use Math.random() in SSR components**: `Math.random()` (and `Date.now()`) produce different values on server vs client, causing React hydration mismatches. This triggers infinite re-mount loops where `useEffect` fires repeatedly and APIs get called in an endless loop. Use deterministic values instead:
+
+```tsx
+// BAD - hydration mismatch, infinite re-mounts
+style={{ height: `${20 + Math.random() * 80}%` }}
+
+// GOOD - deterministic, SSR-safe
+const CHART_BAR_HEIGHTS = [65, 42, 78, 55, 90, 35, 72, 48, 85, 38, 60, 50];
+style={{ height: `${CHART_BAR_HEIGHTS[i]}%` }}
+```
+
+**Playwright route matching for API paths**: Playwright glob patterns (`**`) match broadly and can shadow more specific routes. Never register overlapping calendar/date/event routes separately — use a single handler with URL inspection:
+
+```typescript
+// BAD - glob patterns shadow each other, /api/calendar/date/ matches the generic route
+await page.route("**/api/calendar/date/*", dateHandler);   // never fires!
+await page.route("**/api/calendar**", genericHandler);     // catches everything
+
+// GOOD - single handler dispatches by URL
+await page.route("**/api/calendar/**", async (route) => {
+  const url = route.request().url();
+  if (url.includes("/api/calendar/date/")) {
+    await route.fulfill({ body: JSON.stringify(mockCalendarDate) });
+  } else if (url.includes("/api/calendar?") || url.endsWith("/api/calendar")) {
+    await route.fulfill({ body: JSON.stringify(mockCalendarEvents) });
+  } else {
+    await route.fulfill({ body: JSON.stringify(mockCalendarEvents.events[0]) });
+  }
+});
+```
+
+**Don't use waitForLoadState("networkidle") with Next.js dev**: The dev server never fully idles due to HMR/WebSocket connections. Prefer `waitForSelector` or `expect().toBeVisible()` instead.
+
+**Avoid fragile DOM selectors for calendar-day cells**: Calendar state resets on navigation, making text selectors unreliable. Use data-testid on day cells:
+
+```tsx
+// Component
+<div data-testid={`calendar-day-${dateStr}`} onClick={() => router.push(`/calendar/${dateStr}`)}>
+
+// Test
+await page.locator('[data-testid^="calendar-day-"]').first().click();
+```
+
 ### Current data-testid attributes
 
 | Component | data-testid |
@@ -279,6 +322,10 @@ await expect(page.locator('[data-testid="date-range-picker"]')).toBeVisible();
 | Calendar prev month | `month-nav-prev` |
 | Calendar next month | `month-nav-next` |
 | Calendar month display | `current-month` |
+| Calendar day cell | `calendar-day-{YYYY-MM-DD}` |
+| Calendar day loading | `loading` |
+| Calendar day title | `date-title` |
+| Calendar back button | `back-to-calendar` |
 | Calendar grid | `calendar-grid` |
 | Calendar events container | `calendar-events-{YYYY-MM-DD}` |
 | Calendar event item | `calendar-event-{event-id}` |
@@ -310,7 +357,7 @@ const pageText = await page.locator('.card-hover').allTextContents();
 
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
 - [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
-- [x] All E2E tests passing (110/110)
+- [x] All E2E tests passing (106/106)
 - [ ] Incremental re-ingest on file change (watchdog)
 - [ ] Incremental Evernote sync once that agent finishes
 - [ ] Re-tag notes with only structural tags (82 notes)
