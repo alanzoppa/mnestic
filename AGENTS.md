@@ -115,20 +115,20 @@ notes-browser/
 
 ### Backend
 ```bash
-cd ~/Codes/notes-browser/backend
+cd ~/Code/notes-browser/backend
 source .venv/bin/activate
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
 ### Frontend
 ```bash
-cd ~/Codes/notes-browser/frontend
+cd ~/Code/notes-browser/frontend
 npm run dev
 ```
 
 ### Ingest (first run or after updates)
 ```bash
-cd ~/Codes/notes-browser/backend
+cd ~/Code/notes-browser/backend
 source .venv/bin/activate
 python ingest.py --force          # Full re-ingest
 python ingest.py                  # Incremental (mtime-based)
@@ -137,19 +137,19 @@ python ingest.py --calendar-only  # Calendar only
 
 ### Sync notes from source
 ```bash
-python ~/Codes/notes-browser/scripts/sync_notes.py           # Incremental
-python ~/Codes/notes-browser/scripts/sync_notes.py --force    # Full re-copy
+python ~/Code/notes-browser/scripts/sync_notes.py           # Incremental
+python ~/Code/notes-browser/scripts/sync_notes.py --force    # Full re-copy
 ```
 
 ### Caption image-only notes
 ```bash
-cd ~/Codes/notes-browser/backend
+cd ~/Code/notes-browser/backend
 source .venv/bin/activate
 pip install Pillow  # Required for image resizing
 
-python ~/Codes/notes-browser/scripts/caption_images.py              # Caption all image-only notes
-python ~/Codes/notes-browser/scripts/caption_images.py --dry-run    # Preview what would be captioned
-python ~/Codes/notes-browser/scripts/caption_images.py --force      # Re-caption notes with existing captions
+python ~/Code/notes-browser/scripts/caption_images.py              # Caption all image-only notes
+python ~/Code/notes-browser/scripts/caption_images.py --dry-run    # Preview what would be captioned
+python ~/Code/notes-browser/scripts/caption_images.py --force      # Re-caption notes with existing captions
 ```
 
 ## API endpoints
@@ -177,6 +177,22 @@ None at the app level. Designed to run behind NGINX on a Tailscale tailnet. Tail
 
 All 110 E2E tests passing (105 mock, 5 live backend).
 
+### IMPORTANT: Working Directory
+
+**Always run tests from the project root**, not from `frontend/`:
+
+```bash
+# CORRECT - Run from project root
+cd ~/Code/notes-browser
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/
+
+# WRONG - Running from frontend/ breaks project detection
+cd ~/Code/notes-browser/frontend
+npx playwright test --project=mock  # Fails: "Project(s) 'mock' not found"
+```
+
+Playwright's config lookup is sensitive to working directory. The config file path must be explicit when running from the project root.
+
 ### Test Projects
 
 - `mock` — Runs against mocked API responses (fast, no backend required)
@@ -185,13 +201,13 @@ All 110 E2E tests passing (105 mock, 5 live backend).
 ### Running Tests
 
 ```bash
-cd ~/Codes/notes-browser/frontend
+cd ~/Code/notes-browser
 
 # All tests
-npx playwright test
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/
 
 # Just mock tests
-npx playwright test --project=mock
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/ --project=mock
 
 # Just smoke tests (live backend)
 npx playwright test --project=live
