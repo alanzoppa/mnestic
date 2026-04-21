@@ -17,29 +17,51 @@ const MOCK_PNG = Buffer.from(
   "base64"
 );
 
-export async function mockApiRoutes(page: Page) {
+export interface MockOptions {
+  debug?: boolean;
+}
+
+function createLogger(debug: boolean) {
+  return (msg: string) => {
+    if (debug) {
+      console.log(`[Mock:${process.pid}] ${msg}`);
+    }
+  };
+}
+
+export async function mockApiRoutes(page: Page, options?: MockOptions) {
+  const debug = options?.debug ?? process.env.DEBUG_TESTS === "true";
+  const log = createLogger(debug);
+
+  log("Setting up mock API routes...");
+
   // Stats
   await page.route("**/api/stats", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockStats),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Search
   await page.route("**/api/search", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockSearchResults),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   let currentNote = { ...mockNoteDetail };
 
   // Note detail - matches pattern /api/notes/{id}
   await page.route("**/api/notes/*", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     if (route.request().method() === "PATCH") {
       const body = route.request().postDataJSON();
       if (body?.title) {
@@ -63,6 +85,7 @@ export async function mockApiRoutes(page: Page) {
           content: currentNote.content,
         }),
       });
+      log(`← 200 PATCH ${route.request().url()}`);
       return;
     }
     await route.fulfill({
@@ -70,37 +93,45 @@ export async function mockApiRoutes(page: Page) {
       contentType: "application/json",
       body: JSON.stringify(currentNote),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Tags
   await page.route("**/api/tags", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockTags),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Timeline
   await page.route("**/api/timeline**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockTimeline),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Graph
   await page.route("**/api/graph**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockGraph),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Similar notes
   await page.route("**/api/similar/*", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -108,46 +139,60 @@ export async function mockApiRoutes(page: Page) {
         notes: mockNoteDetail.similar_notes,
       }),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
-  // Calendar events
-  await page.route("**/api/calendar**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(mockCalendarEvents),
-    });
-  });
+  // IMPORTANT: Order matters for calendar routes!
+  // More specific patterns must be registered before generic ones
 
-  // Calendar date
+  // Calendar date - specific pattern (must come before generic calendar patterns)
   await page.route("**/api/calendar/date/*", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockCalendarDate),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
-  // Calendar event detail
-  await page.route("**/api/calendar/*", async (route) => {
+  // Calendar event detail - matches /api/calendar/{event_id}
+  // Use a more specific pattern to avoid matching /api/calendar/date/*
+  await page.route("**/api/calendar/[!d]*", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockCalendarEvents.events[0]),
     });
+    log(`← 200 ${route.request().url()}`);
+  });
+
+  // Calendar events list - generic pattern (must come last)
+  await page.route("**/api/calendar**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockCalendarEvents),
+    });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Schema
   await page.route("**/api/schema", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockSchema),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // People
   await page.route("**/api/people", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -159,10 +204,12 @@ export async function mockApiRoutes(page: Page) {
         ],
       }),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Ingest
   await page.route("**/api/ingest", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -177,16 +224,21 @@ export async function mockApiRoutes(page: Page) {
         },
       }),
     });
+    log(`← 200 ${route.request().url()}`);
   });
 
   // Images - return a 1x1 transparent PNG
   await page.route("**/api/images/**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
     await route.fulfill({
       status: 200,
       contentType: "image/png",
       body: MOCK_PNG,
     });
+    log(`← 200 ${route.request().url()}`);
   });
+
+  log("Mock API routes setup complete");
 }
 
 export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) {
@@ -251,14 +303,7 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
     });
   });
 
-  await page.route("**/api/calendar**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: await mockWithDelay(mockCalendarEvents),
-    });
-  });
-
+  // Calendar date - specific pattern (must come before generic)
   await page.route("**/api/calendar/date/*", async (route) => {
     await route.fulfill({
       status: 200,
@@ -267,11 +312,21 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
     });
   });
 
-  await page.route("**/api/calendar/*", async (route) => {
+  // Calendar event detail - matches /api/calendar/{event_id} but not /api/calendar/date/*
+  await page.route("**/api/calendar/[!d]*", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: await mockWithDelay(mockCalendarEvents.events[0]),
+    });
+  });
+
+  // Calendar events list - generic pattern (must come last)
+  await page.route("**/api/calendar**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay(mockCalendarEvents),
     });
   });
 

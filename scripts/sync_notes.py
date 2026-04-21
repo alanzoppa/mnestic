@@ -157,7 +157,7 @@ def sync_notes(source, dest, force):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", default="/Users/alanzoppa/Desktop/notes/Apple Notes")
-    parser.add_argument("--dest", default="/Users/alanzoppa/Codes/notes-browser")
+    parser.add_argument("--dest", default="/Users/alanzoppa/Code/notes-browser")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 

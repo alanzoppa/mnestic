@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=alanzoppa
-WorkingDirectory=/Users/alanzoppa/Codes/notes-browser/backend
-ExecStart=/Users/alanzoppa/Codes/notes-browser/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/Users/alanzoppa/Code/notes-browser/backend
+ExecStart=/Users/alanzoppa/Code/notes-browser/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
 Restart=on-failure
 RestartSec=5
 

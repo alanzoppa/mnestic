@@ -246,18 +246,19 @@ export default function TagsPage() {
       </div>
 
       {/* Tag Cloud */}
-      <Card>
+      <Card data-testid="tag-cloud-card">
         <CardHeader>
-          <CardTitle>Tag Cloud</CardTitle>
+          <CardTitle data-testid="tag-cloud-title">Tag Cloud</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3 items-center justify-center py-6">
+          <div className="flex flex-wrap gap-3 items-center justify-center py-6" data-testid="tag-cloud">
             {filteredTags.slice(0, 60).map((tag) => (
               <button
                 key={tag.name}
+                data-testid={`tag-${tag.name}`}
                 onClick={() => router.push(`/tags/${tag.name}`)}
                 className="transition-all duration-200 hover:scale-110 group"
-                style={{ 
+                style={{
                   fontSize: `${Math.max(12, Math.min(32, 12 + (tag.count / Math.max(...tags.map(t => t.count))) * 20))}px`
                 }}
               >
@@ -271,13 +272,13 @@ export default function TagsPage() {
               </button>
             ))}
           </div>
-          
-          <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-zinc-800">
-            <div className="flex items-center gap-2">
+
+          <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-zinc-800" data-testid="tag-legend">
+            <div className="flex items-center gap-2" data-testid="structural-indicator">
               <Badge variant="blue">Structural</Badge>
               <span className="text-xs text-zinc-500">Folder/source tags</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="content-indicator">
               <Badge variant="green">Content</Badge>
               <span className="text-xs text-zinc-500">Topic-based tags</span>
             </div>

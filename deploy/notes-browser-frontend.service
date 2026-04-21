@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=alanzoppa
-WorkingDirectory=/Users/alanzoppa/Codes/notes-browser/frontend
-ExecStart=/Users/alanzoppa/Codes/notes-browser/frontend/node_modules/.bin/next start --port 3000
+WorkingDirectory=/Users/alanzoppa/Code/notes-browser/frontend
+ExecStart=/Users/alanzoppa/Code/notes-browser/frontend/node_modules/.bin/next start --port 3000
 Environment=NODE_ENV=production
 Restart=on-failure
 RestartSec=5

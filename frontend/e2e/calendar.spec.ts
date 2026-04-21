@@ -1,10 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { mockApiRoutes } from "./fixtures/mock-router";
+import { setupTest, setupTestSimple } from "./fixtures/test-helpers";
+
+// Global timeout for waiting for page to load
+const PAGE_LOAD_TIMEOUT = 20000;
 
 test.describe("Calendar Page", () => {
   test.beforeEach(async ({ page }) => {
-    await mockApiRoutes(page);
-    await page.goto("/calendar");
+    await setupTestSimple(page, "/calendar", { debug: true });
   });
 
   test("should display page title", async ({ page }) => {
@@ -34,7 +36,7 @@ test.describe("Calendar Page", () => {
     // Navigate directly to March 2024 where mock events exist
     // Note: Calendar component loads from current date, so we need to navigate to March 2024
     await page.goto("/calendar");
-    await page.waitForTimeout(100);
+    await page.waitForLoadState("networkidle");
 
     // Navigate to March 2024 by clicking prev month until we get there
     // Current date is ~2026, so we need to go back about 24 months
@@ -81,11 +83,16 @@ test.describe("Calendar Page", () => {
 
 test.describe("Calendar Day Page", () => {
   test.beforeEach(async ({ page }) => {
-    await mockApiRoutes(page);
-    await page.goto("/calendar/2024-03-15");
+    await setupTestSimple(page, "/calendar/2024-03-15", { debug: true });
   });
 
   test("should display date title", async ({ page }) => {
+    // Wait for loading to finish
+    await page.waitForFunction(() => {
+      const loadingEl = document.querySelector('p');
+      return !loadingEl || loadingEl.textContent !== 'Loading...';
+    }, { timeout: PAGE_LOAD_TIMEOUT });
+    
     // Match the formatted date shown in the UI
     const heading = page.getByRole('heading').filter({ hasText: /March|Friday/ }).first();
     await expect(heading).toBeVisible();
@@ -94,10 +101,18 @@ test.describe("Calendar Day Page", () => {
   test("should have back button to calendar", async ({ page }) => {
     await expect(page.locator("text=Back to Calendar")).toBeVisible();
     await page.locator("text=Back to Calendar").click();
+    await page.waitForResponse("**/api/calendar**");
+    await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/calendar$/);
   });
 
   test("should display events section", async ({ page }) => {
+    // Wait for loading to finish
+    await page.waitForFunction(() => {
+      const loadingEl = document.querySelector('p');
+      return !loadingEl || loadingEl.textContent !== 'Loading...';
+    }, { timeout: PAGE_LOAD_TIMEOUT });
+    
     // Look for events specifically in the events section
     const eventsSection = page.locator("section").filter({ has: page.locator("h2:has-text('Events')") }).first();
     await expect(eventsSection.locator("h2:has-text('Events')")).toBeVisible();
@@ -106,12 +121,24 @@ test.describe("Calendar Day Page", () => {
   });
 
   test("should display notes section", async ({ page }) => {
+    // Wait for loading to finish
+    await page.waitForFunction(() => {
+      const loadingEl = document.querySelector('p');
+      return !loadingEl || loadingEl.textContent !== 'Loading...';
+    }, { timeout: PAGE_LOAD_TIMEOUT });
+    
     const notesSection = page.locator("section").filter({ has: page.locator("h2:has-text('Notes')") }).first();
     await expect(notesSection.locator("h2:has-text('Notes')")).toBeVisible();
     await expect(notesSection.locator("h3:has-text('1:1 with Alice - March 2024')")).toBeVisible();
   });
 
   test("should navigate to note from day view", async ({ page }) => {
+    // Wait for loading to finish
+    await page.waitForFunction(() => {
+      const loadingEl = document.querySelector('p');
+      return !loadingEl || loadingEl.textContent !== 'Loading...';
+    }, { timeout: PAGE_LOAD_TIMEOUT });
+    
     await page.locator("h3:has-text('1:1 with Alice - March 2024')").click();
     await expect(page).toHaveURL(/\/notes\/note-001/);
   });
