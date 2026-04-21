@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import os
 import re
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import frontmatter
 from fastapi import FastAPI, HTTPException
@@ -67,7 +69,7 @@ def _build_source_id_cache() -> None:
             continue
 
 
-def find_note_file(source_id: str) -> str | None:
+def find_note_file(source_id: str) -> Optional[str]:
     _build_source_id_cache()
     filename = _source_id_to_file.get(source_id)
     if filename:
@@ -116,10 +118,10 @@ class SearchRequest(BaseModel):
 
 
 class UpdateNoteRequest(BaseModel):
-    title: str | None = None
-    content: str | None = None
-    tags: list[str] | None = None
-    participants: list[str] | None = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[list[str]] = None
+    participants: Optional[list[str]] = None
 
 
 class SearchResult(BaseModel):
@@ -449,7 +451,7 @@ async def get_tags() -> dict:
 
 
 @app.get("/api/timeline")
-async def get_timeline(group_by: str = "month", tag: str | None = None) -> dict:
+async def get_timeline(group_by: str = "month", tag: Optional[str] = None) -> dict:
     periods = store.get_timeline(group_by=group_by, tag=tag)
     return {"periods": periods}
 
@@ -498,7 +500,7 @@ async def ingest(body: IngestRequest) -> dict:
 
 
 @app.get("/api/graph")
-async def get_graph(tag: str | None = None, folder: str | None = None, n_neighbors: int = 3, threshold: float = 0.75) -> dict:
+async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_neighbors: int = 3, threshold: float = 0.75) -> dict:
     where_clauses = []
     if tag:
         where_clauses.append({"tags": {"$contains": tag}})
@@ -633,7 +635,7 @@ async def get_stats() -> dict:
 
 @app.get("/api/calendar")
 async def get_calendar_events(
-    start_date: str | None = None, end_date: str | None = None, attendee: str | None = None
+    start_date: Optional[str] = None, end_date: Optional[str] = None, attendee: Optional[str] = None
 ) -> dict:
     cal = get_calendar()
     events = cal.process_events()
