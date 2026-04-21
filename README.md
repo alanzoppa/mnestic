@@ -12,127 +12,112 @@ Private notes browser with semantic search for ~2,200 markdown notes with YAML f
 - **Similarity graph** for visual note relationships
 - **Markdown rendering** with image support and sidebar attachments
 
-## Quick Start
+## Installation
 
 ### Prerequisites
 
-- Python 3.10+
-- Node.js 20+
-- Ollama (for embeddings)
-- Git
+- **Python 3.10+** — `python3 --version`
+- **Node.js 20+** — `node --version`
+- **Ollama** — install from [ollama.com](https://ollama.com), then `ollama serve` in a terminal
 
-### 1. Clone and Setup
+### Step 1 — Install dependencies
 
 ```bash
 git clone git@github.com:alanzoppa/notes-browser.git
 cd notes-browser
 
-# Backend setup
+# Backend
 python3 -m venv backend/.venv
 source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
 
-# Frontend setup
-cd frontend
-npm install
+# Frontend
+cd frontend && npm install && cd ..
+```
+
+### Step 2 — Pull the embedding model
+
+```bash
+ollama pull nomic-embed-text-v2-moe
+```
+
+This downloads ~900 MB. Only needed once. Make sure `ollama serve` is running first.
+
+### Step 3 — Add your notes
+
+Place markdown files directly in the `notes/` directory (flat — no subdirectories).
+
+Each note must have YAML frontmatter with these fields:
+
+```yaml
+---
+title: "Note title"
+folder: "Folder Name"       # used for filtering/grouping
+created: 2025-11-03T09:17:22-08:00
+modified: 2025-11-05T14:33:01-08:00
+source: "Apple Notes"       # or "Evernote", "Meeting Summaries", etc.
+source_id: "unique-id"      # any unique string per note
+tags:
+  - tag1
+  - tag2
+participants:               # optional, for meeting notes
+  - "Person Name"
+---
+```
+
+See `example-note.md` for a complete example.
+
+To migrate notes from a different format, see `scripts/migrate_meetings.py` for an example migration script.
+
+### Step 4 — Index your notes
+
+With Ollama running and the embedding model pulled:
+
+```bash
+cd backend
+source .venv/bin/activate
+python3 -c "from ingest import reindex_all; reindex_all()"
 cd ..
 ```
 
-### 2. Configure Data Sources
+This embeds all notes in `notes/` into ChromaDB. Takes ~1–5 minutes depending on note count. Progress prints to stdout.
 
-Copy your notes and calendar export to the project:
+### Step 5 — Start the services
 
+Open **two terminals**:
+
+**Terminal 1 — Backend (FastAPI on port 8000):**
 ```bash
-# Notes should be in the Apple Notes format (see AGENTS.md for format details)
-# Place markdown files in: notes/
-# Place images in: images/
-
-# Calendar export (optional, for calendar integration)
-# Place at: data/calendar-export.json
-```
-
-### 3. Sync Notes
-
-Normalize dates and copy notes/images to the project:
-
-```bash
-# Update SOURCE_DIR and DEST_DIR in scripts/sync_notes.py
-python3 scripts/sync_notes.py
-```
-
-### 4. Start Ollama
-
-```bash
-# Pull the embedding model
-ollama pull nomic-embed-text-v2-moe
-
-# Ensure Ollama is running
-ollama serve
-```
-
-### 5. Index Notes
-
-```bash
-cd backend
-
-# Full re-index (clears existing data)
-python3 -c "from ingest import reindex_all; reindex_all()"
-
-# Or via API once server is running
-curl -X POST http://localhost:8000/api/ingest
-```
-
-### 6. Caption Image-Only Notes (Optional)
-
-Generate AI descriptions for notes containing only images (no text):
-
-```bash
-# Install Pillow for image resizing
-pip install Pillow
-
-# Caption all image-only notes
-python3 scripts/caption_images.py
-
-# Preview without modifying files
-python3 scripts/caption_images.py --dry-run
-
-# Re-caption notes with existing captions
-python3 scripts/caption_images.py --force
-```
-
-This sends images to Ollama Cloud's `kimi-k2.5:cloud` model and prepends captions as `[AI caption]: <description>` before each image. After captioning, re-run the ingest step to update embeddings.
-
-### 7. Run Tests
-
-```bash
-# Backend tests
-cd backend
-pytest tests/ -v
-
-# Run specific test file
-pytest tests/test_api.py -v
-pytest tests/test_ingest.py -v
-
-# With coverage
-pytest tests/ --cov=. --cov-report=html
-```
-
-### 8. Start Services
-
-In separate terminals:
-
-```bash
-# Terminal 1: Backend
 cd backend
 source .venv/bin/activate
 uvicorn main:app --reload --port 8000
+```
 
-# Terminal 2: Frontend
+**Terminal 2 — Frontend (Next.js on port 3000):**
+```bash
 cd frontend
 npm run dev
 ```
 
-Open http://localhost:3000
+Open **http://localhost:3000** in your browser.
+
+> **Note:** Ollama must also be running (`ollama serve` in a third terminal, or as a background service).
+
+### Caption Image-Only Notes (Optional)
+
+Generate AI descriptions for notes that contain only images:
+
+```bash
+cd backend
+source .venv/bin/activate
+pip install Pillow
+
+python3 scripts/caption_images.py          # caption all image-only notes
+python3 scripts/caption_images.py --dry-run   # preview without modifying
+python3 scripts/caption_images.py --force     # re-caption existing captions
+```
+
+Uses Ollama Cloud's `kimi-k2.5:cloud` model. Re-run the Step 4 ingest after captioning to update embeddings.
 
 ## Development
 

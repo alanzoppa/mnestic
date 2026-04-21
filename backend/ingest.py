@@ -116,8 +116,10 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 participants = [p.strip() for p in participants.split(",") if p.strip()]
             participants_str = ",".join(participants) if participants else ""
 
-            created_str = fm.get("created", "")
-            modified_str = fm.get("modified", "")
+            created_val = fm.get("created", "")
+            created_str = created_val.isoformat() if hasattr(created_val, "isoformat") else (str(created_val) if created_val else "")
+            modified_val = fm.get("modified", "")
+            modified_str = modified_val.isoformat() if hasattr(modified_val, "isoformat") else (str(modified_val) if modified_val else "")
             source = fm.get("source", "Apple Notes")
 
             calendar_context = get_calendar_context(participants, created_str, calendar_events)
