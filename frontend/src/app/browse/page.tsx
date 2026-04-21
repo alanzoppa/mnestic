@@ -46,7 +46,7 @@ export default function BrowsePage() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      search(''),
+      search('', {}, 500),
       getSchema().catch(() => null)
     ]).then(([res, schemaData]) => {
       setAllResults(res.results.filter((r) => r.type === 'note'))
