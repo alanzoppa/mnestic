@@ -121,9 +121,17 @@ export default function BrowsePage() {
     })
   }, [allResults, sourceFilter, folderFilter, tagFilter, debouncedSearch, showFavoritesOnly, isFav])
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const aDate = a.metadata?.created || ''
+      const bDate = b.metadata?.created || ''
+      return bDate.localeCompare(aDate)
+    })
+  }, [filtered])
+
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
   const start = (currentPage - 1) * PAGE_SIZE
-  const pageResults = filtered.slice(start, start + PAGE_SIZE)
+  const pageResults = sorted.slice(start, start + PAGE_SIZE)
 
   const goToPage = (page: number) => {
     setCurrentPage(page)

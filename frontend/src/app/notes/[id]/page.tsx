@@ -38,7 +38,23 @@ function extractImages(content: string): { content: string; images: ExtractedIma
   const images: ExtractedImage[] = []
   let cleanedContent = content
 
-  // Pattern 1: ![alt](url) - markdown images
+  // Pattern 0: Reference definitions [ref]: <url> — extract data: URIs (embedded images)
+  const refDefinitions: Record<string, string> = {}
+  cleanedContent = cleanedContent.replace(/^\[([^\]]+)\]:\s*<(data:[^>]+)>\s*$/gm, (_, ref, url) => {
+    refDefinitions[ref.toLowerCase()] = url
+    return ''
+  })
+
+  // Pattern 0b: Reference-style images ![alt][ref] using extracted definitions
+  cleanedContent = cleanedContent.replace(/!\[([^\]]*)\]\[([^\]]+)\]/g, (match, alt, ref) => {
+    const url = refDefinitions[ref.toLowerCase()]
+    if (url) {
+      images.push({ src: url, alt, type: 'inline', original: match })
+    }
+    return ''
+  })
+
+  // Pattern 1: ![alt](url) - inline markdown images
   const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
   cleanedContent = cleanedContent.replace(imgRegex, (match, alt, src) => {
     const normalized = src.replace(/^\.\.\//, '').replace(/^\.\//, '')
@@ -70,12 +86,16 @@ function extractImages(content: string): { content: string; images: ExtractedIma
 }
 
 function getImageUrl(src: string): string {
-  if (src.startsWith('http')) return src
+  if (src.startsWith('http') || src.startsWith('data:')) return src
   return `/api/images/${encodeURIComponent(src)}`
 }
 
 // Custom components for ReactMarkdown (no images - they're extracted)
 const MarkdownComponents = {
+  img: ({ src, alt }: { src?: string; alt?: string }) => {
+    if (!src) return null
+    return <img src={src} alt={alt || ''} loading="lazy" className="max-w-full h-auto rounded" />
+  },
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
     return <a href={href} className="text-blue-400 hover:text-blue-300 transition-colors">{children}</a>
   },
