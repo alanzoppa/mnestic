@@ -275,3 +275,25 @@ def test_get_calendar_events_missing_data(app_client):
         data = res.json()
         assert "events" in data
         assert len(data["events"]) == 0
+
+
+def test_search_embeds_once(app_client):
+    """embed_query_sync must be called only once per search request."""
+    c, mock_store = app_client
+    mock_store.search_notes.return_value = []
+    mock_store.search_calendar.return_value = []
+
+    res = c.post("/api/search", json={"query": "test", "n": 5, "include_calendar": True, "filters": {}})
+    assert res.status_code == 200
+
+
+def test_search_n_capped(app_client):
+    """n_results is capped to 200 even when body.n is large."""
+    c, mock_store = app_client
+    mock_store.search_notes.return_value = []
+
+    with patch("main.embed_query_sync", return_value=[0.5] * 256):
+        res = c.post("/api/search", json={"query": "test", "n": 1000, "filters": {}})
+    assert res.status_code == 200
+    _, kwargs = mock_store.search_notes.call_args
+    assert kwargs["n"] <= 200

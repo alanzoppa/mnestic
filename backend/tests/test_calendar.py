@@ -147,3 +147,21 @@ def test_get_events_for_date_matches_notes(tmp_store, sample_calendar):
     date_notes = tmp_store._notes.get(where={"date": "2019-12-09"}, include=["metadatas"])
     assert len(date_notes["ids"]) == 1
     assert date_notes["metadatas"][0]["title"] == "Note A"
+
+
+def test_process_events_cached(sample_calendar):
+    """process_events caches its output; subsequent calls return the same list."""
+    calendar_path, registry_path = sample_calendar
+    cal = CalendarProcessor(calendar_path, registry_path)
+    cal.load()
+
+    first = cal.process_events()
+    second = cal.process_events()
+    assert first is second
+    assert len(first) == 3
+
+    # After load(), cache should be invalidated
+    cal.load()
+    third = cal.process_events()
+    assert third is not first
+    assert len(third) == 3

@@ -61,23 +61,23 @@
 
 ## Phase 3: Performance
 
-### 9. Duplicate embedding computation in search
+### [x] 9. Duplicate embedding computation in search
 - **File:** `backend/main.py:161-192`
 - **Severity:** Medium
 - **Problem:** When `body.query.strip()` and `body.include_calendar` are both true, `embed_query_sync(body.query)` is called twice — once for notes search, once for calendar subset search. Each call hits Ollama's embedding API.
-- **Fix:** Compute the embedding once at the top of the function and reuse it.
+- **Fix:** Compute embedding once at top of `search()` body and reuse variable. Changed calendar branch to check `query_embedding is not None`.
 
-### 10. Unbounded `n_results` multiplication
+### [x] 10. Unbounded `n_results` multiplication
 - **File:** `backend/main.py:162-163`
 - **Severity:** Medium
 - **Problem:** `note_results = store.search_notes(note_embedding, n=body.n * 5)` with no upper bound. If client sends `n=1000`, server fetches 5000 results into memory.
-- **Fix:** Cap `n_results` to a reasonable maximum (e.g. `min(n * 5, 200)`).
+- **Fix:** Added `min(n_results, 200)` cap.
 
-### 11. Calendar rebuilds on every request
+### [x] 11. Calendar rebuilds on every request
 - **Files:** `backend/main.py:641-724`, `backend/calendar_data.py:56-94`
 - **Severity:** Medium
 - **Problem:** Every calendar endpoint call triggers `cal.process_events()` which re-normalizes all 2324 events into a list with no caching. Also `main.py` redundantly calls `get_calendar()` which returns a processor but does not cache its processed output.
-- **Fix:** Cache processed events inside `CalendarProcessor` after first `process_events()` call; invalidate cache in `load()`.
+- **Fix:** Added `_cached_events` attribute to `CalendarProcessor`; `process_events()` returns cache if present. `load()` invalidates cache.
 
 ### 12. O(n×m) event filtering in calendar render
 - **File:** `frontend/src/app/calendar/page.tsx:71-82`

@@ -21,6 +21,7 @@ class CalendarProcessor:
         self._registry_path = registry_path
         self._events: list[dict] = []
         self._alias_map: dict[str, str] = {}
+        self._cached_events: list[dict] | None = None
 
     def load(self) -> None:
         try:
@@ -29,6 +30,8 @@ class CalendarProcessor:
             self._events = calendar_data.get("events", [])
         except (FileNotFoundError, json.JSONDecodeError, PermissionError):
             self._events = []
+
+        self._cached_events = None
 
         try:
             registry: dict = {}
@@ -60,6 +63,9 @@ class CalendarProcessor:
         return normalized
 
     def process_events(self) -> list[dict]:
+        if self._cached_events is not None:
+            return self._cached_events
+
         processed = []
         for event in self._events:
             start_val = event.get("start", {})
@@ -97,6 +103,7 @@ class CalendarProcessor:
                     "date": date_str,
                 }
             )
+        self._cached_events = processed
         return processed
 
     def get_events_for_date(self, date: str) -> list[dict]:
