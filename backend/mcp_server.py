@@ -241,6 +241,10 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             limit: Maximum number of similar notes (default 5).
         """
         similar = store.get_similar(note_id, n=limit + 5)
+        if not similar:
+            note = store.get_note_by_note_id(note_id)
+            if note:
+                similar = store.get_similar(note["id"], n=limit + 5)
         seen: set[str] = set()
         notes: list[dict[str, Any]] = []
         for s in similar:

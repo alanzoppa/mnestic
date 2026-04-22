@@ -219,16 +219,17 @@ def test_get_calendar_events_empty_with_none_processor(populated_store):
 
 def test_find_similar_notes(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
+    # "nid1" is a logical note_id (not the raw chunk ID), so this exercises
+    # the resolution fallback that maps logical IDs to underlying chunk IDs.
     result = _run(mcp.call_tool("find_similar_notes", {"note_id": "nid1", "limit": 3}))
 
     text = _tool_text(result)
     assert text is not None
     data = json.loads(text)
-    assert len(data["notes"]) <= 3
+    assert len(data["notes"]) == 3
     ids = {n["id"] for n in data["notes"]}
     assert "nid1" not in ids
-    if data["notes"]:
-        assert "score" in data["notes"][0]
+    assert all("score" in n for n in data["notes"])
 
 
 def test_resource_stats(populated_store):
