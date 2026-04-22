@@ -35,6 +35,28 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
 
   log("Setting up mock API routes...");
 
+  // Stats
+  await page.route("**/api/stats", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockStats),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
+  // Search
+  await page.route("**/api/search", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockSearchResults),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
   // Mutable per-call state — avoids cross-test contamination in parallel runs
   let currentNote = { ...mockNoteDetail };
 
