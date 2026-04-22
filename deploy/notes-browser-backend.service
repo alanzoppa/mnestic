@@ -1,12 +1,17 @@
+# IMPORTANT: Customize User and paths for your host before installing.
+# The default assumes the project is at ~/Code/notes-browser.
+# If your username or project path differs, edit WorkingDirectory and ExecStart.
+
 [Unit]
 Description=Notes Browser FastAPI Backend
 After=network.target
 
 [Service]
 Type=simple
+# Change to your username:
 User=alanzoppa
-WorkingDirectory=/Users/alanzoppa/Code/notes-browser/backend
-ExecStart=/Users/alanzoppa/Code/notes-browser/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=%h/Code/notes-browser/backend
+ExecStart=%h/Code/notes-browser/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
 Restart=on-failure
 RestartSec=5
 

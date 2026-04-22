@@ -1,12 +1,17 @@
+# IMPORTANT: Customize User and paths for your host before installing.
+# The default assumes the project is at ~/Code/notes-browser.
+# If your username or project path differs, edit WorkingDirectory and ExecStart.
+
 [Unit]
 Description=Notes Browser Next.js Frontend
 After=network.target
 
 [Service]
 Type=simple
+# Change to your username:
 User=alanzoppa
-WorkingDirectory=/Users/alanzoppa/Code/notes-browser/frontend
-ExecStart=/Users/alanzoppa/Code/notes-browser/frontend/node_modules/.bin/next start --port 3000
+WorkingDirectory=%h/Code/notes-browser/frontend
+ExecStart=%h/Code/notes-browser/frontend/node_modules/.bin/next start --port 3000
 Environment=NODE_ENV=production
 Restart=on-failure
 RestartSec=5

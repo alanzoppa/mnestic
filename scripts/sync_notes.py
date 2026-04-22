@@ -156,10 +156,17 @@ def sync_notes(source, dest, force):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", default="/Users/alanzoppa/Desktop/notes/Apple Notes")
-    parser.add_argument("--dest", default="/Users/alanzoppa/Code/notes-browser")
+    parser.add_argument("source", nargs="?", help="Source directory (default: first arg or ~/Desktop/notes/Apple Notes)")
+    parser.add_argument("--dest", default=".", help="Destination directory (default: current dir)")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
+
+    if not args.source:
+        default_source = os.path.join(os.path.expanduser("~"), "Desktop", "notes", "Apple Notes")
+        if os.path.exists(default_source):
+            args.source = default_source
+        else:
+            parser.error("Source directory required (or set default in script)")
 
     sync_notes(args.source, args.dest, args.force)
 
