@@ -53,13 +53,17 @@ export default function SearchPage() {
 
   // Cache note titles for autocomplete
   useEffect(() => {
+    let cancelled = false
     search('').then(res => {
-      setNoteTitles(res.results.map(r => ({
-        id: r.id,
-        title: r.title,
-        note_id: r.note_id || r.metadata?.note_id,
-      })))
+      if (!cancelled) {
+        setNoteTitles(res.results.map(r => ({
+          id: r.id,
+          title: r.title,
+          note_id: r.note_id || r.metadata?.note_id,
+        })))
+      }
     }).catch(() => {})
+    return () => { cancelled = true }
   }, [])
 
   const doSearch = async () => {

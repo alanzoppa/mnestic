@@ -41,19 +41,19 @@
 
 ## Phase 2: Frontend Stability
 
-### 6. Hydration mismatch in Timeline skeleton
+### [x] 6. Hydration mismatch in Timeline skeleton
 - **File:** `frontend/src/app/timeline/page.tsx:168-175`
 - **Severity:** Critical
 - **Problem:** Inline styles use `Math.random()` for skeleton bar heights. AGENTS.md already documents this as causing infinite re-mount loops. Same issue may exist in other pages.
 - **Fix:** Replace with deterministic height array (like `CHART_BAR_HEIGHTS` in `Skeleton.tsx`).
 
-### 7. Race conditions across async effects
+### [x] 7. Race conditions across async effects
 - **Files:** `frontend/src/app/notes/[id]/page.tsx`, `search/page.tsx`, `graph/page.tsx`, `calendar/page.tsx`
 - **Severity:** High
 - **Problem:** Async `useEffect` hooks call `setData()` and `setLoading(false)` without cleanup guards. Rapid navigation away from a page causes state updates on unmounted components. Most effects also lack `try/finally`, so `setLoading(false)` is never reached on error.
 - **Fix:** Add `AbortController` or boolean cancelled guard in every async effect. Wrap all API calls in `try/finally` to ensure loading state resets. For search, prevent stale results by tracking a request counter or aborting previous fetch.
 
-### 8. `AreaChartComponent` renders `<LineChart>`
+### [x] 8. `AreaChartComponent` renders `<LineChart>`
 - **File:** `frontend/src/components/charts/LineCharts.tsx:98-160`
 - **Severity:** High
 - **Problem:** Component is named `AreaChartComponent` but uses `<LineChart>` and `<Line>`. The `fill` prop on `<Line>` does not render a filled area.
@@ -79,13 +79,13 @@
 - **Problem:** Every calendar endpoint call triggers `cal.process_events()` which re-normalizes all 2324 events into a list with no caching. Also `main.py` redundantly calls `get_calendar()` which returns a processor but does not cache its processed output.
 - **Fix:** Added `_cached_events` attribute to `CalendarProcessor`; `process_events()` returns cache if present. `load()` invalidates cache.
 
-### 12. O(n×m) event filtering in calendar render
+### [x] 12. O(n×m) event filtering in calendar render
 - **File:** `frontend/src/app/calendar/page.tsx:71-82`
 - **Severity:** Medium
 - **Problem:** `getEventsForDay(day)` re-filters all 2324 events for every day cell on every render. With 31–42 cells this is ~80K string comparisons per render.
 - **Fix:** Pre-index events by date into a `Map<string, CalendarEvent[]>` via `useMemo` keyed on `[events, attendeeFilter]`.
 
-### 13. Tag cloud redundant max scans
+### [x] 13. Tag cloud redundant max scans
 - **File:** `frontend/src/app/tags/page.tsx:255-264`
 - **Severity:** Medium
 - **Problem:** `Math.max(...tags.map(t => t.count))` is computed inside `.map()`, so for 60 tags it does 60 full-array scans.
@@ -131,13 +131,13 @@
 - **Problem:** `let currentNote = { ...mockNoteDetail };` is module-level mutable state shared across all Playwright workers. Parallel tests that PATCH the note cause cross-test contamination.
 - **Fix:** Reset the state in a `test.beforeEach` hook, or scope per test via fixture factory.
 
-### 20. Vacuous E2E assertion
+### [x] 20. Vacuous E2E assertion
 - **File:** `frontend/e2e/browse.spec.ts:65`
 - **Severity:** High
 - **Problem:** `expect(paginationExists || true).toBe(true)` always passes regardless of pagination DOM state.
 - **Fix:** Remove the `|| true` and assert on actual element visibility.
 
-### 21. Flaky `waitForLoadState("networkidle")`
+### [x] 21. Flaky `waitForLoadState("networkidle")`
 - **File:** `frontend/e2e/nav.spec.ts`
 - **Severity:** Medium
 - **Problem:** AGENTS.md explicitly warns against this — Next.js dev server never reaches idle due to HMR/WebSocket connections.

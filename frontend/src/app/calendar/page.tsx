@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getCalendarEvents } from "@/lib/api";
 
@@ -32,18 +32,28 @@ export default function CalendarPage() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const loadEvents = useCallback(async () => {
+  const loadEvents = useCallback(() => {
+    let cancelled = false;
     setLoading(true);
     const startStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const lastDay = new Date(year, month + 1, 0).getDate();
     const endStr = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
-    const result = await getCalendarEvents(startStr, endStr);
-    setEvents(result.events);
-    setLoading(false);
+    getCalendarEvents(startStr, endStr)
+      .then((result) => {
+        if (!cancelled) setEvents(result.events);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true };
   }, [year, month]);
 
   useEffect(() => {
-    loadEvents();
+    const cancel = loadEvents();
+    return cancel;
   }, [loadEvents]);
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
@@ -68,17 +78,25 @@ export default function CalendarPage() {
     return days;
   };
 
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((event) => {
+      const eventDate = event.date || event.start.split("T")[0];
+      if (!eventDate) return;
+      if (attendeeFilter) {
+        const attendees = event.attendees || "";
+        if (!attendees.toLowerCase().includes(attendeeFilter.toLowerCase())) return;
+      }
+      const existing = map.get(eventDate) || [];
+      existing.push(event);
+      map.set(eventDate, existing);
+    });
+    return map;
+  }, [events, attendeeFilter]);
+
   const getEventsForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return events.filter(event => {
-      if (!event.date && !event.start) return false;
-      const eventDate = event.date || event.start.split("T")[0];
-      if (eventDate !== dateStr) return false;
-      if (attendeeFilter && !event.attendees?.toLowerCase().includes(attendeeFilter.toLowerCase())) {
-        return false;
-      }
-      return true;
-    });
+    return eventsByDate.get(dateStr) || [];
   };
 
   const days = getDaysInMonth();

@@ -11,8 +11,6 @@ test.describe("Navigation", () => {
 
   test("should display all nav links", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
-
     const nav = page.locator("nav");
     await expect(nav).toBeVisible();
     // Use getByRole to avoid matching "Archive Browser" in logo
@@ -29,22 +27,18 @@ test.describe("Navigation", () => {
     const nav = page.locator("nav");
     
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     // Active state uses gradient background with blue colors
     await expect(nav.getByRole("link", { name: "Dashboard", exact: true })).toHaveClass(/from-blue-600/);
 
     await page.goto("/search");
-    await page.waitForLoadState("networkidle");
     await expect(nav.getByRole("link", { name: "Search", exact: true })).toHaveClass(/from-blue-600/);
 
     await page.goto("/browse");
-    await page.waitForLoadState("networkidle");
     await expect(nav.getByRole("link", { name: "Browse", exact: true })).toHaveClass(/from-blue-600/);
   });
 
   test("should navigate to Search page", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     const nav = page.locator("nav");
     await nav.getByRole("link", { name: "Search", exact: true }).click();
     await expect(page).toHaveURL(/\/search/);
@@ -53,7 +47,6 @@ test.describe("Navigation", () => {
 
   test("should navigate to Browse page", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     const nav = page.locator("nav");
     await nav.getByRole("link", { name: "Browse", exact: true }).click();
     await expect(page).toHaveURL(/\/browse/);
@@ -62,7 +55,6 @@ test.describe("Navigation", () => {
 
   test("should navigate to Tags page", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     const nav = page.locator("nav");
     await nav.getByRole("link", { name: "Tags", exact: true }).click();
     // Wait for loading to finish
@@ -76,7 +68,6 @@ test.describe("Navigation", () => {
 
   test("should navigate to Timeline page", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     const nav = page.locator("nav");
     await nav.getByRole("link", { name: "Timeline", exact: true }).click();
     await expect(page).toHaveURL(/\/timeline/);
@@ -85,7 +76,6 @@ test.describe("Navigation", () => {
 
   test("should navigate to Calendar page", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     const nav = page.locator("nav");
     await nav.getByRole("link", { name: "Calendar", exact: true }).click();
     await expect(page).toHaveURL(/\/calendar/);
@@ -94,7 +84,6 @@ test.describe("Navigation", () => {
 
   test("should navigate to Graph page", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
     const nav = page.locator("nav");
     await nav.getByRole("link", { name: "Graph", exact: true }).click();
     await expect(page).toHaveURL(/\/graph/);
@@ -104,7 +93,6 @@ test.describe("Navigation", () => {
   test("should persist across page navigations", async ({ page }) => {
     const nav = page.locator("nav");
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
 
     // Navigate to Tags page
     await nav.getByRole("link", { name: "Tags", exact: true }).click();
@@ -117,12 +105,10 @@ test.describe("Navigation", () => {
 
     // Navigate to Calendar page
     await nav.getByRole("link", { name: "Calendar", exact: true }).click();
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
 
     // Navigate to Dashboard
     await nav.getByRole("link", { name: "Dashboard", exact: true }).click();
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole('heading', { name: 'Notes Browser' })).toBeVisible();
   });
 });

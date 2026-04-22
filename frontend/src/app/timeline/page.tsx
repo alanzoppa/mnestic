@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTimeline, getTags, type TimelinePeriod, type TagInfo } from '@/lib/api';
+import { getTimeline, type TimelinePeriod } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Select } from '@/components/ui/Input';
@@ -51,6 +51,8 @@ const CHART_TYPE_OPTIONS = [
   { value: 'area', label: 'Area Chart' },
 ];
 
+const CHART_BAR_HEIGHTS = [65, 42, 78, 55, 90, 35, 72, 48, 85, 38, 60, 50];
+
 export default function TimelinePage() {
   const router = useRouter();
   const [data, setData] = useState<TimelinePeriod[]>([]);
@@ -60,15 +62,25 @@ export default function TimelinePage() {
   const [chartType, setChartType] = useState('bar');
   const [selectedBar, setSelectedBar] = useState<TimelinePeriod | null>(null);
 
-  const loadTimeline = useCallback(async () => {
+  const loadTimeline = useCallback(() => {
+    let cancelled = false;
     setLoading(true);
-    const result = await getTimeline(groupBy, tagFilter || undefined);
-    setData(result.periods);
-    setLoading(false);
+    getTimeline(groupBy, tagFilter || undefined)
+      .then((result) => {
+        if (!cancelled) setData(result.periods);
+      })
+      .catch(() => {
+        if (!cancelled) setData([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true };
   }, [tagFilter, groupBy]);
 
   useEffect(() => {
-    loadTimeline();
+    const cancel = loadTimeline();
+    return cancel;
   }, [loadTimeline]);
 
   const totalCount = data.reduce((sum, d) => sum + d.count, 0);
@@ -165,11 +177,11 @@ export default function TimelinePage() {
         <CardContent>
           {loading ? (
             <div className="h-[400px] flex items-end gap-2">
-              {Array.from({ length: 12 }, (_, i) => (
+              {CHART_BAR_HEIGHTS.map((h, i) => (
                 <div
                   key={i}
                   className="flex-1 animate-pulse bg-zinc-800 rounded-t"
-                  style={{ height: `${20 + Math.random() * 80}%` }}
+                  style={{ height: `${h}%` }}
                 />
               ))}
             </div>

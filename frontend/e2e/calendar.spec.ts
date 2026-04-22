@@ -37,8 +37,8 @@ test("should display calendar events on days", async ({ page }) => {
       await page.locator('[data-testid="month-nav-prev"]').click();
       await expect(monthDisplay).not.toHaveText(monthText!, { timeout: 3000 });
     }
-    // Verify events show on the day cells
-    await expect(page.locator('[data-testid^="calendar-events-"]').first()).toBeVisible();
+    // Verify events show on the day cells (look for individual event pills, not containers which may be empty)
+    await expect(page.locator('[data-testid^="calendar-event-"]').first()).toBeVisible();
   });
 
   test("should navigate to day view on day click", async ({ page }) => {

@@ -92,8 +92,8 @@ function getImageUrl(src: string): string {
 
 // Custom components for ReactMarkdown (no images - they're extracted)
 const MarkdownComponents = {
-  img: ({ src, alt }: { src?: string; alt?: string }) => {
-    if (!src) return null
+  img: ({ src, alt }: { src?: string | Blob; alt?: string }) => {
+    if (!src || typeof src !== 'string') return null
     return <img src={src} alt={alt || ''} loading="lazy" className="max-w-full h-auto rounded" />
   },
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {

@@ -36,17 +36,23 @@ export default function GraphPage() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError('')
     getGraph(selectedTag || undefined, undefined, threshold)
       .then(d => {
-        setData(d)
-        setLoading(false)
+        if (!cancelled) {
+          setData(d)
+          setLoading(false)
+        }
       })
       .catch((e: any) => {
-        setError(e.message || 'Failed to load graph')
-        setLoading(false)
+        if (!cancelled) {
+          setError(e.message || 'Failed to load graph')
+          setLoading(false)
+        }
       })
+    return () => { cancelled = true }
   }, [selectedTag, threshold])
 
   useEffect(() => {

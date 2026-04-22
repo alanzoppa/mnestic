@@ -9,6 +9,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  AreaChart,
+  Area,
 } from 'recharts';
 
 interface LineChartData {
@@ -101,7 +103,7 @@ export function AreaChartComponent({
         <h3 className="text-lg font-semibold text-zinc-100 mb-4">{title}</h3>
       )}
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data}>
+        <AreaChart data={data}>
           <defs>
             {lines.map((line) => (
               <linearGradient
@@ -142,7 +144,7 @@ export function AreaChartComponent({
             }}
           />
           {lines.map((line) => (
-            <Line
+            <Area
               key={line.key}
               type="monotone"
               dataKey={line.key}
@@ -154,7 +156,7 @@ export function AreaChartComponent({
               activeDot={{ r: 5 }}
             />
           ))}
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

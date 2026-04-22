@@ -337,6 +337,7 @@ export const mockCalendarDate = {
 
 export const mockSchema = {
   total_files: 1641,
+  sources: ["Apple Notes", "Evernote"],
   fields: [
     { name: "title", type: "str", cardinality: "high", samples: [], classification: "embedded" },
     { name: "folder", type: "str", cardinality: "low", samples: ["Notes", "Work", "1:1 Notes"], classification: "categorical" },

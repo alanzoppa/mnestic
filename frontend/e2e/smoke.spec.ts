@@ -1,6 +1,20 @@
 import { test, expect } from "@playwright/test";
 
+let backendAvailable = false;
+
 test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
+  test.beforeAll(async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/stats");
+      backendAvailable = res.ok;
+    } catch {
+      backendAvailable = false;
+    }
+  });
+
+  test.beforeEach(async () => {
+    test.skip(!backendAvailable, "Live backend not available; skipping smoke tests");
+  });
   test("should load dashboard with stats from live backend", async ({ page }) => {
     await page.goto("/");
 

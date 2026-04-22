@@ -91,6 +91,9 @@ export default function TagsPage() {
     count: tag.count,
   })).reverse()
 
+  // Precompute max tag count for cloud sizing
+  const maxTagCount = tags.length > 0 ? Math.max(...tags.map(t => t.count)) : 0
+
   // Calculate category stats
   const structuralCount = tags.filter(t => STRUCTURAL_TAGS.includes(t.name)).length
   const contentCount = tags.filter(t => !STRUCTURAL_TAGS.includes(t.name)).length
@@ -259,7 +262,7 @@ export default function TagsPage() {
                 onClick={() => router.push(`/tags/${tag.name}`)}
                 className="transition-all duration-200 hover:scale-110 group"
                 style={{
-                  fontSize: `${Math.max(12, Math.min(32, 12 + (tag.count / Math.max(...tags.map(t => t.count))) * 20))}px`
+                  fontSize: `${Math.max(12, Math.min(32, 12 + (tag.count / maxTagCount) * 20))}px`
                 }}
               >
                 <Badge

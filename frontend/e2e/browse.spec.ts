@@ -57,11 +57,9 @@ test.describe("Browse Page", () => {
   test("should have pagination controls when results exist", async ({ page }) => {
     await page.goto("/browse");
 
-    // If there are many notes, pagination should appear
-    const paginationExists = await page.locator('button:has-text("Previous")').count() > 0 ||
-                               await page.locator('button:has-text("Next")').count() > 0;
-
-    // This test may pass with or without pagination depending on data
-    expect(paginationExists || true).toBe(true);
+    // Small mock dataset returns only a few notes, so pagination won't appear
+    const hasPagination = await page.locator('button:has-text("Previous")').count() > 0 ||
+                          await page.locator('button:has-text("Next")').count() > 0;
+    expect(hasPagination).toBe(false);
   });
 });
