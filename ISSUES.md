@@ -125,7 +125,7 @@
 
 ## Phase 5: Testing
 
-### 19. Shared mutable mock state in E2E
+### [x] 19. Shared mutable mock state in E2E
 - **File:** `frontend/e2e/fixtures/mock-router.ts:60`
 - **Severity:** High
 - **Problem:** `let currentNote = { ...mockNoteDetail };` is module-level mutable state shared across all Playwright workers. Parallel tests that PATCH the note cause cross-test contamination.
@@ -143,7 +143,7 @@
 - **Problem:** AGENTS.md explicitly warns against this — Next.js dev server never reaches idle due to HMR/WebSocket connections.
 - **Fix:** Replace with `waitForSelector` or `expect(...).toBeVisible()`.
 
-### 22. Unrealistic `embed_texts_sync` mock
+### [x] 22. Unrealistic `embed_texts_sync` mock
 - **File:** `backend/tests/test_update.py:136-144`
 - **Severity:** Low
 - **Problem:** Mocks `embed_texts_sync` to `return_value=None`, but real function raises on failure. Test gives false confidence.
@@ -151,13 +151,13 @@
 
 ## Phase 6: Cleanup & Config
 
-### 23. Stale test count in README
+### [x] 23. Stale test count in README
 - **File:** `README.md:204`
 - **Severity:** Low
 - **Problem:** Claims "86 tests across 7 files" — actual count is 128+ across 9+ files.
 - **Fix:** Update to current counts.
 
-### 24. Wrong paths in deploy configs and scripts
+### [x] 24. Wrong paths in deploy configs and scripts
 - **Files:** `deploy/notes-browser-*.service`, `scripts/sync_notes.py`
 - **Severity:** Low
 - **Problem:** References `/Users/alanzoppa/Code/notes-browser` but actual paths are `/Users/alan.zoppa/dev/notes-browser` and user is `alan.zoppa`, not `alanzoppa`.
