@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -11,7 +12,7 @@ import frontmatter
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from embed import embed_texts_sync
 from embed import embed_query_sync
@@ -23,6 +24,8 @@ from utils import _normalize_meta
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
 app = FastAPI(title="Notes Browser API", version="0.1.0")
+
+logger = logging.getLogger(__name__)
 
 store = NoteStore()
 
@@ -69,7 +72,8 @@ def _build_source_id_cache() -> None:
             sid = post.get("source_id", "")
             if sid:
                 _source_id_to_file[sid] = f
-        except Exception:
+        except Exception as e:
+            logger.warning("Skipping unreadable note file %s: %s", f, e)
             continue
 
 
@@ -118,7 +122,7 @@ def _sanitize_filename(title: str) -> str:
 
 class SearchRequest(BaseModel):
     query: str
-    filters: dict = {}
+    filters: dict = Field(default_factory=dict)
     n: int = 20
     include_calendar: bool = True
 
