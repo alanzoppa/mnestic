@@ -5,6 +5,7 @@ import hashlib
 import frontmatter
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from embed import embed_texts_sync, BATCH_SIZE
 from store import NoteStore
@@ -30,6 +31,91 @@ def make_note_id(source_id: str) -> str:
 
 def make_doc_id(note_id: str, chunk_index: int, filename: str) -> str:
     return f"{note_id}_chunk_{chunk_index}"
+
+
+def _normalize_tags_participants(fm: dict) -> tuple[list[str], list[str]]:
+    tags = fm.get("tags", [])
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",") if t.strip()]
+    participants = fm.get("participants", [])
+    if isinstance(participants, str):
+        participants = [p.strip() for p in participants.split(",") if p.strip()]
+    return tags, participants
+
+
+def build_note_chunks(
+    note_id: str,
+    fm: dict,
+    body: str,
+    filename: str,
+    calendar_context: str = "",
+) -> tuple[list[str], list[dict], list[str]]:
+    """Return (chunks, metadatas, ids) for a note ready to embed.
+
+    Tier 1: title + folder + tags + participants + first ~2k chars + optional calendar context.
+    Tier 2: body chunks at ~2k chars with 400 char overlap.
+    """
+    title = fm.get("title", note_id)
+    folder = fm.get("folder", "")
+    source_id = fm.get("source_id", note_id)
+    source = fm.get("source", "Apple Notes")
+    created_val = fm.get("created", "")
+    modified_val = fm.get("modified", "")
+    created_str = created_val.isoformat() if hasattr(created_val, "isoformat") else (str(created_val) if created_val else "")
+    modified_str = modified_val.isoformat() if hasattr(modified_val, "isoformat") else (str(modified_val) if modified_val else "")
+
+    tags, participants = _normalize_tags_participants(fm)
+    tags_str = ",".join(tags) if tags else ""
+    participants_str = ",".join(participants) if participants else ""
+
+    tier1_body = body[:2000]
+    tier1_text = f"Title: {title}\nFolder: {folder}\nTags: {tags_str}\nParticipants: {participants_str}\n\n{tier1_body}{calendar_context}"
+
+    chunk_id_0 = make_doc_id(note_id, 0, filename)
+    tier1_metadata = {
+        "note_id": note_id,
+        "filename": filename,
+        "chunk_index": 0,
+        "title": title,
+        "folder": folder,
+        "tags": tags_str,
+        "participants": participants_str,
+        "created": created_str,
+        "modified": modified_str,
+        "source": source,
+        "source_id": source_id,
+        "date": created_str[:10] if created_str else "",
+    }
+
+    chunks = [tier1_text]
+    metadatas = [tier1_metadata]
+    ids = [chunk_id_0]
+
+    if len(body) > 2000:
+        remainder = body[1600:]
+        body_chunks = chunk_text(remainder, 2000, 400)
+        for i, chunk in enumerate(body_chunks):
+            if chunk.strip():
+                chunk_index = i + 1
+                chunk_id = make_doc_id(note_id, chunk_index, filename)
+                chunk_metadata = {
+                    "note_id": note_id,
+                    "chunk_index": chunk_index,
+                    "title": title,
+                    "folder": folder,
+                    "tags": tags_str,
+                    "participants": participants_str,
+                    "created": created_str,
+                    "modified": modified_str,
+                    "source": source,
+                    "source_id": source_id,
+                    "date": created_str[:10] if created_str else "",
+                }
+                chunks.append(chunk)
+                metadatas.append(chunk_metadata)
+                ids.append(chunk_id)
+
+    return chunks, metadatas, ids
 
 
 def get_calendar_context(
@@ -104,81 +190,25 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                     notes_skipped += 1
                     continue
 
-            title = fm.get("title", md_file.stem)
-            folder = fm.get("folder", "")
-            tags = fm.get("tags", [])
-            if isinstance(tags, str):
-                tags = [t.strip() for t in tags.split(",") if t.strip()]
-            tags_str = ",".join(tags) if tags else ""
-
-            participants = fm.get("participants", [])
-            if isinstance(participants, str):
-                participants = [p.strip() for p in participants.split(",") if p.strip()]
-            participants_str = ",".join(participants) if participants else ""
-
+            tags, participants = _normalize_tags_participants(fm)
             created_val = fm.get("created", "")
             created_str = created_val.isoformat() if hasattr(created_val, "isoformat") else (str(created_val) if created_val else "")
-            modified_val = fm.get("modified", "")
-            modified_str = modified_val.isoformat() if hasattr(modified_val, "isoformat") else (str(modified_val) if modified_val else "")
-            source = fm.get("source", "Apple Notes")
-
             calendar_context = get_calendar_context(participants, created_str, calendar_events)
 
-            tier1_body = body[:2000]
-            tier1_text = f"Title: {title}\nFolder: {folder}\nTags: {tags_str}\nParticipants: {participants_str}\n\n{tier1_body}{calendar_context}"
-
-            chunk_id_0 = make_doc_id(note_id, 0, md_file.name)
-            tier1_metadata = {
-                "note_id": note_id,
-                "filename": md_file.name,
-                "chunk_index": 0,
-                "title": title,
-                "folder": folder,
-                "tags": tags_str,
-                "participants": participants_str,
-                "created": created_str,
-                "modified": modified_str,
-                "source": source,
-                "source_id": source_id,
-                "date": created_str[:10] if created_str else "",
-            }
-
-            all_chunks.append(tier1_text)
-            all_metadata.append(tier1_metadata)
-            all_ids.append(chunk_id_0)
+            chunks, metadatas, ids = build_note_chunks(
+                note_id, fm, body, md_file.name, calendar_context=calendar_context
+            )
+            all_chunks.extend(chunks)
+            all_metadata.extend(metadatas)
+            all_ids.extend(ids)
             ids_to_delete.append(note_id)
-            chunks_created += 1
-
-            if len(body) > 2000:
-                remainder = body[1600:]
-                body_chunks = chunk_text(remainder, 2000, 400)
-                for i, chunk in enumerate(body_chunks):
-                    if chunk.strip():
-                        chunk_index = i + 1
-                        chunk_id = make_doc_id(note_id, chunk_index, md_file.name)
-                        chunk_metadata = {
-                            "note_id": note_id,
-                            "chunk_index": chunk_index,
-                            "title": title,
-                            "folder": folder,
-                            "tags": tags_str,
-                            "participants": participants_str,
-                            "created": created_str,
-                            "modified": modified_str,
-                            "source": source,
-                            "source_id": source_id,
-                            "date": created_str[:10] if created_str else "",
-                        }
-                        all_chunks.append(chunk)
-                        all_metadata.append(chunk_metadata)
-                        all_ids.append(chunk_id)
-                        chunks_created += 1
+            chunks_created += len(chunks)
+            notes_ingested += 1
 
             ingest_state.setdefault("files", {})[note_id] = {
                 "mtime": current_mtime,
-                "chunks": chunks_created,
+                "chunks": len(chunks),
             }
-            notes_ingested += 1
 
         except Exception as e:
             errors.append(f"{md_file.name}: {str(e)}")

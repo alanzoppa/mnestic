@@ -17,7 +17,8 @@ from embed import embed_texts_sync
 from embed import embed_query_sync
 from store import NoteStore
 from schema import discover_schema
-from ingest import make_note_id, make_doc_id, chunk_text
+from ingest import make_note_id, make_doc_id, chunk_text, build_note_chunks
+from utils import _normalize_meta
 
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
@@ -113,13 +114,6 @@ def _sanitize_filename(title: str) -> str:
         if not os.path.exists(os.path.join(NOTES_DIR, f"{candidate}.md")):
             return candidate
     return base
-
-
-def _normalize_meta(meta: dict) -> dict:
-    if "tags" in meta and isinstance(meta["tags"], str):
-        meta["tags"] = [t.strip() for t in meta["tags"].split(",") if t.strip()]
-    if "participants" in meta and isinstance(meta["participants"], str):
-        meta["participants"] = [p.strip() for p in meta["participants"].split(",") if p.strip()]
 
 
 class SearchRequest(BaseModel):
@@ -289,63 +283,9 @@ async def get_note(note_id: str) -> dict:
 
 def _reingest_note(note_id: str, md_path: str) -> None:
     post = frontmatter.load(md_path)
-    fm = post.metadata
-    body = post.content
-    source_id = fm.get("source_id", "")
-    title = fm.get("title", "")
-    folder = fm.get("folder", "")
-    tags = fm.get("tags", [])
-    if isinstance(tags, str):
-        tags = [t.strip() for t in tags.split(",") if t.strip()]
-    tags_str = ",".join(tags) if tags else ""
-    participants = fm.get("participants", [])
-    if isinstance(participants, str):
-        participants = [p.strip() for p in participants.split(",") if p.strip()]
-    participants_str = ",".join(participants) if participants else ""
-    created_str = fm.get("created", "")
-    modified_str = fm.get("modified", "")
-    source = fm.get("source", "Apple Notes")
-
-    tier1_text = f"Title: {title}\nFolder: {folder}\nTags: {tags_str}\nParticipants: {participants_str}\n\n{body[:2000]}"
-    chunk_id_0 = make_doc_id(note_id, 0, os.path.basename(md_path))
-    tier1_metadata = {
-        "note_id": note_id,
-        "filename": os.path.basename(md_path),
-        "chunk_index": 0,
-        "title": title,
-        "folder": folder,
-        "tags": tags_str,
-        "participants": participants_str,
-        "created": created_str,
-        "modified": modified_str,
-        "source": source,
-        "source_id": source_id,
-    }
-
-    chunks = [tier1_text]
-    metadatas = [tier1_metadata]
-    ids = [chunk_id_0]
-
-    if len(body) > 2000:
-        remainder = body[1600:]
-        for i, chunk in enumerate(chunk_text(remainder, 2000, 400)):
-            if chunk.strip():
-                chunk_index = i + 1
-                chunks.append(chunk)
-                metadatas.append({
-                    "note_id": note_id,
-                    "chunk_index": chunk_index,
-                    "title": title,
-                    "folder": folder,
-                    "tags": tags_str,
-                    "participants": participants_str,
-                    "created": created_str,
-                    "modified": modified_str,
-                    "source": source,
-                    "source_id": source_id,
-                })
-                ids.append(make_doc_id(note_id, chunk_index, os.path.basename(md_path)))
-
+    chunks, metadatas, ids = build_note_chunks(
+        note_id, post.metadata, post.content, os.path.basename(md_path)
+    )
     embeddings = embed_texts_sync(chunks)
     if embeddings:
         store.delete_note_chunks(note_id)

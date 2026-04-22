@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import defaultdict
 from datetime import datetime
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,6 +23,8 @@ class CalendarProcessor:
         self._events: list[dict] = []
         self._alias_map: dict[str, str] = {}
         self._cached_events: list[dict] | None = None
+        self._events_by_date: dict[str, list[dict]] = {}
+        self._events_by_participant: dict[str, list[dict]] = {}
 
     def load(self) -> None:
         try:
@@ -32,6 +35,8 @@ class CalendarProcessor:
             self._events = []
 
         self._cached_events = None
+        self._events_by_date = {}
+        self._events_by_participant = {}
 
         try:
             registry: dict = {}
@@ -67,6 +72,9 @@ class CalendarProcessor:
             return self._cached_events
 
         processed = []
+        by_date: dict[str, list[dict]] = defaultdict(list)
+        by_participant: dict[str, list[dict]] = defaultdict(list)
+
         for event in self._events:
             start_val = event.get("start", {})
             end_val = event.get("end", {})
@@ -89,29 +97,37 @@ class CalendarProcessor:
 
             date_str = start_dt[:10] if start_dt else ""
 
-            processed.append(
-                {
-                    "id": event.get("id", ""),
-                    "summary": event.get("summary", ""),
-                    "start": start_dt,
-                    "end": end_dt,
-                    "location": event.get("location") or "",
-                    "description": event.get("description") or "",
-                    "attendees": attendees_str,
-                    "attendee_names": normalized_names,
-                    "event_type": event.get("eventType", "default"),
-                    "date": date_str,
-                }
-            )
+            pe = {
+                "id": event.get("id", ""),
+                "summary": event.get("summary", ""),
+                "start": start_dt,
+                "end": end_dt,
+                "location": event.get("location") or "",
+                "description": event.get("description") or "",
+                "attendees": attendees_str,
+                "attendee_names": normalized_names,
+                "event_type": event.get("eventType", "default"),
+                "date": date_str,
+            }
+            processed.append(pe)
+            if date_str:
+                by_date[date_str].append(pe)
+            for name in normalized_names:
+                by_participant[name].append(pe)
+
         self._cached_events = processed
+        self._events_by_date = dict(by_date)
+        self._events_by_participant = dict(by_participant)
         return processed
 
     def get_events_for_date(self, date: str) -> list[dict]:
-        return [e for e in self.process_events() if e["date"] == date]
+        self.process_events()
+        return self._events_by_date.get(date, [])
 
     def get_events_for_participant(self, name: str) -> list[dict]:
+        self.process_events()
         normalized = self.normalize_name(name)
-        return [e for e in self.process_events() if normalized in e["attendee_names"]]
+        return self._events_by_participant.get(normalized, [])
 
     def get_embedding_text(self, event: dict) -> str:
         summary = event.get("summary", "")

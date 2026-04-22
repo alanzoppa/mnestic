@@ -10,14 +10,9 @@ from fastmcp import FastMCP
 if TYPE_CHECKING:
     from store import NoteStore
 
+from utils import _normalize_meta
+
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
-
-
-def _normalize_meta(meta: dict) -> None:
-    if "tags" in meta and isinstance(meta["tags"], str):
-        meta["tags"] = [t.strip() for t in meta["tags"].split(",") if t.strip()]
-    if "participants" in meta and isinstance(meta["participants"], str):
-        meta["participants"] = [p.strip() for p in meta["participants"].split(",") if p.strip()]
 
 
 def _flatten_tags(val: Any) -> list[str]:

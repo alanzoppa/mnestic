@@ -91,7 +91,7 @@
 - **Problem:** `Math.max(...tags.map(t => t.count))` is computed inside `.map()`, so for 60 tags it does 60 full-array scans.
 - **Fix:** Precompute `maxCount` once before rendering.
 
-### 14. `get_similar` double DB round-trip
+### [x] 14. `get_similar` double DB round-trip
 - **File:** `backend/store.py:209-217`
 - **Severity:** Medium
 - **Problem:** Calls `self.get_note(note_id)` to validate existence, then `self._notes.get(ids=[note_id], include=["embeddings"])` to fetch embeddings. Two sequential DB calls.
@@ -99,25 +99,25 @@
 
 ## Phase 4: Refactoring & DRY
 
-### 15. `_normalize_meta` duplicated between files
+### [x] 15. `_normalize_meta` duplicated between files
 - **Files:** `backend/main.py`, `backend/mcp_server.py`
 - **Severity:** Medium
 - **Problem:** Same function exists in both files. Keeping them in sync is error-prone.
 - **Fix:** Extract to `backend/utils.py` and import from both.
 
-### 16. `_reingest_note` reimplements `ingest.py` chunking
+### [x] 16. `_reingest_note` reimplements `ingest.py` chunking
 - **File:** `backend/main.py:277-339`
 - **Severity:** Medium
 - **Problem:** Chunking logic, metadata construction, and tiered text building are duplicated from `ingest.py`. Any change to the ingest pipeline must be manually mirrored.
 - **Fix:** Extract a shared `build_chunks(note_id, title, body, ...)` in `ingest.py` and call it from both `ingest_notes` and `_reingest_note`.
 
-### 17. Calendar O(N) lookups by date/participant
+### [x] 17. Calendar O(N) lookups by date/participant
 - **File:** `backend/calendar_data.py:96-101`
 - **Severity:** Medium
 - **Problem:** `get_events_for_date` and `get_events_for_participant` linear-scan all processed events.
 - **Fix:** Build `defaultdict(list)` indexes keyed by date and normalized participant name during `process_events()`.
 
-### 18. Substring tag matching in `get_timeline`
+### [x] 18. Substring tag matching in `get_timeline`
 - **File:** `backend/store.py:255-258`
 - **Severity:** Medium
 - **Problem:** `if tag not in tags_str:` does substring matching, so `"work"` incorrectly matches `"workshop"`.

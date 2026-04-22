@@ -232,7 +232,8 @@ class NoteStore:
                 continue
             if tag:
                 tags_str = meta.get("tags", "")
-                if tag not in tags_str:
+                tag_set = {t.strip() for t in tags_str.split(",") if t.strip()}
+                if tag not in tag_set:
                     continue
             try:
                 dt = created[:10]
