@@ -49,6 +49,7 @@ notes-browser/
 │   ├── .venv/                   Python virtualenv
 │   ├── main.py                  FastAPI app (12 endpoints)
 │   ├── mcp_server.py             MCP server (stdio transport)
+│   ├── utils.py                 Shared helpers (_normalize_meta, etc.)
 │   ├── ingest.py                Ingestion pipeline (notes + calendar)
 │   ├── embed.py                 Ollama embedding client
 │   ├── store.py                 ChromaDB operations (2 collections)
@@ -242,7 +243,7 @@ None at the app level. Designed to run behind NGINX on a Tailscale tailnet. Tail
 
 ## Testing
 
-All 123 backend tests + 106 E2E tests passing. The backend suite runs in under 1 second. Feel free to run it frequently to check your changes — it's fast enough to be part of your normal feedback loop.
+Three test suites: backend (pytest), frontend unit (vitest), and E2E (Playwright). The backend suite runs in under 2 seconds. Always run all suites together before committing to catch cross-layer regressions — frontend mock tests may break from shared fixture changes even when backend tests pass.
 
 ### IMPORTANT: Working Directory
 
@@ -267,20 +268,29 @@ Playwright's config lookup is sensitive to working directory. The config file pa
 
 ### Running Tests
 
+Always run all suites together before committing. Frontend-only or backend-only runs give false confidence.
+
 ```bash
 cd ~/Code/notes-browser
 
-# All tests
+# Backend (fast — run after any backend change)
+backend/.venv/bin/pytest backend/
+
+# Frontend unit (vitest)
+cd frontend && npm run test
+
+# E2E — all projects
+cd ..  # back to project root
 frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/
 
-# Just mock tests
+# E2E — mock only (fast, no backend required)
 frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/ --project=mock
 
-# Just smoke tests (live backend)
-npx playwright test --project=live
+# E2E — live backend only (tagged with @smoke)
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/ --project=live
 
-# Specific test file
-npx playwright test e2e/search.spec.ts
+# Specific E2E test file
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/search.spec.ts
 ```
 
 ### Test Patterns Learned
@@ -442,7 +452,7 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
 - [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
-- [x] All E2E tests passing (106/106)
+- [x] All E2E tests passing
 - [ ] Incremental re-ingest on file change (watchdog)
 - [ ] Incremental Evernote sync once that agent finishes
 - [ ] Re-tag notes with only structural tags (82 notes)
