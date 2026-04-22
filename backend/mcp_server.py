@@ -42,15 +42,24 @@ def _note_from_unique(meta: dict, note_id: str) -> dict[str, Any]:
     }
 
 
+def _is_safe_filename(name: str) -> bool:
+    """Reject names with path traversal attempts."""
+    if not name:
+        return False
+    return ".." not in name and "/" not in name and "\\" not in name and "\x00" not in name
+
+
 def _find_note_file(source_id: str, note_id: str) -> str | None:
     for ext in (".md", ".txt", ""):
-        candidate = os.path.join(NOTES_DIR, source_id + ext)
-        if os.path.exists(candidate):
-            return candidate
+        if _is_safe_filename(source_id):
+            candidate = os.path.join(NOTES_DIR, source_id + ext)
+            if os.path.exists(candidate):
+                return candidate
     for ext in (".md", ".txt", ""):
-        candidate = os.path.join(NOTES_DIR, note_id + ext)
-        if os.path.exists(candidate):
-            return candidate
+        if _is_safe_filename(note_id):
+            candidate = os.path.join(NOTES_DIR, note_id + ext)
+            if os.path.exists(candidate):
+                return candidate
     return None
 
 

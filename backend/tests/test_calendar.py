@@ -8,6 +8,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from calendar_data import CalendarProcessor
 
 
+def test_load_missing_calendar_graceful():
+    cal = CalendarProcessor("/nonexistent/calendar.json", "/nonexistent/registry.json")
+    cal.load()
+    assert cal._events == []
+    assert cal._alias_map == {}
+    events = cal.process_events()
+    assert events == []
+
+
+def test_load_missing_registry_graceful(tmp_path):
+    cal_path = tmp_path / "calendar.json"
+    cal_path.write_text('{"events": []}')
+    cal = CalendarProcessor(str(cal_path), "/nonexistent/registry.json")
+    cal.load()
+    assert cal._events == []
+    assert cal._alias_map == {}
+
+
 def test_load(sample_calendar):
     calendar_path, registry_path = sample_calendar
     cal = CalendarProcessor(calendar_path, registry_path)

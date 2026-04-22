@@ -33,7 +33,10 @@ def get_calendar():
     if calendar_processor is None:
         from calendar_data import CalendarProcessor
         calendar_processor = CalendarProcessor()
-        calendar_processor.load()
+        try:
+            calendar_processor.load()
+        except Exception:
+            pass
     return calendar_processor
 
 
@@ -69,12 +72,21 @@ def _build_source_id_cache() -> None:
             continue
 
 
+def _is_safe_filename(name: str) -> bool:
+    """Reject names with path traversal attempts."""
+    if not name:
+        return False
+    return ".." not in name and "/" not in name and "\\" not in name and "\x00" not in name
+
+
 def find_note_file(source_id: str) -> Optional[str]:
     _build_source_id_cache()
     filename = _source_id_to_file.get(source_id)
     if filename:
         return os.path.join(NOTES_DIR, filename)
-    # Fallback: try matching source_id or note_id directly as a filename
+    # Fallback: try matching source_id directly as a filename (must be safe)
+    if not _is_safe_filename(source_id):
+        return None
     for ext in (".md", ".txt", ""):
         candidate = os.path.join(NOTES_DIR, source_id + ext)
         if os.path.exists(candidate):
@@ -610,8 +622,9 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
         connected.add(e["target"])
 
     nodes = []
+    nid_to_meta = {meta.get("note_id", mid): meta for mid, meta in all_meta.items()}
     for nid in connected:
-        meta = all_meta.get(nid, {})
+        meta = nid_to_meta.get(nid, {})
         nodes.append({
             "id": meta.get("note_id", nid),
             "title": meta.get("title", ""),

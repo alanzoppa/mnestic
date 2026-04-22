@@ -23,26 +23,32 @@ class CalendarProcessor:
         self._alias_map: dict[str, str] = {}
 
     def load(self) -> None:
-        with open(self._calendar_path, "r", encoding="utf-8") as f:
-            calendar_data = json.load(f)
-        self._events = calendar_data.get("events", [])
+        try:
+            with open(self._calendar_path, "r", encoding="utf-8") as f:
+                calendar_data = json.load(f)
+            self._events = calendar_data.get("events", [])
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
+            self._events = []
 
-        registry: dict = {}
-        with open(self._registry_path, "r", encoding="utf-8") as f:
-            registry = json.load(f)
+        try:
+            registry: dict = {}
+            with open(self._registry_path, "r", encoding="utf-8") as f:
+                registry = json.load(f)
 
-        alias_map: dict[str, str] = {}
-        for canonical, info in registry.items():
-            if canonical == "_metadata":
-                continue
-            if not isinstance(info, dict):
-                continue
-            aliases = info.get("aliases", [])
-            for alias in aliases:
-                alias_map[alias.lower()] = canonical
-            alias_map[canonical.lower()] = canonical
+            alias_map: dict[str, str] = {}
+            for canonical, info in registry.items():
+                if canonical == "_metadata":
+                    continue
+                if not isinstance(info, dict):
+                    continue
+                aliases = info.get("aliases", [])
+                for alias in aliases:
+                    alias_map[alias.lower()] = canonical
+                alias_map[canonical.lower()] = canonical
 
-        self._alias_map = alias_map
+            self._alias_map = alias_map
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
+            self._alias_map = {}
 
     def normalize_name(self, name: str) -> str:
         if not name:

@@ -219,3 +219,56 @@ def test_get_graph_with_tag_filter(app_client):
     assert "edges" in data
     filtered_nodes = [n for n in data["nodes"] if "work" in n.get("tags", [])]
     assert len(filtered_nodes) <= len(data["nodes"])
+
+
+def test_get_graph_nodes_have_metadata(app_client):
+    """Graph nodes must contain metadata looked up by logical note_id, not chunk id."""
+    c, mock_store = app_client
+
+    mock_store._notes.get.return_value = {
+        "ids": ["chunk-a", "chunk-b"],
+        "metadatas": [
+            {"note_id": "logical-1", "title": "Note A", "folder": "Work", "tags": "work", "source": "Apple Notes"},
+            {"note_id": "logical-2", "title": "Note B", "folder": "Personal", "tags": "personal", "source": "Evernote"},
+        ],
+        "embeddings": [[0.1] * 256, [0.2] * 256],
+    }
+
+    res = c.get("/api/graph")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["nodes"]) > 0
+    node = data["nodes"][0]
+    assert node["title"] != ""
+    assert node["folder"] != ""
+    assert "id" in node
+    assert node["id"] != ""
+
+
+def test_find_note_file_path_traversal():
+    """Reject source_ids containing path traversal characters."""
+    from main import _is_safe_filename, find_note_file
+
+    assert _is_safe_filename("normal-file") is True
+    assert _is_safe_filename("../../../etc/passwd") is False
+    assert _is_safe_filename("a/b.md") is False
+    assert _is_safe_filename("a\\b.md") is False
+    assert _is_safe_filename("") is False
+
+    assert find_note_file("../../../etc/passwd") is None
+    assert find_note_file("a/b") is None
+
+
+def test_get_calendar_events_missing_data(app_client):
+    """Calendar endpoints gracefully degrade when calendar data is missing."""
+    c, mock_store = app_client
+    mock_store._notes.get.return_value = {"ids": [], "metadatas": []}
+
+    with patch("main.get_calendar") as mock_get_cal:
+        mock_get_cal.return_value.process_events.return_value = []
+
+        res = c.get("/api/calendar?start_date=2024-01-01&end_date=2024-12-31")
+        assert res.status_code == 200
+        data = res.json()
+        assert "events" in data
+        assert len(data["events"]) == 0
