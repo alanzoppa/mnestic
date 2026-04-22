@@ -172,6 +172,9 @@ def test_get_calendar_date(app_client):
 
         res = c.get("/api/calendar/date/2019-12-09")
 
+    mock_store._notes.get.assert_called_with(
+        where={"date": "2019-12-09"}, include=["metadatas"]
+    )
     assert res.status_code == 200
     data = res.json()
     assert data["date"] == "2019-12-09"

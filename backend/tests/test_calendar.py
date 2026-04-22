@@ -123,3 +123,27 @@ def test_get_embedding_text(sample_calendar):
     assert "1:1 with Alice" in text
     assert "Alice Smith" in text
     assert "Conference Room A" in text
+
+
+def test_get_events_for_date_matches_notes(tmp_store, sample_calendar):
+    """Calendar events link to notes by matching the date metadata field."""
+    calendar_path, registry_path = sample_calendar
+    cal = CalendarProcessor(calendar_path, registry_path)
+    cal.load()
+    events = cal.process_events()
+
+    matching_event = next(e for e in events if e["date"] == "2019-12-09")
+
+    tmp_store.add_notes(
+        ids=["n1", "n2"],
+        documents=["doc1", "doc2"],
+        embeddings=[[0.1] * 256, [0.2] * 256],
+        metadatas=[
+            {"note_id": "nid1", "title": "Note A", "date": "2019-12-09", "created": "2019-12-09T17:31:51-05:00"},
+            {"note_id": "nid2", "title": "Note B", "date": "2020-03-15", "created": "2020-03-15T10:00:00Z"},
+        ],
+    )
+
+    date_notes = tmp_store._notes.get(where={"date": "2019-12-09"}, include=["metadatas"])
+    assert len(date_notes["ids"]) == 1
+    assert date_notes["metadatas"][0]["title"] == "Note A"

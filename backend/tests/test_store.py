@@ -232,3 +232,62 @@ def test_reset(tmp_store):
     stats = tmp_store.get_stats()
     assert stats["total_notes"] == 0
     assert stats["total_calendar_events"] == 0
+
+
+def test_get_notes_by_tag_no_documents(tmp_store):
+    """get_notes_by_tag must not load document bodies — only metadata."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["note1", "note2"],
+        documents=["doc1", "doc2"],
+        embeddings=[embedding, [0.2] * 256],
+        metadatas=[
+            {"tags": "work,notes"},
+            {"tags": "personal"},
+        ],
+    )
+    result = tmp_store.get_notes_by_tag("work")
+    assert len(result) == 1
+    assert result[0]["id"] == "note1"
+    assert result[0]["document"] == ""
+
+
+def test_get_notes_by_tag_with_where(tmp_store):
+    """get_notes_by_tag passes where clauses through to ChromaDB."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["note1", "note2"],
+        documents=["doc1", "doc2"],
+        embeddings=[embedding, [0.2] * 256],
+        metadatas=[
+            {"tags": "work,notes", "source": "Apple Notes"},
+            {"tags": "work,personal", "source": "Evernote"},
+        ],
+    )
+    result = tmp_store.get_notes_by_tag("work", where={"source": "Evernote"})
+    assert len(result) == 1
+    assert result[0]["metadata"]["source"] == "Evernote"
+
+
+def test_get_similar_single_db_call(tmp_store):
+    """get_similar must issue only one DB get call."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["note1", "note2", "note3"],
+        documents=["d1", "d2", "d3"],
+        embeddings=[embedding, [0.2] * 256, [0.3] * 256],
+        metadatas=[{"title": "N1"}, {"title": "N2"}, {"title": "N3"}],
+    )
+    original_get = tmp_store._notes.get
+    call_count = [0]
+
+    def counting_get(*args, **kwargs):
+        call_count[0] += 1
+        return original_get(*args, **kwargs)
+
+    tmp_store._notes.get = counting_get
+    similar = tmp_store.get_similar("note1", n=2)
+    tmp_store._notes.get = original_get
+
+    assert call_count[0] == 1
+    assert len(similar) <= 2

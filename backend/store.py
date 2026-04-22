@@ -73,38 +73,17 @@ class NoteStore:
 
     def get_notes_by_tag(self, tag_str: str, n: int = 20, where: dict = None) -> list[dict]:
         tag_set = {t.strip().lower() for t in tag_str.split(",") if t.strip()}
-        all_notes = self._notes.get(include=["metadatas", "documents"])
+        all_notes = self._notes.get(where=where, include=["metadatas"])
         results = []
         for i, meta in enumerate(all_notes.get("metadatas", [])):
             if not meta:
                 continue
-            if where:
-                match = True
-                clauses = [where] if "$and" not in where else where.get("$and", [where])
-                for clause in clauses:
-                    for key, cond in clause.items():
-                        val = meta.get(key, "")
-                        if isinstance(cond, dict):
-                            op, cmp_val = next(iter(cond.items()))
-                            if op == "$eq" and val != cmp_val:
-                                match = False
-                            elif op == "$gte" and val < cmp_val:
-                                match = False
-                            elif op == "$lte" and val > cmp_val:
-                                match = False
-                        elif val != cond:
-                            match = False
-                    if not match:
-                        break
-                if not match:
-                    continue
             note_tags = {t.strip().lower() for t in meta.get("tags", "").split(",") if t.strip()}
             if tag_set & note_tags:
-                doc = all_notes["documents"][i] if all_notes.get("documents") else ""
                 results.append({
                     "id": all_notes["ids"][i],
                     "metadata": meta,
-                    "document": doc,
+                    "document": "",
                     "score": 0.0,
                 })
                 if len(results) >= n:
@@ -207,11 +186,10 @@ class NoteStore:
         return result
 
     def get_similar(self, note_id: str, n: int = 10, threshold: float = 0.75) -> list[dict]:
-        note = self.get_note(note_id)
-        if not note:
+        result = self._notes.get(ids=[note_id], include=["metadatas", "embeddings"])
+        if not result.get("ids"):
             return []
-        note_embedding = self._notes.get(ids=[note_id], include=["embeddings"])
-        embeddings = note_embedding.get("embeddings", [])
+        embeddings = result.get("embeddings", [])
         if embeddings is None or len(embeddings) == 0:
             return []
         return self.search_notes(embeddings[0], n=n)

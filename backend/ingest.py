@@ -140,6 +140,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 "modified": modified_str,
                 "source": source,
                 "source_id": source_id,
+                "date": created_str[:10] if created_str else "",
             }
 
             all_chunks.append(tier1_text)
@@ -166,6 +167,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                             "modified": modified_str,
                             "source": source,
                             "source_id": source_id,
+                            "date": created_str[:10] if created_str else "",
                         }
                         all_chunks.append(chunk)
                         all_metadata.append(chunk_metadata)

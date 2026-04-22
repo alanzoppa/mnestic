@@ -682,9 +682,9 @@ async def get_calendar_event(event_id: str) -> dict:
     linked_notes = []
     seen_note_ids = set()
     if date_str:
-        all_notes = store._notes.get(include=["metadatas"])
+        all_notes = store._notes.get(where={"date": date_str}, include=["metadatas"])
         for i, meta in enumerate(all_notes.get("metadatas", [])):
-            if meta and meta.get("created", "").startswith(date_str):
+            if meta:
                 nid = meta.get("note_id", "")
                 if nid and nid in seen_note_ids:
                     continue
@@ -694,7 +694,7 @@ async def get_calendar_event(event_id: str) -> dict:
                     {
                         "id": nid or all_notes["ids"][i],
                         "title": meta.get("title", ""),
-                        "date": meta.get("created", "")[:10],
+                        "date": meta.get("date", ""),
                     }
                 )
 
@@ -715,11 +715,11 @@ async def get_calendar_by_date(date: str) -> dict:
     cal = get_calendar()
     events = cal.get_events_for_date(date)
 
-    all_notes = store._notes.get(include=["metadatas"])
+    all_notes = store._notes.get(where={"date": date}, include=["metadatas"])
     notes = []
     seen_note_ids = set()
     for i, meta in enumerate(all_notes.get("metadatas", [])):
-        if meta and meta.get("created", "").startswith(date):
+        if meta:
             nid = meta.get("note_id", "")
             if nid and nid in seen_note_ids:
                 continue
