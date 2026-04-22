@@ -47,7 +47,8 @@ notes-browser/
 │   └── package.json
 ├── backend/                     FastAPI sidecar
 │   ├── .venv/                   Python virtualenv
-│   ├── main.py                  FastAPI app (11 endpoints)
+│   ├── main.py                  FastAPI app (12 endpoints)
+│   ├── mcp_server.py             MCP server (stdio transport)
 │   ├── ingest.py                Ingestion pipeline (notes + calendar)
 │   ├── embed.py                 Ollama embedding client
 │   ├── store.py                 ChromaDB operations (2 collections)
@@ -168,6 +169,72 @@ python ~/Code/notes-browser/scripts/caption_images.py --force      # Re-caption 
 | `/api/calendar/{id}` | GET | Event detail + linked notes |
 | `/api/calendar/date/{date}` | GET | Events + notes for a date |
 | `/api/graph` | GET | Similarity graph nodes + edges (optional tag filter) |
+
+## MCP Server
+
+The notes browser exposes an MCP (Model Context Protocol) server for LLM tool access. It runs on **stdio transport** (launched by the MCP client, not as an HTTP endpoint).
+
+### Running
+
+```bash
+cd ~/Code/notes-browser/backend
+source .venv/bin/activate
+python mcp_server.py
+```
+
+Or via `fastmcp` CLI:
+
+```bash
+cd ~/Code/notes-browser/backend
+source .venv/bin/activate
+fastmcp dev mcp_server.py   # Inspector UI
+fastmcp run mcp_server.py   # Stdio transport
+```
+
+### MCP config (e.g. for Claude Desktop)
+
+```json
+{
+  "mcpServers": {
+    "notes-browser": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "/Users/alan.zoppa/Code/notes-browser/backend"
+    }
+  }
+}
+```
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_notes(query, limit=10)` | Semantic search via embeddings |
+| `get_note(note_id)` | Full note + content + calendar + similar |
+| `get_recent_notes(days)` | Notes created in last N days |
+| `list_tags()` | All tags with counts + co-occurrence |
+| `get_notes_by_tag(tag, limit=20)` | Notes filtered by tag |
+| `get_stats()` | Collection statistics |
+| `get_calendar_events(date=None)` | Calendar events by date |
+| `find_similar_notes(note_id, limit=5)` | Semantically similar notes |
+
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `notes://stats` | Collection stats summary |
+| `notes://recent` | Notes from last 7 days |
+| `notes://recent/{days}` | Notes from last N days |
+| `notes://note/{note_id}` | Full note content |
+| `notes://search/{query}` | Semantic search results |
+| `notes://tags` | Tag list by frequency |
+
+### Prompts
+
+| Prompt | Description |
+|--------|-------------|
+| `summarize_recent(days=7)` | Summarize notes from last N days |
+| `find_connections(person)` | Find notes about a person and their connections |
 
 ## Auth
 
@@ -381,3 +448,4 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 - [ ] Re-tag notes with only structural tags (82 notes)
 - [ ] Merge duplicate people in registry (e.g., Damen / Damen Turnbull)
 - [ ] Full-text search fallback (for exact token matches that embeddings miss)
+- [x] MCP server (stdio transport) with tools, resources, and prompts

@@ -23,6 +23,20 @@ NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
 app = FastAPI(title="Notes Browser API", version="0.1.0")
 
+store = NoteStore()
+
+calendar_processor: Any = None
+
+
+def get_calendar():
+    global calendar_processor
+    if calendar_processor is None:
+        from calendar_data import CalendarProcessor
+        calendar_processor = CalendarProcessor()
+        calendar_processor.load()
+    return calendar_processor
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -34,20 +48,6 @@ app.add_middleware(
 images_dir = os.path.join(NOTES_DIR, "images")
 if os.path.exists(images_dir):
     app.mount("/images", StaticFiles(directory=images_dir), name="images")
-
-store = NoteStore()
-
-calendar_processor: Any = None
-
-
-def get_calendar():
-    global calendar_processor
-    if calendar_processor is None:
-        from calendar_data import CalendarProcessor
-
-        calendar_processor = CalendarProcessor()
-        calendar_processor.load()
-    return calendar_processor
 
 
 _source_id_to_file: dict[str, str] = {}
