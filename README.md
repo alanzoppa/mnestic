@@ -201,21 +201,25 @@ notes-browser/
 
 ## Testing
 
-All backend tests pass (86 tests across 7 files):
+Run tests from the project root:
 
 ```bash
-cd backend
-pytest tests/ -v
+cd ~/Code/notes-browser
 
-# Test output summary:
-# test_sync.py     - 12 tests (note syncing)
-# test_embed.py    - 10 tests (Ollama embedding)
-# test_store.py    - 11 tests (ChromaDB operations)
-# test_schema.py   - 6 tests  (schema discovery)
-# test_calendar.py - 9 tests  (calendar processing)
-# test_ingest.py   - 9 tests  (chunking/ingestion)
-# test_api.py      - 12 tests (API endpoints)
+# Backend
+backend/.venv/bin/pytest backend/
+
+# Frontend unit
+frontend/node_modules/.bin/vitest --config=frontend/vitest.config.ts run
+
+# E2E (mocked API — fast, no backend required)
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/ --project=mock
+
+# E2E (live backend — requires both services running)
+frontend/node_modules/.bin/playwright test --config=frontend/playwright.config.ts e2e/ --project=live
 ```
+
+Always run all suites together before committing — frontend mock fixtures may break from shared data changes even when backend tests pass.
 
 ## Troubleshooting
 
