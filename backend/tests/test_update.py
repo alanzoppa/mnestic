@@ -136,10 +136,10 @@ def test_reingest_deletes_old_chunks_after_embedding(app_client_with_files):
 def test_reingest_preserves_chunks_on_embedding_failure(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
-    with patch("main.embed_texts_sync", return_value=None):
+    with patch("main.embed_texts_sync", side_effect=Exception("embedding failed")):
         res = c.patch("/api/notes/x-coredata---test-note-1", json={"title": "Fail Embed"})
 
-    assert res.status_code == 200
+    assert res.status_code == 500
     mock_store.delete_note_chunks.assert_not_called()
     mock_store.add_notes.assert_not_called()
 
