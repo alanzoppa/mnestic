@@ -242,7 +242,7 @@ None at the app level. Designed to run behind NGINX on a Tailscale tailnet. Tail
 
 ## Testing
 
-All 106 E2E tests passing (101 mock, 5 live backend).
+All 123 backend tests + 106 E2E tests passing. The backend suite runs in under 1 second. Feel free to run it frequently to check your changes — it's fast enough to be part of your normal feedback loop.
 
 ### IMPORTANT: Working Directory
 
