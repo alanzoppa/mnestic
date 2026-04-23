@@ -19,18 +19,19 @@ function hashString(str: string): number {
   return Math.abs(hash)
 }
 
-function assignFolderColors(folders: string[]): Record<string, string> {
-  const sorted = [...new Set(folders)].sort()
+function assignTagColors(tags: string[]): Record<string, string> {
+  const sorted = [...new Set(tags)].sort()
   const colors: Record<string, string> = {}
-  sorted.forEach((folder, index) => {
-    const paletteIndex = (index + hashString(folder)) % COLOR_PALETTE.length
-    colors[folder] = COLOR_PALETTE[paletteIndex]
+  sorted.forEach((tag, index) => {
+    const paletteIndex = (index + hashString(tag)) % COLOR_PALETTE.length
+    colors[tag] = COLOR_PALETTE[paletteIndex]
   })
   return colors
 }
 
-function getNodeColor(node: GraphNode, folderColors: Record<string, string>): string {
-  return folderColors[node.folder] || '#6b7280'
+function getNodeColor(node: GraphNode, tagColors: Record<string, string>): string {
+  const primaryTag = node.tags?.[0]
+  return primaryTag ? tagColors[primaryTag] || '#6b7280' : '#6b7280'
 }
 
 export default function GraphPage() {
@@ -46,10 +47,10 @@ export default function GraphPage() {
   const [tags, setTags] = useState<TagInfo[]>([])
   const [error, setError] = useState('')
 
-  const folderColors = useMemo(() => {
+  const tagColors = useMemo(() => {
     if (!data) return {}
-    const folders = data.nodes.map(n => n.folder).filter(Boolean) as string[]
-    return assignFolderColors(folders)
+    const primaryTags = data.nodes.map(n => n.tags?.[0]).filter(Boolean) as string[]
+    return assignTagColors(primaryTags)
   }, [data])
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export default function GraphPage() {
           })
           .nodeId('id')
           .nodeLabel((node: any) => node.title || node.id)
-          .nodeColor((node: any) => getNodeColor(node, folderColors))
+          .nodeColor((node: any) => getNodeColor(node, tagColors))
           .nodeVal((node: any) => {
             const links = data.edges.filter(e => 
               e.source === node.id || e.target === node.id ||
@@ -151,7 +152,7 @@ export default function GraphPage() {
       })
 
     return () => cleanup()
-  }, [data, folderColors])
+  }, [data, tagColors])
 
   const showLoading = loading || libLoading
 
@@ -237,10 +238,10 @@ export default function GraphPage() {
 
         <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20" data-testid="graph-legend">
           <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
-          {Object.entries(folderColors).map(([folder, color]) => (
-            <div key={folder} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+          {Object.entries(tagColors).map(([tag, color]) => (
+            <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-              {folder}
+              {tag}
             </div>
           ))}
           <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">

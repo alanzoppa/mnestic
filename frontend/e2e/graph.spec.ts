@@ -36,9 +36,9 @@ test.describe("Graph Page", () => {
     const legend = page.locator('[data-testid="graph-legend"]');
     await expect(legend).toBeVisible();
 
-    // Legend shows folder names from mock data - scope to legend only
-    await expect(legend.locator("text=1:1 Notes")).toBeVisible();
-    await expect(legend.locator("text=Work")).toBeVisible();
+    // Legend shows primary tag names from mock data - scope to legend only
+    await expect(legend.locator("text=1:1")).toBeVisible();
+    await expect(legend.locator("text=work")).toBeVisible();
   });
 
   test("should display node/edge count", async ({ page }) => {
