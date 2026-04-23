@@ -11,6 +11,7 @@ import frontmatter
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from store import NoteStore
+from calendar_data import CalendarProcessor
 
 
 @pytest.fixture
@@ -127,3 +128,11 @@ def sample_calendar(tmp_path):
     reg_path.write_text(json.dumps(registry))
 
     return str(cal_path), str(reg_path)
+
+
+@pytest.fixture
+def loaded_calendar(sample_calendar):
+    calendar_path, registry_path = sample_calendar
+    cal = CalendarProcessor(calendar_path, registry_path)
+    cal.load()
+    return cal
