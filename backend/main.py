@@ -4,6 +4,7 @@ import os
 import re
 import json
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -22,9 +23,24 @@ from schema import discover_schema
 from ingest import make_note_id, make_doc_id, chunk_text, build_note_chunks
 from utils import _normalize_meta, normalize_and_dedup_results
 
+from watcher import NoteWatcher
+
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
-app = FastAPI(title="Notes Browser API", version="0.1.0")
+note_watcher: NoteWatcher | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global note_watcher
+    note_watcher = NoteWatcher(NOTES_DIR, store, _invalidate_source_id_cache)
+    note_watcher.start()
+    yield
+    if note_watcher:
+        note_watcher.stop()
+
+
+app = FastAPI(title="Notes Browser API", version="0.1.0", lifespan=lifespan)
 
 logger = logging.getLogger(__name__)
 
@@ -581,6 +597,13 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
 @app.get("/api/schema")
 async def get_schema() -> dict:
     return discover_schema(NOTES_DIR)
+
+
+@app.get("/api/watcher/status")
+async def get_watcher_status() -> dict:
+    if note_watcher is None:
+        return {"running": False, "notes_dir": NOTES_DIR}
+    return note_watcher.status()
 
 
 @app.get("/api/stats")

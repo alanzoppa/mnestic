@@ -453,7 +453,7 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
 - [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
 - [x] All E2E tests passing
-- [ ] Incremental re-ingest on file change (watchdog)
+- [x] Incremental re-ingest on file change (watchdog)
 - [ ] Incremental Evernote sync once that agent finishes
 - [ ] Re-tag notes with only structural tags (82 notes)
 - [ ] Merge duplicate people in registry (e.g., Damen / Damen Turnbull)
