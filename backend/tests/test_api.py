@@ -68,6 +68,24 @@ def test_search_basic(app_client):
     assert data["results"][0]["type"] == "note"
 
 
+def test_search_empty_query_returns_all_notes(app_client):
+    """Browse page sends '' query — should still return notes via list_notes."""
+    c, mock_store = app_client
+    mock_store.list_notes.return_value = [
+        {"id": "note1", "metadata": {"title": "Note 1", "tags": "work"}, "document": "body1", "score": 0.0},
+        {"id": "note2", "metadata": {"title": "Note 2", "tags": "personal"}, "document": "body2", "score": 0.0},
+    ]
+
+    res = c.post("/api/search", json={"query": "", "n": 500, "filters": {}})
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["results"]) == 2
+    assert data["results"][0]["type"] == "note"
+    # embed_query_sync should not be called for empty queries
+    mock_store.search_notes.assert_not_called()
+    mock_store.list_notes.assert_called_once()
+
+
 def test_search_with_calendar(app_client):
     c, mock_store = app_client
     mock_store.search_notes.return_value = []

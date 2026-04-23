@@ -185,6 +185,35 @@ class NoteStore:
                     result[field].append(all_notes[field][i] if i < len(all_notes[field]) else None)
         return result
 
+    def list_notes(self, where: dict = None, n: int = 500) -> list[dict]:
+        """List all notes, optionally filtered by where. Deduplicated by note_id."""
+        raw = self._notes.get(where=where, include=["metadatas", "documents"])
+        if not raw or not raw.get("ids"):
+            return []
+        seen_note_ids: set[str] = set()
+        results: list[dict] = []
+        for i, note_id in enumerate(raw["ids"]):
+            meta = raw["metadatas"][i] if raw["metadatas"] else {}
+            if not meta:
+                continue
+            nid = meta.get("note_id", note_id)
+            if nid and nid in seen_note_ids:
+                continue
+            if nid:
+                seen_note_ids.add(nid)
+            results.append(
+                {
+                    "id": note_id,
+                    "metadata": meta,
+                    "document": raw["documents"][i] if raw["documents"] else "",
+                    "score": 0.0,
+                    "distance": None,
+                }
+            )
+            if n and len(results) >= n:
+                break
+        return results
+
     def get_notes_by_date(self, date: str) -> list[dict]:
         """Query notes matching a specific date, deduplicated by note_id."""
         raw = self._notes.get(where={"date": date}, include=["metadatas"])

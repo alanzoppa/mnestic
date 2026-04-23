@@ -28,6 +28,16 @@ test.describe("Browse Page", () => {
     await expect(page.locator("span:has-text('1:1 Notes')").first()).toBeVisible();
   });
 
+  test("should NOT show empty state on initial load (regression: empty query used to return no notes)", async ({ page }) => {
+    // The Browse page sends search('', {}, 500) — empty query used to return []
+    // because /api/search skipped DB lookup when query_embedding was None.
+    // Fixed by adding store.list_notes() for empty queries.
+    const noNotesMessage = page.locator("text=No notes found");
+    await expect(noNotesMessage).not.toBeVisible();
+    // Should show actual note count "X of Y notes"
+    await expect(page.locator("text=/of.*notes/")).toBeVisible();
+  });
+
   test("should show tags on note cards", async ({ page }) => {
     // Look for tags specifically within the note cards
     // Tags are shown as badges - check for content tags (not structural like "1:1")

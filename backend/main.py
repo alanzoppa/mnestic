@@ -172,16 +172,19 @@ async def search(body: SearchRequest) -> dict:
     query_embedding = embed_query_sync(body.query) if body.query.strip() else None
 
     if query_embedding is not None or not tag_filter:
-        n_results = body.n * 10 if tag_filter else body.n
-        n_results = min(n_results, 200)
-        note_results = store.search_notes(query_embedding, n=n_results, where=where) if query_embedding is not None else []
-        if tag_filter:
-            tag_set = {t.strip().lower() for t in tag_filter.split(",") if t.strip()}
-            note_results = [
-                r for r in note_results
-                if tag_set & {t.strip().lower() for t in r["metadata"].get("tags", "").split(",") if t.strip()}
-            ]
-            note_results = note_results[:body.n]
+        if query_embedding is not None:
+            n_results = body.n * 10 if tag_filter else body.n
+            n_results = min(n_results, 200)
+            note_results = store.search_notes(query_embedding, n=n_results, where=where)
+            if tag_filter:
+                tag_set = {t.strip().lower() for t in tag_filter.split(",") if t.strip()}
+                note_results = [
+                    r for r in note_results
+                    if tag_set & {t.strip().lower() for t in r["metadata"].get("tags", "").split(",") if t.strip()}
+                ]
+                note_results = note_results[:body.n]
+        else:
+            note_results = store.list_notes(where=where, n=body.n)
     else:
         note_results = store.get_notes_by_tag(tag_filter, n=body.n, where=where)
 

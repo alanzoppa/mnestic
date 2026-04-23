@@ -291,3 +291,55 @@ def test_get_similar_single_db_call(tmp_store):
 
     assert call_count[0] == 1
     assert len(similar) <= 2
+
+
+def test_list_notes_no_filter(tmp_store):
+    """list_notes returns all unique notes when no where filter is applied."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["note1", "note2"],
+        documents=["doc1", "doc2"],
+        embeddings=[embedding, [0.2] * 256],
+        metadatas=[
+            {"title": "Note 1", "folder": "Work", "note_id": "n1"},
+            {"title": "Note 2", "folder": "Personal", "note_id": "n2"},
+        ],
+    )
+    results = tmp_store.list_notes()
+    assert len(results) == 2
+    titles = {r["metadata"]["title"] for r in results}
+    assert titles == {"Note 1", "Note 2"}
+
+
+def test_list_notes_with_where_filter(tmp_store):
+    """list_notes respects the where parameter for filtering."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["note1", "note2"],
+        documents=["doc1", "doc2"],
+        embeddings=[embedding, [0.2] * 256],
+        metadatas=[
+            {"title": "Note 1", "folder": "Work", "note_id": "n1"},
+            {"title": "Note 2", "folder": "Personal", "note_id": "n2"},
+        ],
+    )
+    results = tmp_store.list_notes(where={"folder": "Work"})
+    assert len(results) == 1
+    assert results[0]["metadata"]["title"] == "Note 1"
+
+
+def test_list_notes_deduplicates_by_note_id(tmp_store):
+    """list_notes returns only one entry per logical note_id (skips chunks)."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["n1_chunk0", "n1_chunk1"],
+        documents=["doc1", "doc2"],
+        embeddings=[embedding, embedding],
+        metadatas=[
+            {"title": "Note 1", "note_id": "n1"},
+            {"title": "Note 1", "note_id": "n1"},
+        ],
+    )
+    results = tmp_store.list_notes()
+    assert len(results) == 1
+    assert results[0]["metadata"]["title"] == "Note 1"
