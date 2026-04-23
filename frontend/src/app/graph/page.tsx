@@ -1,21 +1,36 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getGraph, getTags, type GraphData, type GraphNode, type TagInfo } from '@/lib/api'
 
-const FOLDER_COLORS: Record<string, string> = {
-  '1:1 Notes': '#f97316',
-  'Work': '#3b82f6',
-  'Notes': '#a78bfa',
-  'Personal': '#ec4899',
-  'Interview Notes': '#10b981',
-  'Evernote': '#6366f1',
-  'ZEIG things': '#f59e0b',
+const COLOR_PALETTE = [
+  '#3b82f6', '#f97316', '#10b981', '#ec4899',
+  '#8b5cf6', '#f59e0b', '#06b6d4', '#ef4444',
+  '#84cc16', '#d946ef', '#14b8a6', '#f43f5e',
+]
+
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
 }
 
-function getNodeColor(node: GraphNode): string {
-  return FOLDER_COLORS[node.folder] || '#6b7280'
+function assignFolderColors(folders: string[]): Record<string, string> {
+  const sorted = [...new Set(folders)].sort()
+  const colors: Record<string, string> = {}
+  sorted.forEach((folder, index) => {
+    const paletteIndex = (index + hashString(folder)) % COLOR_PALETTE.length
+    colors[folder] = COLOR_PALETTE[paletteIndex]
+  })
+  return colors
+}
+
+function getNodeColor(node: GraphNode, folderColors: Record<string, string>): string {
+  return folderColors[node.folder] || '#6b7280'
 }
 
 export default function GraphPage() {
@@ -30,6 +45,12 @@ export default function GraphPage() {
   const [threshold, setThreshold] = useState(0.75)
   const [tags, setTags] = useState<TagInfo[]>([])
   const [error, setError] = useState('')
+
+  const folderColors = useMemo(() => {
+    if (!data) return {}
+    const folders = data.nodes.map(n => n.folder).filter(Boolean) as string[]
+    return assignFolderColors(folders)
+  }, [data])
 
   useEffect(() => {
     getTags().then(res => setTags(res.tags.slice(0, 30))).catch(() => {})
@@ -73,7 +94,7 @@ export default function GraphPage() {
           })
           .nodeId('id')
           .nodeLabel((node: any) => node.title || node.id)
-          .nodeColor((node: any) => getNodeColor(node))
+          .nodeColor((node: any) => getNodeColor(node, folderColors))
           .nodeVal((node: any) => {
             const links = data.edges.filter(e => 
               e.source === node.id || e.target === node.id ||
@@ -130,7 +151,7 @@ export default function GraphPage() {
       })
 
     return () => cleanup()
-  }, [data])
+  }, [data, folderColors])
 
   const showLoading = loading || libLoading
 
@@ -216,7 +237,7 @@ export default function GraphPage() {
 
         <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20" data-testid="graph-legend">
           <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
-          {Object.entries(FOLDER_COLORS).map(([folder, color]) => (
+          {Object.entries(folderColors).map(([folder, color]) => (
             <div key={folder} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
               {folder}
