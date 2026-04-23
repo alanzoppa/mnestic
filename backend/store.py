@@ -207,7 +207,7 @@ class NoteStore:
             })
         return notes
 
-    def get_similar(self, note_id: str, n: int = 10, threshold: float = 0.75) -> list[dict]:
+    def get_similar(self, note_id: str, n: int = 10) -> list[dict]:
         result = self._notes.get(ids=[note_id], include=["metadatas", "embeddings"])
         if not result.get("ids"):
             return []

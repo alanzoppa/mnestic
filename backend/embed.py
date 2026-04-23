@@ -50,17 +50,5 @@ def embed_texts_sync(texts: list[str], prefix: str = "search_document") -> list[
     return results
 
 
-async def embed_texts_async(texts: list[str], prefix: str = "search_document") -> list[list[float]]:
-    return embed_texts_sync(texts, prefix)
-
-
-def embed_texts(texts: list[str], prefix: str = "search_document") -> list[list[float]]:
-    return embed_texts_sync(texts, prefix)
-
-
 def embed_query_sync(text: str) -> list[float]:
-    return embed_texts_sync([text], "search_query")[0]
-
-
-async def embed_query(text: str) -> list[float]:
     return embed_texts_sync([text], "search_query")[0]

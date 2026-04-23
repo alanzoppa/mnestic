@@ -411,7 +411,7 @@ async def get_timeline(group_by: str = "month", tag: Optional[str] = None) -> di
 
 @app.get("/api/similar/{note_id}")
 async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) -> dict:
-    similar = store.get_similar(note_id, n=n, threshold=threshold)
+    similar = store.get_similar(note_id, n=n)
     query_note = store.get_note(note_id) or store.get_note_by_note_id(note_id)
     query_note_id = query_note["metadata"].get("note_id", note_id) if query_note else note_id
     deduped = normalize_and_dedup_results(similar, threshold=threshold)
