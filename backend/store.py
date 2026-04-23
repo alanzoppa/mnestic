@@ -9,7 +9,7 @@ from chromadb.config import Settings
 CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "..", "chroma_data")
 
 
-def _flatten_tags(tags: Any) -> str:
+def _to_chroma_scalar(tags: Any) -> str:
     if tags is None:
         return ""
     if isinstance(tags, list):
@@ -17,7 +17,7 @@ def _flatten_tags(tags: Any) -> str:
     return str(tags)
 
 
-def _flatten_participants(participants: Any) -> str:
+def _to_chroma_scalar_participants(participants: Any) -> str:
     if participants is None:
         return ""
     if isinstance(participants, list):
@@ -31,7 +31,7 @@ def _serialize_metadata(meta: dict) -> dict:
         if v is None:
             continue
         if isinstance(v, (list, tuple)):
-            out[k] = _flatten_tags(v)
+            out[k] = _to_chroma_scalar(v)
         elif isinstance(v, bool):
             out[k] = "true" if v else "false"
         elif isinstance(v, (int, float, str)):
