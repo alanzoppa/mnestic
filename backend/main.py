@@ -618,23 +618,13 @@ async def get_calendar_event(event_id: str) -> dict:
 
     date_str = event["date"]
     linked_notes = []
-    seen_note_ids = set()
     if date_str:
-        all_notes = store._notes.get(where={"date": date_str}, include=["metadatas"])
-        for i, meta in enumerate(all_notes.get("metadatas", [])):
-            if meta:
-                nid = meta.get("note_id", "")
-                if nid and nid in seen_note_ids:
-                    continue
-                if nid:
-                    seen_note_ids.add(nid)
-                linked_notes.append(
-                    {
-                        "id": nid or all_notes["ids"][i],
-                        "title": meta.get("title", ""),
-                        "date": meta.get("date", ""),
-                    }
-                )
+        for note in store.get_notes_by_date(date_str):
+            linked_notes.append({
+                "id": note["id"],
+                "title": note["title"],
+                "date": date_str,
+            })
 
     return {
         "id": event["id"],
@@ -653,24 +643,15 @@ async def get_calendar_by_date(date: str) -> dict:
     cal = get_calendar()
     events = cal.get_events_for_date(date)
 
-    all_notes = store._notes.get(where={"date": date}, include=["metadatas"])
     notes = []
-    seen_note_ids = set()
-    for i, meta in enumerate(all_notes.get("metadatas", [])):
-        if meta:
-            nid = meta.get("note_id", "")
-            if nid and nid in seen_note_ids:
-                continue
-            if nid:
-                seen_note_ids.add(nid)
-            _normalize_meta(meta)
-            notes.append(
-                {
-                    "id": nid or all_notes["ids"][i],
-                    "title": meta.get("title", ""),
-                    "metadata": meta,
-                }
-            )
+    for note in store.get_notes_by_date(date):
+        meta = note["metadata"]
+        _normalize_meta(meta)
+        notes.append({
+            "id": note["id"],
+            "title": note["title"],
+            "metadata": meta,
+        })
 
     return {"date": date, "events": events, "notes": notes}
 

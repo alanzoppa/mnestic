@@ -185,6 +185,28 @@ class NoteStore:
                     result[field].append(all_notes[field][i] if i < len(all_notes[field]) else None)
         return result
 
+    def get_notes_by_date(self, date: str) -> list[dict]:
+        """Query notes matching a specific date, deduplicated by note_id."""
+        raw = self._notes.get(where={"date": date}, include=["metadatas"])
+        if not raw or not raw.get("ids"):
+            return []
+        seen: set[str] = set()
+        notes = []
+        for i, meta in enumerate(raw.get("metadatas", [])):
+            if not meta:
+                continue
+            nid = meta.get("note_id", "")
+            if nid and nid in seen:
+                continue
+            if nid:
+                seen.add(nid)
+            notes.append({
+                "id": nid or raw["ids"][i],
+                "title": meta.get("title", ""),
+                "metadata": meta,
+            })
+        return notes
+
     def get_similar(self, note_id: str, n: int = 10, threshold: float = 0.75) -> list[dict]:
         result = self._notes.get(ids=[note_id], include=["metadatas", "embeddings"])
         if not result.get("ids"):
