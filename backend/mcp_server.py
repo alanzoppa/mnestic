@@ -10,7 +10,7 @@ from fastmcp import FastMCP
 if TYPE_CHECKING:
     from store import NoteStore
 
-from utils import _normalize_meta
+from utils import _normalize_meta, normalize_and_dedup_results
 
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
@@ -75,18 +75,11 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             return {"notes": []}
         embedding = embed_query_sync(query)
         raw = store.search_notes(embedding, n=limit * 5)
-        seen: set[str] = set()
-        notes: list[dict[str, Any]] = []
-        for r in raw:
-            meta = r.get("metadata", {})
-            _normalize_meta(meta)
-            nid = meta.get("note_id", r["id"])
-            if nid in seen:
-                continue
-            seen.add(nid)
-            notes.append(_note_from_unique(meta, nid))
-            if len(notes) >= limit:
-                break
+        deduped = normalize_and_dedup_results(raw)
+        notes = []
+        for entry in deduped[:limit]:
+            meta = entry["metadata"]
+            notes.append(_note_from_unique(meta, entry["note_id"]))
         return {"notes": notes}
 
     @mcp.tool()
@@ -125,22 +118,18 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
                 pass
 
         similar = store.get_similar(note["id"], n=10)
-        similar_notes = []
-        seen_similar: set[str] = set()
         logical_note_id = meta.get("note_id", note["id"])
-        for s in similar:
-            if s.get("distance") is None:
+        deduped_similar = normalize_and_dedup_results(similar)
+        similar_notes = []
+        for entry in deduped_similar:
+            s_nid = entry["note_id"]
+            if s_nid == logical_note_id:
                 continue
-            s_meta = s.get("metadata", {})
-            _normalize_meta(s_meta)
-            s_nid = s_meta.get("note_id", s["id"])
-            if s_nid == logical_note_id or s_nid in seen_similar:
-                continue
-            seen_similar.add(s_nid)
+            s_meta = entry["metadata"]
             similar_notes.append({
                 "id": s_nid,
                 "title": s_meta.get("title", ""),
-                "score": 1 - s["distance"],
+                "score": entry["score"],
             })
 
         return {
@@ -199,18 +188,11 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             limit: Maximum number of notes to return (default 20).
         """
         raw = store.get_notes_by_tag(tag, n=limit * 5)
-        seen: set[str] = set()
+        deduped = normalize_and_dedup_results(raw)
         notes: list[dict[str, Any]] = []
-        for r in raw:
-            meta = r.get("metadata", {})
-            _normalize_meta(meta)
-            nid = meta.get("note_id", r["id"])
-            if nid in seen:
-                continue
-            seen.add(nid)
-            notes.append(_note_from_unique(meta, nid))
-            if len(notes) >= limit:
-                break
+        for entry in deduped[:limit]:
+            meta = entry["metadata"]
+            notes.append(_note_from_unique(meta, entry["note_id"]))
         return {"notes": notes}
 
     @mcp.tool()
@@ -249,21 +231,17 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             note = store.get_note_by_note_id(note_id)
             if note:
                 similar = store.get_similar(note["id"], n=limit + 5)
-        seen: set[str] = set()
+        deduped = normalize_and_dedup_results(similar)
         notes: list[dict[str, Any]] = []
-        for s in similar:
-            if s.get("distance") is None:
+        for entry in deduped:
+            nid = entry["note_id"]
+            if nid == note_id:
                 continue
-            meta = s.get("metadata", {})
-            _normalize_meta(meta)
-            nid = meta.get("note_id", s["id"])
-            if nid == note_id or nid in seen:
-                continue
-            seen.add(nid)
+            meta = entry["metadata"]
             notes.append({
                 "id": nid,
                 "title": meta.get("title", "Untitled"),
-                "score": 1 - s["distance"],
+                "score": entry["score"],
             })
             if len(notes) >= limit:
                 break

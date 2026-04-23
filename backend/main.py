@@ -19,7 +19,7 @@ from embed import embed_query_sync
 from store import NoteStore
 from schema import discover_schema
 from ingest import make_note_id, make_doc_id, chunk_text, build_note_chunks
-from utils import _normalize_meta
+from utils import _normalize_meta, normalize_and_dedup_results
 
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
@@ -258,22 +258,18 @@ async def get_note(note_id: str) -> dict:
 
     similar = store.get_similar(note["id"], n=10)
     similar_notes = []
-    seen_similar = set()
-    for s in similar:
-        if s.get("distance") is None:
+    deduped = normalize_and_dedup_results(similar)
+    for entry in deduped:
+        s_note_id = entry["note_id"]
+        if s_note_id == logical_note_id:
             continue
-        s_meta = s["metadata"]
-        _normalize_meta(s_meta)
-        s_note_id = s_meta.get("note_id", s["id"])
-        if s_note_id == logical_note_id or s_note_id in seen_similar:
-            continue
-        seen_similar.add(s_note_id)
+        meta = entry["metadata"]
         similar_notes.append({
-            "id": s["id"],
+            "id": entry["id"],
             "note_id": s_note_id,
-            "title": s_meta.get("title", ""),
-            "score": 1 - s["distance"],
-            "created": s_meta.get("created", ""),
+            "title": meta.get("title", ""),
+            "score": entry["score"],
+            "created": meta.get("created", ""),
         })
 
     return {
@@ -418,23 +414,20 @@ async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) 
     similar = store.get_similar(note_id, n=n, threshold=threshold)
     query_note = store.get_note(note_id) or store.get_note_by_note_id(note_id)
     query_note_id = query_note["metadata"].get("note_id", note_id) if query_note else note_id
-    seen = {query_note_id}
+    deduped = normalize_and_dedup_results(similar, threshold=threshold)
     notes = []
-    for s in similar:
-        if s.get("distance") is not None and (1 - s["distance"]) >= threshold:
-            s_meta = s["metadata"]
-            _normalize_meta(s_meta)
-            s_nid = s_meta.get("note_id", s["id"])
-            if s_nid in seen:
-                continue
-            seen.add(s_nid)
-            notes.append({
-                "id": s["id"],
-                "note_id": s_nid,
-                "title": s_meta.get("title", ""),
-                "score": 1 - s["distance"],
-                "created": s_meta.get("created", ""),
-            })
+    for entry in deduped:
+        nid = entry["note_id"]
+        if nid == query_note_id:
+            continue
+        meta = entry["metadata"]
+        notes.append({
+            "id": entry["id"],
+            "note_id": nid,
+            "title": meta.get("title", ""),
+            "score": entry["score"],
+            "created": meta.get("created", ""),
+        })
     return {"notes": notes}
 
 
