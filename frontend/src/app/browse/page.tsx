@@ -7,6 +7,7 @@ import { search, getSchema } from '@/lib/api'
 import type { SearchResult } from '@/lib/api'
 import { useDebouncedValue } from '@/lib/hooks'
 import { useFavorites } from '@/lib/favorites'
+import { STRUCTURAL_TAGS, asArray } from '@/lib/constants'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -16,14 +17,6 @@ import { SkeletonNoteCard } from '@/components/ui/Skeleton'
 import { FavoriteButton } from '@/components/FavoriteButton'
 
 const PAGE_SIZE = 50
-
-const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
-
-function asArray(val: unknown): string[] {
-  if (Array.isArray(val)) return val
-  if (typeof val === 'string' && val.trim()) return val.split(',').map((s: string) => s.trim()).filter(Boolean)
-  return []
-}
 
 export default function BrowsePage() {
   const router = useRouter()

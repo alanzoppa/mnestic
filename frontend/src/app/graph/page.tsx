@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAsyncData } from '@/lib/hooks'
 import { getGraph, getTags, type GraphData, type GraphNode, type TagInfo } from '@/lib/api'
 
 const COLOR_PALETTE = [
@@ -38,44 +39,27 @@ export default function GraphPage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const graphInstanceRef = useRef<any>(null)
-  const [data, setData] = useState<GraphData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [libLoading, setLibLoading] = useState(true)
+  const [libError, setLibError] = useState('')
   const [hoverNode, setHoverNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
-  const [tags, setTags] = useState<TagInfo[]>([])
-  const [error, setError] = useState('')
+
+  const { data: tagsData } = useAsyncData(
+    useCallback(() => getTags().then(res => res.tags.slice(0, 30)), []),
+    []
+  )
+
+  const { data, loading, error } = useAsyncData(
+    useCallback(() => getGraph(selectedTag || undefined, undefined, threshold), [selectedTag, threshold]),
+    [selectedTag, threshold]
+  )
 
   const tagColors = useMemo(() => {
     if (!data) return {}
     const primaryTags = data.nodes.map(n => n.tags?.[0]).filter(Boolean) as string[]
     return assignTagColors(primaryTags)
   }, [data])
-
-  useEffect(() => {
-    getTags().then(res => setTags(res.tags.slice(0, 30))).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError('')
-    getGraph(selectedTag || undefined, undefined, threshold)
-      .then(d => {
-        if (!cancelled) {
-          setData(d)
-          setLoading(false)
-        }
-      })
-      .catch((e: any) => {
-        if (!cancelled) {
-          setError(e.message || 'Failed to load graph')
-          setLoading(false)
-        }
-      })
-    return () => { cancelled = true }
-  }, [selectedTag, threshold])
 
   useEffect(() => {
     if (!data || !containerRef.current || data.nodes.length === 0) return
@@ -147,7 +131,7 @@ export default function GraphPage() {
         setLibLoading(false)
       })
       .catch((e: any) => {
-        setError('Failed to load graph library: ' + (e.message || String(e)))
+        setLibError('Failed to load graph library: ' + (e.message || String(e)))
         setLibLoading(false)
       })
 
@@ -168,7 +152,7 @@ export default function GraphPage() {
             className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100"
           >
             <option value="">All tags</option>
-            {tags.map(t => (
+            {(tagsData || []).map(t => (
               <option key={t.name} value={t.name}>{t.name} ({t.count})</option>
             ))}
           </select>
@@ -197,16 +181,16 @@ export default function GraphPage() {
           </div>
         )}
 
-        {error && !showLoading && (
+        {(error || libError) && !showLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-red-400 text-center max-w-md">
               <p className="font-medium">Error</p>
-              <p className="text-sm mt-1">{error}</p>
+              <p className="text-sm mt-1">{error?.message || libError}</p>
             </div>
           </div>
         )}
 
-        {data && data.nodes.length === 0 && !showLoading && !error && (
+        {data && data.nodes.length === 0 && !showLoading && !error && !libError && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-zinc-400 text-center">
               <p>No connections found.</p>

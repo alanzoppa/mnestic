@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTimeline, type TimelinePeriod } from '@/lib/api';
+import { useAsyncData } from '@/lib/hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Select } from '@/components/ui/Input';
@@ -55,33 +56,23 @@ const CHART_BAR_HEIGHTS = [65, 42, 78, 55, 90, 35, 72, 48, 85, 38, 60, 50];
 
 export default function TimelinePage() {
   const router = useRouter();
-  const [data, setData] = useState<TimelinePeriod[]>([]);
-  const [loading, setLoading] = useState(false);
   const [tagFilter, setTagFilter] = useState('');
   const [groupBy, setGroupBy] = useState('month');
   const [chartType, setChartType] = useState('bar');
   const [selectedBar, setSelectedBar] = useState<TimelinePeriod | null>(null);
 
-  const loadTimeline = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    getTimeline(groupBy, tagFilter || undefined)
-      .then((result) => {
-        if (!cancelled) setData(result.periods);
-      })
-      .catch(() => {
-        if (!cancelled) setData([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true };
-  }, [tagFilter, groupBy]);
-
-  useEffect(() => {
-    const cancel = loadTimeline();
-    return cancel;
-  }, [loadTimeline]);
+  const {
+    data: timelineData,
+    loading,
+    error,
+  } = useAsyncData(
+    useCallback(
+      () => getTimeline(groupBy, tagFilter || undefined).then((res) => res.periods),
+      [groupBy, tagFilter]
+    ),
+    [groupBy, tagFilter]
+  );
+  const data = timelineData || [];
 
   const totalCount = data.reduce((sum, d) => sum + d.count, 0);
   const avgPerPeriod = data.length > 0 ? Math.round(totalCount / data.length) : 0;

@@ -2,14 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-
-const STRUCTURAL_TAGS = [
-  '1:1', 'interview', 'work', 'personal', 'notes', 'zeig',
-  'evernote', 'zendesk', 'enova', 'skitch', 'alanzoppas-notebook',
-  'artificial-memory', 'chinese', 'hindi', 'household',
-  'personal-receipts', 'stories', 'werk', 'aperture',
-  'interview-notes', 'journal', 'raven', 'handwritten', 'image-only',
-]
+import { STRUCTURAL_TAGS } from '@/lib/constants'
 
 const MAX_TAGS = 8
 

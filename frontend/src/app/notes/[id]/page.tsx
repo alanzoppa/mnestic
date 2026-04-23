@@ -19,12 +19,7 @@ import { EditableTitle } from '@/components/EditableTitle'
 import { TagInput } from '@/components/TagInput'
 import { PersonInput } from '@/components/PersonInput'
 import { useFavorites } from '@/lib/favorites'
-
-function asArray(val: unknown): string[] {
-  if (Array.isArray(val)) return val
-  if (typeof val === 'string' && val.trim()) return val.split(',').map((s: string) => s.trim()).filter(Boolean)
-  return []
-}
+import { asArray } from '@/lib/constants'
 
 // Extract images from markdown content
 interface ExtractedImage {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { search, getTags, getSchema } from '@/lib/api'
 import type { SearchResult, TagInfo } from '@/lib/api'
+import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -15,8 +16,6 @@ import { SearchAutocomplete } from '@/components/SearchAutocomplete'
 import { HighlightText } from '@/components/HighlightText'
 import { DateRangePicker } from '@/components/DateRangePicker'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-
-const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
 
 interface SearchFilters {
   source: string

@@ -2,19 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getCalendarEvents } from "@/lib/api";
-
-interface CalendarEvent {
-  id: string;
-  summary: string;
-  start: string;
-  end: string;
-  location: string;
-  attendees: string;
-  date: string;
-  description?: string;
-  event_type?: string;
-}
+import { getCalendarEvents, type CalendarEvent } from "@/lib/api";
+import { useAsyncData } from "@/lib/hooks";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
@@ -25,36 +14,22 @@ const MONTHS = [
 export default function CalendarPage() {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(false);
   const [attendeeFilter, setAttendeeFilter] = useState("");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const loadEvents = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    const startStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const endStr = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
-    getCalendarEvents(startStr, endStr)
-      .then((result) => {
-        if (!cancelled) setEvents(result.events);
-      })
-      .catch(() => {
-        if (!cancelled) setEvents([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true };
-  }, [year, month]);
+  const { data: events, loading } = useAsyncData(
+    useCallback(() => {
+      const startStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const endStr = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
+      return getCalendarEvents(startStr, endStr).then((res) => res.events);
+    }, [year, month]),
+    [year, month]
+  );
 
-  useEffect(() => {
-    const cancel = loadEvents();
-    return cancel;
-  }, [loadEvents]);
+  const rawEvents = events || [];
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
@@ -80,7 +55,7 @@ export default function CalendarPage() {
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
-    events.forEach((event) => {
+    rawEvents.forEach((event) => {
       const eventDate = event.date || event.start.split("T")[0];
       if (!eventDate) return;
       if (attendeeFilter) {
@@ -92,7 +67,7 @@ export default function CalendarPage() {
       map.set(eventDate, existing);
     });
     return map;
-  }, [events, attendeeFilter]);
+  }, [rawEvents, attendeeFilter]);
 
   const getEventsForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

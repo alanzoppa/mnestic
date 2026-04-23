@@ -16,6 +16,10 @@ export interface SearchResult {
   note_id?: string;
 }
 
+export function getNoteUrl(result: { id: string; note_id?: string; metadata?: Record<string, any> }): string {
+  return `/notes/${encodeURIComponent(result.note_id || result.metadata?.note_id || result.id)}`;
+}
+
 export interface NoteDetail {
   id: string;
   metadata: Record<string, any>;

@@ -2,19 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getCalendarDate } from "@/lib/api";
-
-interface CalendarEvent {
-  id: string;
-  summary: string;
-  start: string;
-  end: string;
-  location: string;
-  attendees: string;
-  date: string;
-  description?: string;
-  event_type?: string;
-}
+import { getCalendarDate, type CalendarEvent } from "@/lib/api";
 
 interface Note {
   id: string;

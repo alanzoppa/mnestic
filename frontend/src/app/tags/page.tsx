@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getTags, type TagInfo, type CoOccurrence } from '@/lib/api'
+import { STRUCTURAL_TAGS } from '@/lib/constants'
+import { useAsyncData } from '@/lib/hooks'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -11,8 +13,6 @@ import { Select } from '@/components/ui/Input'
 import { DonutChart, PieChartComponent } from '@/components/charts/PieCharts'
 import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-
-const STRUCTURAL_TAGS = ['1:1', 'evernote', 'zendesk', 'interview', 'work', 'personal', 'notes', 'zeig', 'handwritten', 'image-only']
 
 const TAG_CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -30,20 +30,15 @@ const SORT_OPTIONS = [
 
 export default function TagsPage() {
   const router = useRouter()
-  const [tags, setTags] = useState<TagInfo[]>([])
-  const [coOccurrence, setCoOccurrence] = useState<CoOccurrence[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useAsyncData(
+    useCallback(() => getTags(), []),
+    []
+  )
+  const tags = data?.tags || []
+  const coOccurrence = data?.co_occurrence || []
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [sortBy, setSortBy] = useState('count')
-
-  useEffect(() => {
-    getTags().then((res) => {
-      setTags(res.tags)
-      setCoOccurrence(res.co_occurrence || [])
-      setLoading(false)
-    })
-  }, [])
 
   // Filter and sort tags
   const filteredTags = tags.filter(tag => {
