@@ -3,10 +3,10 @@ from __future__ import annotations
 import math
 import httpx
 
+from constants import EMBED_DIM, BATCH_SIZE, EMBED_PREFIX_DOC, EMBED_PREFIX_QUERY
+
 OLLAMA_BASE_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text-v2-moe"
-EMBED_DIM = 256
-BATCH_SIZE = 50
 
 
 def _l2_normalize(vec: list[float]) -> list[float]:

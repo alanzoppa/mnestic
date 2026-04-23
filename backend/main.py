@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from constants import MAX_FILENAME_LEN, MAX_FILENAME_ATTEMPTS, MAX_GRAPH_NODES, MAX_GRAPH_WHERE_IDS, SNIPPET_MAX_LEN, DEFAULT_SIMILAR_N, DEFAULT_SIMILAR_THRESHOLD
 from embed import embed_texts_sync
 from embed import embed_query_sync
 from store import NoteStore
@@ -109,7 +110,7 @@ def _sanitize_filename(title: str) -> str:
     sanitized = sanitized.strip()
     if not sanitized:
         sanitized = "untitled"
-    base = sanitized[:200]
+    base = sanitized[:MAX_FILENAME_LEN]
     filepath = os.path.join(NOTES_DIR, f"{base}.md")
     if not os.path.exists(filepath):
         return base
