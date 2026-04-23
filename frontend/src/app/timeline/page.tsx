@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton';
+import { SkeletonStatCards, SkeletonChart, CHART_BAR_HEIGHTS } from '@/components/ui/Skeleton';
 import {
   BarChart,
   Bar,
@@ -51,8 +51,6 @@ const CHART_TYPE_OPTIONS = [
   { value: 'line', label: 'Line Chart' },
   { value: 'area', label: 'Area Chart' },
 ];
-
-const CHART_BAR_HEIGHTS = [65, 42, 78, 55, 90, 35, 72, 48, 85, 38, 60, 50];
 
 export default function TimelinePage() {
   const router = useRouter();

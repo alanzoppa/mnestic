@@ -70,7 +70,7 @@ export function SkeletonStatCards({ count = 4 }: { count?: number }) {
   )
 }
 
-const CHART_BAR_HEIGHTS = [65, 42, 78, 55, 90, 35, 72, 48, 85, 38, 60, 50]
+export const CHART_BAR_HEIGHTS = [65, 42, 78, 55, 90, 35, 72, 48, 85, 38, 60, 50]
 
 export function SkeletonChart({ height = 250 }: { height?: number }) {
   return (
