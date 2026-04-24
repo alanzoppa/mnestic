@@ -157,10 +157,17 @@ export default function GraphPage() {
         highlightSpriteRef.current = sprite
         const fadeDuration = 800
         const start = Date.now()
+        const targetNodeId = node.id
         const fade = () => {
           if (!highlightSpriteRef.current) return
           const elapsed = Date.now() - start
           const t = Math.min(elapsed / fadeDuration, 1)
+          // Re-sync position each frame to account for any residual drift
+          const g = fgRef.current?.graphData()
+          const ln = g?.nodes.find((n: any) => n.id === targetNodeId)
+          if (ln) {
+            highlightSpriteRef.current.position.set(ln.x, ln.y, ln.z)
+          }
           highlightSpriteRef.current.material.opacity = t
           if (t < 1) requestAnimationFrame(fade)
         }
