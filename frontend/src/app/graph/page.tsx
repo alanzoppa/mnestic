@@ -147,7 +147,7 @@ export default function GraphPage() {
         const material = new THREE.SpriteMaterial({
           map: createGlowTexture(),
           transparent: true,
-          opacity: 1.0,
+          opacity: 0,
           depthWrite: false,
         })
         const sprite = new THREE.Sprite(material)
@@ -155,6 +155,16 @@ export default function GraphPage() {
         sprite.position.set(node.x, node.y, node.z)
         s.add(sprite)
         highlightSpriteRef.current = sprite
+        const fadeDuration = 800
+        const start = Date.now()
+        const fade = () => {
+          if (!highlightSpriteRef.current) return
+          const elapsed = Date.now() - start
+          const t = Math.min(elapsed / fadeDuration, 1)
+          highlightSpriteRef.current.material.opacity = t
+          if (t < 1) requestAnimationFrame(fade)
+        }
+        requestAnimationFrame(fade)
       }, 3000)
     }
 
