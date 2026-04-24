@@ -289,6 +289,8 @@ Playwright's config lookup is sensitive to working directory. The config file pa
 
 ### Running Tests
 
+**Green means green. Period.** Do not commit or push if any test fails. Do not rationalize, explain away, or dismiss test failures. Fix the failure first, then re-run the full suite until it is completely green. No exceptions.
+
 Always run all suites together before committing. Frontend-only or backend-only runs give false confidence.
 
 ```bash
