@@ -204,7 +204,7 @@ notes-browser/
 Run tests from the project root:
 
 ```bash
-cd ~/Code/notes-browser
+cd .
 
 # Backend
 backend/.venv/bin/pytest backend/

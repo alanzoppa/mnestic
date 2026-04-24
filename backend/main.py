@@ -389,11 +389,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     }
 
 
-PEOPLE_REGISTRY_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "Desktop", "notes", "people_registry.json"
-)
-if not os.path.exists(PEOPLE_REGISTRY_PATH):
-    PEOPLE_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "people_registry.json")
+from config_env import PEOPLE_REGISTRY_PATH
 
 
 @app.get("/api/people")
