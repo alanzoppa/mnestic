@@ -35,14 +35,16 @@ function assignTagColors(tags: string[]): Record<string, string> {
 }
 
 function createGlowTexture(): THREE.CanvasTexture {
-  const size = 128
+  const size = 256
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)')
-  gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.2)')
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)')
+  gradient.addColorStop(0.08, 'rgba(255, 255, 255, 0.85)')
+  gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.4)')
+  gradient.addColorStop(0.45, 'rgba(255, 255, 255, 0.1)')
   gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, size, size)
@@ -132,11 +134,11 @@ export default function GraphPage() {
       const material = new THREE.SpriteMaterial({
         map: createGlowTexture(),
         transparent: true,
-        opacity: 0.8,
+        opacity: 1.0,
         depthWrite: false,
       })
       const sprite = new THREE.Sprite(material)
-      sprite.scale.set(16, 16, 1)
+      sprite.scale.set(22, 22, 1)
       sprite.position.set(node.x, node.y, node.z)
       scene.add(sprite)
       highlightSpriteRef.current = sprite
