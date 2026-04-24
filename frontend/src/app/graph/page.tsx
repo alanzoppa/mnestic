@@ -1,9 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useAsyncData } from '@/lib/hooks'
-import { getGraph, getTags, type GraphData, type GraphNode, type TagInfo } from '@/lib/api'
+import { getGraph, getTags, type GraphNode } from '@/lib/api'
+import Link from 'next/link'
+
+const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false, loading: () => null })
 
 const COLOR_PALETTE = [
   '#3b82f6', '#f97316', '#10b981', '#ec4899',
@@ -36,14 +39,39 @@ function getNodeColor(node: GraphNode, tagColors: Record<string, string>): strin
 }
 
 export default function GraphPage() {
-  const router = useRouter()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const graphInstanceRef = useRef<any>(null)
-  const [libLoading, setLibLoading] = useState(true)
-  const [libError, setLibError] = useState('')
-  const [hoverNode, setHoverNode] = useState<GraphNode | null>(null)
+  const fgRef = useRef<any>(null)
+  const graphContainerRef = useRef<HTMLDivElement>(null)
+  const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+
+  // ResizeObserver to get actual pixel dimensions for the Three.js canvas
+  useEffect(() => {
+    const container = graphContainerRef.current
+    if (!container) return
+
+    const updateSize = () => {
+      const { width, height } = container.getBoundingClientRect()
+      setDimensions({ width, height })
+    }
+
+    updateSize()
+
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => updateSize())
+      resizeObserver.observe(container)
+    } else {
+      // Fallback for older browsers
+      window.addEventListener('resize', updateSize)
+    }
+
+    return () => {
+      if (resizeObserver) resizeObserver.disconnect()
+      else window.removeEventListener('resize', updateSize)
+    }
+  }, [])
 
   const { data: tagsData } = useAsyncData(
     useCallback(() => getTags().then(res => res.tags.slice(0, 30)), []),
@@ -55,100 +83,43 @@ export default function GraphPage() {
     [selectedTag, threshold]
   )
 
+  const graphData = useMemo(() => {
+    if (!data) return null
+    return { nodes: data.nodes, links: data.edges.map(e => ({ ...e })) }
+  }, [data])
+
   const tagColors = useMemo(() => {
     if (!data) return {}
     const primaryTags = data.nodes.map(n => n.tags?.[0]).filter(Boolean) as string[]
     return assignTagColors(primaryTags)
   }, [data])
 
-  useEffect(() => {
-    if (!data || !containerRef.current || data.nodes.length === 0) return
+  const handleNodeClick = useCallback((node: any) => {
+    if (!fgRef.current || !node) return
 
-    const container = containerRef.current
-    let cleanup = () => {}
+    const distance = 40
+    const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z)
 
-    setLibLoading(true)
+    const newPos = node.x || node.y || node.z
+      ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
+      : { x: 0, y: 0, z: distance }
 
-    import('force-graph')
-      .then((mod: any) => {
-        const ForceGraph = mod.default || mod
-        const graph = ForceGraph()(container)
-          .graphData({
-            nodes: data.nodes.map(n => ({ ...n })),
-            links: data.edges.map(e => ({ ...e }))
-          })
-          .nodeId('id')
-          .nodeLabel((node: any) => node.title || node.id)
-          .nodeColor((node: any) => getNodeColor(node, tagColors))
-          .nodeVal((node: any) => {
-            const links = data.edges.filter(e => 
-              e.source === node.id || e.target === node.id ||
-              ((e.source as any)?.id === node.id || (e.target as any)?.id === node.id)
-            )
-            return Math.max(1, links.length * 0.5)
-          })
-          .linkColor(() => 'rgba(161, 161, 170, 0.15)')
-          .linkWidth((link: any) => (link.weight || 0.5) * 2)
-          .backgroundColor('transparent')
-          .width(container.clientWidth)
-          .height(container.clientHeight)
-          .onNodeClick((node: any) => {
-            if (node?.id) router.push(`/notes/${node.id}`)
-          })
-          .onNodeHover((node: any) => {
-            if (node) {
-              setHoverNode({ 
-                id: node.id, 
-                title: node.title, 
-                folder: node.folder, 
-                tags: node.tags || [], 
-                source: node.source 
-              })
-              container.style.cursor = 'pointer'
-            } else {
-              setHoverNode(null)
-              container.style.cursor = 'default'
-            }
-          })
-          .cooldownTime(2000)
+    fgRef.current.cameraPosition(newPos, node, 3000)
 
-        const chargeForce = graph.d3Force('charge')
-        if (chargeForce) chargeForce.strength(-50)
+    setViewingNode(node as GraphNode)
+  }, [])
 
-        graphInstanceRef.current = graph
-
-        const handleResize = () => {
-          graph.width(container.clientWidth).height(container.clientHeight)
-        }
-        window.addEventListener('resize', handleResize)
-
-        cleanup = () => {
-          window.removeEventListener('resize', handleResize)
-          graph._destructor()
-          graphInstanceRef.current = null
-        }
-
-        setLibLoading(false)
-      })
-      .catch((e: any) => {
-        setLibError('Failed to load graph library: ' + (e.message || String(e)))
-        setLibLoading(false)
-      })
-
-    return () => cleanup()
-  }, [data, tagColors])
-
-  const showLoading = loading || libLoading
+  const showLoading = loading
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+    <div className="h-[calc(100vh-48px)] bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
       <div className="p-4 border-b border-zinc-800 flex items-center gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Similarity Graph</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400">Tag:</span>
           <select
             value={selectedTag}
-            onChange={(e) => setSelectedTag(e.target.value)}
+            onChange={(e) => { setSelectedTag(e.target.value); setViewingNode(null) }}
             className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100"
           >
             <option value="">All tags</option>
@@ -165,32 +136,30 @@ export default function GraphPage() {
             max="0.95"
             step="0.05"
             value={threshold}
-            onChange={(e) => setThreshold(parseFloat(e.target.value))}
+            onChange={(e) => { setThreshold(parseFloat(e.target.value)); setViewingNode(null) }}
             className="w-24"
           />
           <span className="text-sm text-zinc-300 w-10">{threshold.toFixed(2)}</span>
         </div>
       </div>
 
-      <div className="flex-1 relative">
+      <div className="flex-1 relative overflow-hidden">
         {showLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 z-10">
-            <div className="text-zinc-400">
-              {loading ? 'Loading data...' : 'Initializing graph...'}
-            </div>
+            <div className="text-zinc-400">Loading data...</div>
           </div>
         )}
 
-        {(error || libError) && !showLoading && (
+        {(error) && !showLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-red-400 text-center max-w-md">
               <p className="font-medium">Error</p>
-              <p className="text-sm mt-1">{error?.message || libError}</p>
+              <p className="text-sm mt-1">{error?.message}</p>
             </div>
           </div>
         )}
 
-        {data && data.nodes.length === 0 && !showLoading && !error && !libError && (
+        {data && data.nodes.length === 0 && !showLoading && !error && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-zinc-400 text-center">
               <p>No connections found.</p>
@@ -199,28 +168,53 @@ export default function GraphPage() {
           </div>
         )}
 
-        <div 
-          ref={containerRef} 
-          className="w-full" 
-          style={{ minHeight: 'calc(100vh - 140px)' }}
-          data-testid="graph-container"
-        />
+        <div ref={graphContainerRef} data-testid="graph-container" className="w-full h-full">
+          {data && data.nodes.length > 0 && (
+             <ForceGraph3D
+              ref={fgRef}
+              graphData={graphData!}
+              nodeId="id"
+              nodeLabel="title"
+              nodeColor={(node: any) => getNodeColor(node as GraphNode, tagColors)}
+              backgroundColor="#09090b"
+              onNodeClick={handleNodeClick}
+              enableNodeDrag={false}
+              showNavInfo={true}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          )}
+        </div>
 
-        {hoverNode && (
-          <div className="absolute bottom-4 left-4 bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-w-xs z-20 shadow-lg">
-            <div className="font-medium text-zinc-100 truncate">{hoverNode.title}</div>
-            <div className="text-xs text-zinc-400 mt-1">{hoverNode.folder} · {hoverNode.source}</div>
-            {hoverNode.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {hoverNode.tags.slice(0, 5).map(t => (
-                  <span key={t} className="px-1.5 py-0.5 bg-zinc-800 rounded text-xs text-zinc-300">{t}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Details Pane */}
+        <div
+          className={`absolute bottom-4 right-4 bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-w-xs z-20 shadow-lg transition-opacity duration-300 ${
+            viewingNode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          data-testid="graph-details-pane"
+        >
+          {viewingNode && (
+            <>
+              <Link
+                href={`/notes/${viewingNode.id}`}
+                className="font-medium text-zinc-100 truncate hover:text-blue-400 transition-colors block"
+              >
+                {viewingNode.title}
+              </Link>
+              <div className="text-xs text-zinc-400 mt-1">{viewingNode.folder} · {viewingNode.source}</div>
+              {viewingNode.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {viewingNode.tags.slice(0, 5).map(t => (
+                    <span key={t} className="px-1.5 py-0.5 bg-zinc-800 rounded text-xs text-zinc-300">{t}</span>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
-        <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20" data-testid="graph-legend">
+        {/* Legend */}
+        <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20 max-h-56 overflow-y-auto" data-testid="graph-legend">
           <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
           {Object.entries(tagColors).map(([tag, color]) => (
             <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">

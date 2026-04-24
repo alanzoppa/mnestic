@@ -22,9 +22,9 @@ test.describe("Graph Page", () => {
   });
 
   test("should display graph container", async ({ page }) => {
-    await page.waitForTimeout(1000); // Wait for force-graph to initialize
-    // The graph container should exist - check by looking for canvas or svg
-    const container = page.locator('canvas, svg').first();
+    await page.waitForTimeout(1000); // Wait for 3D force-graph to initialize
+    // The graph renders into a canvas element
+    const container = page.locator('[data-testid="graph-container"] canvas');
     await expect(container).toBeVisible();
   });
 
@@ -60,5 +60,10 @@ test.describe("Graph Page", () => {
     await page.waitForTimeout(500);
 
     await expect(page.getByRole('heading', { name: 'Similarity Graph' })).toBeVisible();
+  });
+
+  test("should not show details pane initially", async ({ page }) => {
+    const pane = page.locator('[data-testid="graph-details-pane"]');
+    await expect(pane).toHaveCSS('opacity', '0');
   });
 });

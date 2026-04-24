@@ -67,7 +67,11 @@ export function CalendarHeatmap() {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const availableYears = useMemo(() => {
     if (data.length === 0) return [new Date().getFullYear()]
-    const years = new Set(data.map(p => parseInt(p.period.slice(0, 4))))
+    const years = new Set(
+      data
+        .map(p => parseInt(p.period.slice(0, 4)))
+        .filter(y => !isNaN(y))
+    )
     return [...years].sort().reverse()
   }, [data])
 
