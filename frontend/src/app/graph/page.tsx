@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import * as THREE from 'three'
 import { useAsyncData } from '@/lib/hooks'
 import { getGraph, getTags, type GraphNode } from '@/lib/api'
 import Link from 'next/link'
@@ -33,6 +34,21 @@ function assignTagColors(tags: string[]): Record<string, string> {
   return colors
 }
 
+function createGlowTexture(): THREE.CanvasTexture {
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)')
+  gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.2)')
+  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, size, size)
+  return new THREE.CanvasTexture(canvas)
+}
+
 function getNodeColor(node: GraphNode, tagColors: Record<string, string>): string {
   const primaryTag = node.tags?.[0]
   return primaryTag ? tagColors[primaryTag] || '#6b7280' : '#6b7280'
@@ -41,6 +57,7 @@ function getNodeColor(node: GraphNode, tagColors: Record<string, string>): strin
 export default function GraphPage() {
   const fgRef = useRef<any>(null)
   const graphContainerRef = useRef<HTMLDivElement>(null)
+  const highlightSpriteRef = useRef<THREE.Sprite | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
@@ -106,8 +123,38 @@ export default function GraphPage() {
 
     fgRef.current.cameraPosition(newPos, node, 3000)
 
+    const scene = fgRef.current.scene()
+    if (scene) {
+      if (highlightSpriteRef.current) {
+        scene.remove(highlightSpriteRef.current)
+        highlightSpriteRef.current = null
+      }
+      const material = new THREE.SpriteMaterial({
+        map: createGlowTexture(),
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      })
+      const sprite = new THREE.Sprite(material)
+      sprite.scale.set(16, 16, 1)
+      sprite.position.set(node.x, node.y, node.z)
+      scene.add(sprite)
+      highlightSpriteRef.current = sprite
+    }
+
     setViewingNode(node as GraphNode)
   }, [])
+
+  useEffect(() => {
+    if (!viewingNode && highlightSpriteRef.current) {
+      const fg = fgRef.current
+      if (fg) {
+        const scene = fg.scene()
+        if (scene) scene.remove(highlightSpriteRef.current)
+      }
+      highlightSpriteRef.current = null
+    }
+  }, [viewingNode])
 
   const showLoading = loading
 
