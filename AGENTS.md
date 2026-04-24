@@ -473,6 +473,8 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 
 ## Changelog
 
+- [x] Cross-encoder reranker (`BAAI/bge-reranker-v2-m3`) — second-stage note ranking via `/search` with `?rerank=true` toggle
+
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
 - [x] Image captioning for 215 image-only notes using `kimi-k2.5:cloud`
 - [x] All E2E tests passing

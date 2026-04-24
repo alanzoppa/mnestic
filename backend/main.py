@@ -15,10 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from constants import MAX_FILENAME_LEN, MAX_FILENAME_ATTEMPTS, MAX_GRAPH_NODES, MAX_GRAPH_WHERE_IDS, SNIPPET_MAX_LEN, DEFAULT_SIMILAR_N, DEFAULT_SIMILAR_THRESHOLD
+from constants import MAX_FILENAME_LEN, MAX_FILENAME_ATTEMPTS, MAX_GRAPH_NODES, MAX_GRAPH_WHERE_IDS, SNIPPET_MAX_LEN, DEFAULT_SIMILAR_N, DEFAULT_SIMILAR_THRESHOLD, RERANK_MAX_CANDIDATES
 from embed import embed_texts_sync
 from embed import embed_query_sync
 from store import NoteStore
+from rerank import Reranker
 from schema import discover_schema
 from ingest import make_note_id, make_doc_id, chunk_text, build_note_chunks
 from utils import _normalize_meta, normalize_and_dedup_results
@@ -45,6 +46,8 @@ app = FastAPI(title="Notes Browser API", version="0.1.0", lifespan=lifespan)
 logger = logging.getLogger(__name__)
 
 store = NoteStore()
+
+reranker = Reranker()
 
 calendar_processor: Any = None
 
@@ -142,6 +145,7 @@ class SearchRequest(BaseModel):
     filters: dict = Field(default_factory=dict)
     n: int = 20
     include_calendar: bool = True
+    rerank: bool = True
 
 
 class UpdateNoteRequest(BaseModel):
@@ -166,6 +170,7 @@ class IngestRequest(BaseModel):
 
 @app.post("/api/search")
 async def search(body: SearchRequest) -> dict:
+    global reranker
     filters = body.filters
     tag_filter = filters.get("tags", "")
 
@@ -187,10 +192,15 @@ async def search(body: SearchRequest) -> dict:
 
     query_embedding = embed_query_sync(body.query) if body.query.strip() else None
 
+    # Determine if we should rerank
+    should_rerank = body.rerank and body.query.strip()
+
     if query_embedding is not None or not tag_filter:
         if query_embedding is not None:
-            n_results = body.n * 10 if tag_filter else body.n
-            n_results = min(n_results, 200)
+            if should_rerank:
+                n_results = min(body.n * 10, RERANK_MAX_CANDIDATES)
+            else:
+                n_results = body.n
             note_results = store.search_notes(query_embedding, n=n_results, where=where)
             if tag_filter:
                 tag_set = {t.strip().lower() for t in tag_filter.split(",") if t.strip()}
@@ -198,42 +208,52 @@ async def search(body: SearchRequest) -> dict:
                     r for r in note_results
                     if tag_set & {t.strip().lower() for t in r["metadata"].get("tags", "").split(",") if t.strip()}
                 ]
-                note_results = note_results[:body.n]
+                if not should_rerank:
+                    note_results = note_results[:body.n]
         else:
             note_results = store.list_notes(where=where, n=body.n)
     else:
         note_results = store.get_notes_by_tag(tag_filter, n=body.n, where=where)
 
-    all_results: list[dict] = []
+    # Build note candidate dicts
+    note_candidates: list[dict] = []
     for r in note_results:
         meta = r["metadata"]
         _normalize_meta(meta)
-        all_results.append(
+        note_candidates.append(
             {
                 "id": r["id"],
                 "title": meta.get("title", ""),
-                "snippet": r["document"][:200] if r["document"] else "",
+                "snippet": r["document"][:SNIPPET_MAX_LEN] if r["document"] else "",
                 "metadata": meta,
                 "score": r.get("score", 0.0),
                 "type": "note",
             }
         )
 
+    # Rerank note candidates if enabled
+    if should_rerank and note_candidates:
+        note_candidates = reranker.rerank(body.query, note_candidates)
+        note_candidates = note_candidates[:body.n]
+
+    # Calendar results are not reranked
+    calendar_results: list[dict] = []
     if body.include_calendar and query_embedding is not None:
-        calendar_results = store.search_calendar(query_embedding, n=body.n)
-        for r in calendar_results:
-            all_results.append(
+        calendar_results_raw = store.search_calendar(query_embedding, n=body.n)
+        for r in calendar_results_raw:
+            calendar_results.append(
                 {
                     "id": r["id"],
                     "title": r["metadata"].get("summary", ""),
-                    "snippet": r["document"][:200] if r["document"] else "",
+                    "snippet": r["document"][:SNIPPET_MAX_LEN] if r["document"] else "",
                     "metadata": r["metadata"],
                     "score": 1 - r["distance"] if r.get("distance") is not None else 0.0,
                     "type": "calendar",
                 }
             )
 
-    id_to_best: dict[str, dict] = {}
+    # Merge and deduplicate by note_id
+    all_results = note_candidates + calendar_results
     seen_note_ids: dict[str, dict] = {}
     for r in all_results:
         rid = r["id"]

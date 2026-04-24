@@ -73,11 +73,11 @@ export interface Stats {
   total_calendar_events: number;
 }
 
-export async function search(query: string, filters?: Record<string, string>, n?: number, includeCalendar?: boolean): Promise<{ results: SearchResult[] }> {
+export async function search(query: string, filters?: Record<string, string>, n?: number, includeCalendar?: boolean, rerank?: boolean): Promise<{ results: SearchResult[] }> {
   return fetchAPI("/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, filters: filters || {}, n: n || 20, include_calendar: includeCalendar !== false }),
+    body: JSON.stringify({ query, filters: filters || {}, n: n || 20, include_calendar: includeCalendar !== false, rerank: rerank !== false }),
   });
 }
 

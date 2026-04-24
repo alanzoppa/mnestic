@@ -7,3 +7,4 @@ pydantic
 pyyaml
 fastmcp
 watchdog
+sentence-transformers

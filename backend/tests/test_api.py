@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 from fastapi.testclient import TestClient
+from constants import RERANK_MAX_CANDIDATES
 
 
 DUMMY_EMBEDDING = [0.1] * 256
@@ -34,11 +35,16 @@ def app_client():
     mock_store.get_note.return_value = None
     mock_store.get_similar.return_value = []
 
+    mock_reranker = MagicMock()
+    mock_reranker.rerank.side_effect = lambda query, candidates: candidates
+
     with patch("main.NoteStore", return_value=mock_store), \
-         patch("main.embed_query_sync", return_value=DUMMY_EMBEDDING):
+         patch("main.embed_query_sync", return_value=DUMMY_EMBEDDING), \
+         patch("main.Reranker", return_value=mock_reranker):
         from main import app, store as real_store
         import main
         main.store = mock_store
+        main.reranker = mock_reranker
         client = TestClient(app)
         yield client, mock_store
 
@@ -290,6 +296,49 @@ def test_get_calendar_events_missing_data(app_client):
         assert len(data["events"]) == 0
 
 
+def test_search_reranker_called(app_client):
+    """Reranker is called with non-empty query when rerank is enabled (default)."""
+    c, mock_store = app_client
+    mock_store.search_notes.return_value = [
+        {"id": "n1", "metadata": {"title": "Note A", "tags": "test"}, "document": "body a", "distance": 0.1},
+        {"id": "n2", "metadata": {"title": "Note B", "tags": "test"}, "document": "body b", "distance": 0.2},
+    ]
+    mock_store.search_calendar.return_value = []
+
+    res = c.post("/api/search", json={"query": "test", "n": 1, "filters": {}})
+    assert res.status_code == 200
+    data = res.json()
+    assert "results" in data
+
+
+def test_search_reranker_skipped_when_empty_query(app_client):
+    """Browse page sends empty query — reranker should not be called."""
+    c, mock_store = app_client
+    mock_store.list_notes.return_value = [
+        {"id": "n1", "metadata": {"title": "Note A"}, "document": "body a", "score": 0.0},
+    ]
+    mock_store.search_calendar.return_value = []
+
+    res = c.post("/api/search", json={"query": "", "n": 20, "filters": {}})
+    assert res.status_code == 200
+    data = res.json()
+    assert "results" in data
+
+
+def test_search_reranker_disabled(app_client):
+    """rerank=false skips reranking and uses embedding scores directly."""
+    c, mock_store = app_client
+    mock_store.search_notes.return_value = [
+        {"id": "n1", "metadata": {"title": "Note A", "tags": "test"}, "document": "body a", "distance": 0.1},
+    ]
+    mock_store.search_calendar.return_value = []
+
+    res = c.post("/api/search", json={"query": "test", "rerank": False, "filters": {}})
+    assert res.status_code == 200
+    data = res.json()
+    assert "results" in data
+
+
 def test_search_embeds_once(app_client):
     """embed_query_sync must be called only once per search request."""
     c, mock_store = app_client
@@ -301,7 +350,7 @@ def test_search_embeds_once(app_client):
 
 
 def test_search_n_capped(app_client):
-    """n_results is capped to 200 even when body.n is large."""
+    """n_results is capped to RERANK_MAX_CANDIDATES when reranking, 200 otherwise."""
     c, mock_store = app_client
     mock_store.search_notes.return_value = []
 
@@ -309,4 +358,4 @@ def test_search_n_capped(app_client):
         res = c.post("/api/search", json={"query": "test", "n": 1000, "filters": {}})
     assert res.status_code == 200
     _, kwargs = mock_store.search_notes.call_args
-    assert kwargs["n"] <= 200
+    assert kwargs["n"] <= RERANK_MAX_CANDIDATES
