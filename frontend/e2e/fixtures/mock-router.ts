@@ -148,7 +148,7 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
 
   // Calendar date - must come before generic calendar route
   // Use function-based handler to check URL in order
-  await page.route("**/api/calendar/**", async (route) => {
+  await page.route("**/api/calendar**", async (route) => {
     const url = route.request().url();
     if (url.includes("/api/calendar/date/")) {
       log(`→ [date] ${route.request().method()} ${url}`);
@@ -303,7 +303,7 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
   });
 
   // Calendar - single handler to disambiguate route patterns
-  await page.route("**/api/calendar/**", async (route) => {
+  await page.route("**/api/calendar**", async (route) => {
     const body = await mockWithDelay(
       route.request().url().includes("/api/calendar/date/")
         ? mockCalendarDate
