@@ -73,7 +73,8 @@ class NoteWatcher:
         logger.info("NoteWatcher started on %s", self._notes_dir)
 
     def _startup_scan(self) -> None:
-        """After startup, index any files on disk that aren't tracked or have changed."""
+        """After startup, index any files on disk that aren't tracked or have changed,
+        and clean up orphaned entries in state / ChromaDB."""
         state_file = self._notes_dir / ".ingest_state.json"
         tracked: dict = {}
         if state_file.exists():
@@ -103,6 +104,35 @@ class NoteWatcher:
                 queued += 1
         if queued:
             logger.info("Watcher: queued %d files for startup ingest", queued)
+
+        self._cleanup_orphans(tracked)
+
+    def _cleanup_orphans(self, tracked: dict) -> None:
+        """Delete notes from ChromaDB and state that no longer exist on disk."""
+        note_ids_on_disk = set(self._filename_to_note_id.values())
+        cleaned = 0
+
+        # Pass 1: state-file orphans
+        for note_id in list(tracked.keys()):
+            if note_id not in note_ids_on_disk:
+                self._handle_delete(note_id, f"{note_id}.md")
+                cleaned += 1
+
+        # Pass 2: ChromaDB orphans
+        try:
+            all_notes = self._store.get_unique_notes(include=["metadatas"])
+            for meta in all_notes.get("metadatas", []):
+                if not meta:
+                    continue
+                db_note_id = meta.get("note_id", "")
+                if db_note_id and db_note_id not in note_ids_on_disk:
+                    self._handle_delete(db_note_id, f"{db_note_id}.md")
+                    cleaned += 1
+        except Exception as e:
+            logger.warning("Watcher: ChromaDB cleanup error: %s", e)
+
+        if cleaned:
+            logger.info("Watcher: cleaned up %d orphaned notes", cleaned)
 
     def stop(self) -> None:
         if not self._running:

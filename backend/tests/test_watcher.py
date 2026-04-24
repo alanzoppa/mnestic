@@ -197,3 +197,27 @@ def test_startup_scan_skips_up_to_date(setup_watcher):
     state_file.write_text(json.dumps({"files": {"fresh": {"mtime": mtime, "chunks": 2}}}))
     w._startup_scan()
     assert "fresh.md" not in w._pending
+
+
+def test_startup_scan_cleans_state_orphans(setup_watcher):
+    w, notes_dir, mock_store, cache_called = setup_watcher
+    w._filename_to_note_id = {"existing.md": "existing"}
+    state_file = notes_dir / ".ingest_state.json"
+    state_file.write_text('{"files": {"existing": {"mtime": 1}, "orphan": {"mtime": 1}}}')
+    w._store = mock_store
+    w._cleanup_orphans(json.loads(state_file.read_text()).get("files", {}))
+    mock_store.delete_note_chunks.assert_any_call("orphan")
+    assert "orphan" not in json.loads(state_file.read_text()).get("files", {})
+    assert len(cache_called) == 1
+
+
+def test_startup_scan_cleans_chroma_orphans(setup_watcher):
+    w, notes_dir, mock_store, cache_called = setup_watcher
+    w._filename_to_note_id = {"existing.md": "existing"}
+    mock_store.get_unique_notes.return_value = {
+        "ids": ["doc1"],
+        "metadatas": [{"note_id": "orphan"}],
+    }
+    w._cleanup_orphans({})
+    mock_store.delete_note_chunks.assert_called_once_with("orphan")
+    assert len(cache_called) == 1
