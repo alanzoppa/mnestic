@@ -60,6 +60,7 @@ export default function GraphPage() {
   const fgRef = useRef<any>(null)
   const graphContainerRef = useRef<HTMLDivElement>(null)
   const highlightSpriteRef = useRef<THREE.Sprite | null>(null)
+  const glowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
@@ -131,30 +132,49 @@ export default function GraphPage() {
         scene.remove(highlightSpriteRef.current)
         highlightSpriteRef.current = null
       }
-      const material = new THREE.SpriteMaterial({
-        map: createGlowTexture(),
-        transparent: true,
-        opacity: 1.0,
-        depthWrite: false,
-      })
-      const sprite = new THREE.Sprite(material)
-      sprite.scale.set(22, 22, 1)
-      sprite.position.set(node.x, node.y, node.z)
-      scene.add(sprite)
-      highlightSpriteRef.current = sprite
+      if (glowTimeoutRef.current) {
+        clearTimeout(glowTimeoutRef.current)
+        glowTimeoutRef.current = null
+      }
+      glowTimeoutRef.current = setTimeout(() => {
+        if (!fgRef.current) return
+        const s = fgRef.current.scene()
+        if (!s) return
+        if (highlightSpriteRef.current) {
+          s.remove(highlightSpriteRef.current)
+          highlightSpriteRef.current = null
+        }
+        const material = new THREE.SpriteMaterial({
+          map: createGlowTexture(),
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: false,
+        })
+        const sprite = new THREE.Sprite(material)
+        sprite.scale.set(22, 22, 1)
+        sprite.position.set(node.x, node.y, node.z)
+        s.add(sprite)
+        highlightSpriteRef.current = sprite
+      }, 3000)
     }
 
     setViewingNode(node as GraphNode)
   }, [])
 
   useEffect(() => {
-    if (!viewingNode && highlightSpriteRef.current) {
-      const fg = fgRef.current
-      if (fg) {
-        const scene = fg.scene()
-        if (scene) scene.remove(highlightSpriteRef.current)
+    if (!viewingNode) {
+      if (glowTimeoutRef.current) {
+        clearTimeout(glowTimeoutRef.current)
+        glowTimeoutRef.current = null
       }
-      highlightSpriteRef.current = null
+      if (highlightSpriteRef.current) {
+        const fg = fgRef.current
+        if (fg) {
+          const scene = fg.scene()
+          if (scene) scene.remove(highlightSpriteRef.current)
+        }
+        highlightSpriteRef.current = null
+      }
     }
   }, [viewingNode])
 
@@ -228,6 +248,7 @@ export default function GraphPage() {
               backgroundColor="#09090b"
               onNodeClick={handleNodeClick}
               enableNodeDrag={false}
+              nodeResolution={32}
               showNavInfo={true}
               width={dimensions.width}
               height={dimensions.height}
