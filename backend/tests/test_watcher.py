@@ -221,3 +221,19 @@ def test_startup_scan_cleans_chroma_orphans(setup_watcher):
     w._cleanup_orphans({})
     mock_store.delete_note_chunks.assert_called_once_with("orphan")
     assert len(cache_called) == 1
+
+
+def test_on_moved_queues_upsert(setup_watcher):
+    w, notes_dir, mock_store, *_ = setup_watcher
+    write_note(notes_dir / "moved.md", source_id="moved", body="Moved content")
+    w._on_event("moved", str(notes_dir / "moved.md"))
+    assert "moved.md" in w._pending
+
+
+def test_on_moved_debounce(setup_watcher):
+    w, *_ = setup_watcher
+    w._on_event("moved", "/some/path/moved.md")
+    assert "moved.md" in w._pending
+
+    w._on_event("moved", "/some/path/moved.md")
+    assert len(w._pending) == 1

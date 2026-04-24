@@ -319,3 +319,7 @@ class _Handler(FileSystemEventHandler):
     def on_deleted(self, event):
         if not event.is_directory:
             self._callback("deleted", event.src_path)
+
+    def on_moved(self, event):
+        if not event.is_directory:
+            self._callback("moved", event.dest_path)
