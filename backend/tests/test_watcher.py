@@ -169,3 +169,31 @@ def test_start_stop(setup_watcher):
     assert w.running is True
     w.stop()
     assert w.running is False
+
+
+def test_startup_scan_queues_untracked(setup_watcher):
+    w, notes_dir, *_ = setup_watcher
+    write_note(notes_dir / "untracked.md", source_id="untracked", body="Hello world")
+    w._startup_scan()
+    assert "untracked.md" in w._pending
+    assert w._filename_to_note_id.get("untracked.md") == "untracked"
+
+
+def test_startup_scan_queues_stale_mtime(setup_watcher):
+    w, notes_dir, *_ = setup_watcher
+    write_note(notes_dir / "stale.md", source_id="stale", body="Content")
+    state_file = notes_dir / ".ingest_state.json"
+    state_file.write_text('{"files": {"stale": {"mtime": 1, "chunks": 2}}}')
+    w._startup_scan()
+    assert "stale.md" in w._pending
+
+
+def test_startup_scan_skips_up_to_date(setup_watcher):
+    w, notes_dir, *_ = setup_watcher
+    write_note(notes_dir / "fresh.md", source_id="fresh", body="Content")
+    fp = notes_dir / "fresh.md"
+    mtime = fp.stat().st_mtime
+    state_file = notes_dir / ".ingest_state.json"
+    state_file.write_text(json.dumps({"files": {"fresh": {"mtime": mtime, "chunks": 2}}}))
+    w._startup_scan()
+    assert "fresh.md" not in w._pending

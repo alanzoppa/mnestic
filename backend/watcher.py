@@ -67,7 +67,42 @@ class NoteWatcher:
         self._stop_event.clear()
         self._debounce_thread = threading.Thread(target=self._debounce_loop, daemon=True)
         self._debounce_thread.start()
+        # Scan for files already on disk that need indexing
+        scan_thread = threading.Thread(target=self._startup_scan, daemon=True)
+        scan_thread.start()
         logger.info("NoteWatcher started on %s", self._notes_dir)
+
+    def _startup_scan(self) -> None:
+        """After startup, index any files on disk that aren't tracked or have changed."""
+        state_file = self._notes_dir / ".ingest_state.json"
+        tracked: dict = {}
+        if state_file.exists():
+            try:
+                tracked = json.loads(state_file.read_text()).get("files", {})
+            except Exception:
+                pass
+        queued = 0
+        for md_file in self._notes_dir.iterdir():
+            if md_file.suffix != ".md":
+                continue
+            try:
+                post = frontmatter.load(str(md_file))
+                source_id = post.metadata.get("source_id", "")
+                note_id = make_note_id(source_id) if source_id else make_note_id(md_file.stem)
+            except Exception:
+                continue
+            mtime = md_file.stat().st_mtime
+            known = tracked.get(note_id, {})
+            if known.get("mtime", 0) < mtime:
+                self._filename_to_note_id[md_file.name] = note_id
+                with self._lock:
+                    self._pending[md_file.name] = _DebounceEntry(
+                        event_type="modified",
+                        scheduled_at=time.monotonic(),
+                    )
+                queued += 1
+        if queued:
+            logger.info("Watcher: queued %d files for startup ingest", queued)
 
     def stop(self) -> None:
         if not self._running:
