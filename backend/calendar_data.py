@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from datetime import datetime
 
-from config_env import CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
+from config import CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
 
 
 class CalendarProcessor:

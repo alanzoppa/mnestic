@@ -164,9 +164,9 @@ def main():
     args = parser.parse_args()
 
     if not args.source:
-        # Import config_env here to avoid circular imports or unnecessary overhead
+        # Import config here to avoid circular imports or unnecessary overhead
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
-        from config_env import NOTES_SOURCE
+        from config import NOTES_SOURCE
 
         if NOTES_SOURCE and os.path.exists(NOTES_SOURCE):
             args.source = NOTES_SOURCE

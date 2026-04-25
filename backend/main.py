@@ -409,7 +409,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     }
 
 
-from config_env import PEOPLE_REGISTRY_PATH
+from config import PEOPLE_REGISTRY_PATH
 
 
 @app.get("/api/people")
