@@ -23,7 +23,24 @@ from rerank import Reranker
 from schema import discover_schema
 from ingest import make_note_id, make_doc_id, build_note_chunks
 from utils import normalize_and_dedup_results
-from models import NoteMetadata
+from models import (
+    NoteMetadata,
+    SearchResponse,
+    NoteDetailResponse,
+    UpdateNoteResponse,
+    SimilarNotesResponse,
+    PeopleResponse,
+    TagsResponse,
+    TimelineResponse,
+    IngestResponse,
+    GraphResponse,
+    SchemaResponse,
+    WatcherStatus,
+    StatsResponse,
+    CalendarEventsResponse,
+    CalendarEventDetailResponse,
+    CalendarDateResponse,
+)
 
 from watcher import NoteWatcher
 
@@ -169,7 +186,7 @@ class IngestRequest(BaseModel):
     full: bool = False
 
 
-@app.post("/api/search")
+@app.post("/api/search", response_model=SearchResponse)
 async def search(body: SearchRequest) -> dict:
     global reranker
     filters = body.filters
@@ -270,7 +287,7 @@ async def search(body: SearchRequest) -> dict:
     return {"results": list(seen_note_ids.values())}
 
 
-@app.get("/api/notes/{note_id}")
+@app.get("/api/notes/{note_id}", response_model=NoteDetailResponse)
 async def get_note(note_id: str) -> dict:
     note = store.get_note(note_id)
     if not note:
@@ -332,7 +349,7 @@ def _reingest_note(note_id: str, md_path: str) -> None:
         store.add_notes(ids, chunks, embeddings, metadatas)
 
 
-@app.patch("/api/notes/{note_id}")
+@app.patch("/api/notes/{note_id}", response_model=UpdateNoteResponse)
 async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     if all(v is None for v in [body.title, body.content, body.tags, body.participants]):
         raise HTTPException(status_code=422, detail="No fields to update")
@@ -410,7 +427,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
 from config import PEOPLE_REGISTRY_PATH
 
 
-@app.get("/api/people")
+@app.get("/api/people", response_model=PeopleResponse)
 async def get_people() -> dict:
     if not os.path.exists(PEOPLE_REGISTRY_PATH):
         return {"people": []}
@@ -431,19 +448,19 @@ async def get_people() -> dict:
         return {"people": []}
 
 
-@app.get("/api/tags")
+@app.get("/api/tags", response_model=TagsResponse)
 async def get_tags() -> dict:
     tags, co_occurrence = store.get_tags()
     return {"tags": tags, "co_occurrence": co_occurrence}
 
 
-@app.get("/api/timeline")
+@app.get("/api/timeline", response_model=TimelineResponse)
 async def get_timeline(group_by: str = "month", tag: Optional[str] = None) -> dict:
     periods = store.get_timeline(group_by=group_by, tag=tag)
     return {"periods": periods}
 
 
-@app.get("/api/similar/{note_id}")
+@app.get("/api/similar/{note_id}", response_model=SimilarNotesResponse)
 async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) -> dict:
     similar = store.get_similar(note_id, n=n)
     query_note = store.get_note(note_id) or store.get_note_by_note_id(note_id)
@@ -465,7 +482,7 @@ async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) 
     return {"notes": notes}
 
 
-@app.post("/api/ingest")
+@app.post("/api/ingest", response_model=IngestResponse)
 async def ingest(body: IngestRequest) -> dict:
     import asyncio
     from ingest import ingest_notes, ingest_calendar
@@ -483,7 +500,7 @@ async def ingest(body: IngestRequest) -> dict:
     return {"notes_result": notes_result, "calendar_result": calendar_result}
 
 
-@app.get("/api/graph")
+@app.get("/api/graph", response_model=GraphResponse)
 async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_neighbors: int = 3, threshold: float = 0.75) -> dict:
     where_clauses = []
     if tag:
@@ -608,24 +625,24 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
     return {"nodes": nodes, "edges": edges}
 
 
-@app.get("/api/schema")
+@app.get("/api/schema", response_model=SchemaResponse)
 async def get_schema() -> dict:
     return discover_schema(NOTES_DIR)
 
 
-@app.get("/api/watcher/status")
+@app.get("/api/watcher/status", response_model=WatcherStatus)
 async def get_watcher_status() -> dict:
     if note_watcher is None:
         return {"running": False, "notes_dir": NOTES_DIR}
     return note_watcher.status()
 
 
-@app.get("/api/stats")
+@app.get("/api/stats", response_model=StatsResponse)
 async def get_stats() -> dict:
     return store.get_stats()
 
 
-@app.get("/api/calendar")
+@app.get("/api/calendar", response_model=CalendarEventsResponse)
 async def get_calendar_events(
     start_date: Optional[str] = None, end_date: Optional[str] = None, attendee: Optional[str] = None
 ) -> dict:
@@ -643,7 +660,7 @@ async def get_calendar_events(
     return {"events": events}
 
 
-@app.get("/api/calendar/{event_id}")
+@app.get("/api/calendar/{event_id}", response_model=CalendarEventDetailResponse)
 async def get_calendar_event(event_id: str) -> dict:
     cal = get_calendar()
     events = cal.process_events()
@@ -679,7 +696,7 @@ async def get_calendar_event(event_id: str) -> dict:
     }
 
 
-@app.get("/api/calendar/date/{date}")
+@app.get("/api/calendar/date/{date}", response_model=CalendarDateResponse)
 async def get_calendar_by_date(date: str) -> dict:
     cal = get_calendar()
     events = cal.get_events_for_date(date)

@@ -1,6 +1,7 @@
 from datetime import date as date_type
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CalendarEvent(BaseModel):
@@ -45,3 +46,168 @@ class NoteMetadata(BaseModel):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
         return v or []
+
+
+# ------------------------------------------------------------------
+# Response models for FastAPI endpoints
+# ------------------------------------------------------------------
+
+class SearchResultItem(BaseModel):
+    id: str
+    title: str = ""
+    snippet: str = ""
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+    score: float = 0.0
+    type: str = "note"
+    note_id: str = ""
+
+
+class SearchResponse(BaseModel):
+    results: list[SearchResultItem] = []
+
+
+class SimilarNoteRef(BaseModel):
+    id: str
+    note_id: str = ""
+    title: str = ""
+    score: float = 0.0
+    created: str = ""
+
+
+class SimilarNotesResponse(BaseModel):
+    notes: list[SimilarNoteRef] = []
+
+
+class NoteDetailResponse(BaseModel):
+    id: str
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+    content: str = ""
+    calendar_events: list[CalendarEvent] = []
+    similar_notes: list[SimilarNoteRef] = []
+
+
+class UpdateNoteResponse(BaseModel):
+    id: str
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+    content: str = ""
+
+
+class PersonInfo(BaseModel):
+    name: str
+    aliases: list[str] = []
+    context: str = ""
+
+
+class PeopleResponse(BaseModel):
+    people: list[PersonInfo] = []
+
+
+class TagInfo(BaseModel):
+    name: str
+    count: int = 0
+
+
+class CoOccurrence(BaseModel):
+    tag1: str
+    tag2: str
+    count: int = 0
+
+
+class TagsResponse(BaseModel):
+    tags: list[TagInfo] = []
+    co_occurrence: list[CoOccurrence] = []
+
+
+class TimelinePeriod(BaseModel):
+    period: str
+    count: int = 0
+    sample_ids: list[str] = []
+
+
+class TimelineResponse(BaseModel):
+    periods: list[TimelinePeriod] = []
+
+
+class IngestResponse(BaseModel):
+    notes_result: Any = None
+    calendar_result: Any = None
+
+
+class GraphNode(BaseModel):
+    id: str
+    title: str = ""
+    folder: str = ""
+    tags: list[str] = []
+    source: str = ""
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+    weight: float = 0.0
+
+
+class GraphResponse(BaseModel):
+    nodes: list[GraphNode] = []
+    edges: list[GraphEdge] = []
+
+
+class SchemaField(BaseModel):
+    name: str
+    type: str = ""
+    cardinality: str = ""
+    samples: list[Any] = []
+    classification: str = ""
+
+
+class SchemaResponse(BaseModel):
+    total_files: int = 0
+    fields: list[SchemaField] = []
+    sources: list[str] = []
+    folders: list[str] = []
+
+
+class WatcherStatus(BaseModel):
+    running: bool = False
+    notes_dir: str = ""
+
+
+class StatsResponse(BaseModel):
+    total_notes: int = 0
+    total_tags: int = 0
+    date_range: list[str | None] = []
+    avg_note_length: int = 0
+    total_calendar_events: int = 0
+
+
+class CalendarEventsResponse(BaseModel):
+    events: list[CalendarEvent] = []
+
+
+class CalendarEventDetailLinkedNote(BaseModel):
+    id: str
+    title: str = ""
+    date: str = ""
+
+
+class CalendarEventDetailResponse(BaseModel):
+    id: str
+    summary: str = ""
+    start: str = ""
+    end: str = ""
+    location: str = ""
+    attendees: list[str] = []
+    description: str = ""
+    linked_notes: list[CalendarEventDetailLinkedNote] = []
+
+
+class CalendarDateNote(BaseModel):
+    id: str
+    title: str = ""
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+
+
+class CalendarDateResponse(BaseModel):
+    date: str
+    events: list[CalendarEvent] = []
+    notes: list[CalendarDateNote] = []
