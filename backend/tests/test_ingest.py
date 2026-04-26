@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 
@@ -5,6 +6,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from ingest import chunk_text, make_note_id, make_doc_id, get_calendar_context
+from models import CalendarEvent
 
 
 def test_chunk_text_short():
@@ -90,13 +92,13 @@ def test_get_calendar_context_no_date():
 
 
 def test_get_calendar_context_match():
-    events = [{"date": "2019-12-09", "summary": "Meeting", "attendees": "Alice Smith", "attendee_names": ["Alice Smith"]}]
+    events = [CalendarEvent(id="evt1", summary="Meeting", start="2019-12-09T10:00:00", end="2019-12-09T11:00:00", attendees="Alice Smith", attendee_names=["Alice Smith"], date="2019-12-09")]
     result = get_calendar_context(["Alice"], "2019-12-09", events)
     assert "Meeting" in result
     assert "2019-12-09" in result
 
 
 def test_get_calendar_context_no_match():
-    events = [{"date": "2019-12-09", "summary": "Meeting", "attendees": "Alice Smith", "attendee_names": ["Alice Smith"]}]
+    events = [CalendarEvent(id="evt1", summary="Meeting", start="2019-12-09T10:00:00", end="2019-12-09T11:00:00", attendees="Alice Smith", attendee_names=["Alice Smith"], date="2019-12-09")]
     result = get_calendar_context(["Unknown"], "2019-12-09", events)
     assert result == ""

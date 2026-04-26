@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from config import CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
+from models import CalendarEvent
 
 
 class CalendarProcessor:
@@ -16,9 +17,9 @@ class CalendarProcessor:
         self._registry_path = registry_path
         self._events: list[dict] = []
         self._alias_map: dict[str, str] = {}
-        self._cached_events: list[dict] | None = None
-        self._events_by_date: dict[str, list[dict]] = {}
-        self._events_by_participant: dict[str, list[dict]] = {}
+        self._cached_events: list[CalendarEvent] | None = None
+        self._events_by_date: dict[str, list[CalendarEvent]] = {}
+        self._events_by_participant: dict[str, list[CalendarEvent]] = {}
 
     def load(self) -> None:
         try:
@@ -61,13 +62,13 @@ class CalendarProcessor:
             return self._alias_map[lower_key]
         return normalized
 
-    def process_events(self) -> list[dict]:
+    def process_events(self) -> list[CalendarEvent]:
         if self._cached_events is not None:
             return self._cached_events
 
-        processed = []
-        by_date: dict[str, list[dict]] = defaultdict(list)
-        by_participant: dict[str, list[dict]] = defaultdict(list)
+        processed: list[CalendarEvent] = []
+        by_date: dict[str, list[CalendarEvent]] = defaultdict(list)
+        by_participant: dict[str, list[CalendarEvent]] = defaultdict(list)
 
         for event in self._events:
             start_val = event.get("start", {})
@@ -80,7 +81,7 @@ class CalendarProcessor:
                 end_dt += "T00:00:00"
 
             attendees_raw = event.get("attendees", [])
-            attendee_names = []
+            attendee_names: list[str] = []
             for a in attendees_raw:
                 if isinstance(a, dict):
                     dn = a.get("displayName", "")
@@ -91,18 +92,18 @@ class CalendarProcessor:
 
             date_str = start_dt[:10] if start_dt else ""
 
-            pe = {
-                "id": event.get("id", ""),
-                "summary": event.get("summary", ""),
-                "start": start_dt,
-                "end": end_dt,
-                "location": event.get("location") or "",
-                "description": event.get("description") or "",
-                "attendees": attendees_str,
-                "attendee_names": normalized_names,
-                "event_type": event.get("eventType", "default"),
-                "date": date_str,
-            }
+            pe = CalendarEvent(
+                id=event.get("id", ""),
+                summary=event.get("summary", ""),
+                start=start_dt,
+                end=end_dt,
+                location=event.get("location") or "",
+                description=event.get("description") or "",
+                attendees=attendees_str,
+                attendee_names=normalized_names,
+                event_type=event.get("eventType", "default"),
+                date=date_str,
+            )
             processed.append(pe)
             if date_str:
                 by_date[date_str].append(pe)
@@ -114,18 +115,15 @@ class CalendarProcessor:
         self._events_by_participant = dict(by_participant)
         return processed
 
-    def get_events_for_date(self, date: str) -> list[dict]:
+    def get_events_for_date(self, date: str) -> list[CalendarEvent]:
         self.process_events()
         return self._events_by_date.get(date, [])
 
-    def get_events_for_participant(self, name: str) -> list[dict]:
+    def get_events_for_participant(self, name: str) -> list[CalendarEvent]:
         self.process_events()
         normalized = self.normalize_name(name)
         return self._events_by_participant.get(normalized, [])
 
-    def get_embedding_text(self, event: dict) -> str:
-        summary = event.get("summary", "")
-        description = event.get("description", "")
-        attendees = event.get("attendees", "")
-        location = event.get("location", "")
-        return f"search_document: {summary}. {description}. Attendees: {attendees}. Location: {location}"
+    def get_embedding_text(self, event: CalendarEvent) -> str:
+        return f"search_document: {event.summary}. {event.description}. Attendees: {event.attendees}. Location: {event.location}"
+

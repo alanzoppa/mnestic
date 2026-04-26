@@ -214,7 +214,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
                 events = calendar_processor.get_events_for_date(date)
             else:
                 events = calendar_processor.process_events()
-            return {"events": events}
+            return {"events": [e.model_dump() for e in events]}
         except Exception:
             return {"events": []}
 

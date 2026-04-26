@@ -125,7 +125,7 @@ def build_note_chunks(
 def get_calendar_context(
     note_participants: list[str],
     created_str: str,
-    calendar_events: list[dict],
+    calendar_events: list[CalendarEvent],
 ) -> str:
     if not note_participants or not created_str:
         return ""
@@ -134,21 +134,19 @@ def get_calendar_context(
         return ""
     relevant = []
     for event in calendar_events:
-        if event.get("date") != note_date:
+        if event.date != note_date:
             continue
-        attendees_str = event.get("attendees", "")
-        attendee_list = [a.strip() for a in attendees_str.split(",") if a.strip()]
+        attendee_list = event.attendee_names
         has_overlap = any(
             p in attendee_list or any(p.lower() in a.lower() for a in attendee_list)
             for p in note_participants
         )
         if has_overlap:
-            summary = event.get("summary", "Event")
+            summary = event.summary or "Event"
             relevant.append(f"{summary} ({note_date})")
     if relevant:
         return "\n\nCalendar context: " + ", ".join(relevant)
     return ""
-
 
 def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     notes_path = Path(notes_dir)
@@ -271,7 +269,7 @@ def ingest_calendar(
     all_metadata = []
 
     for event in events:
-        event_id = event.get("id", "")
+        event_id = event.id
         if not event_id:
             continue
 
@@ -281,11 +279,11 @@ def ingest_calendar(
 
         cal_id = f"cal_{event_id}"
         metadata = {
-            "date": event.get("date", ""),
-            "summary": event.get("summary", ""),
-            "location": event.get("location", ""),
-            "attendees": event.get("attendees", ""),
-            "event_type": event.get("event_type", "default"),
+            "date": event.date,
+            "summary": event.summary,
+            "location": event.location,
+            "attendees": event.attendees,
+            "event_type": event.event_type,
         }
 
         all_texts.append(embedding_text)

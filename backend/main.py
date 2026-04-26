@@ -635,12 +635,12 @@ async def get_calendar_events(
     events = cal.process_events()
 
     if start_date:
-        events = [e for e in events if e["date"] >= start_date]
+        events = [e for e in events if e.date >= start_date]
     if end_date:
-        events = [e for e in events if e["date"] <= end_date]
+        events = [e for e in events if e.date <= end_date]
     if attendee:
         normalized = cal.normalize_name(attendee)
-        events = [e for e in events if normalized in e["attendee_names"]]
+        events = [e for e in events if normalized in e.attendee_names]
 
     return {"events": events}
 
@@ -652,14 +652,14 @@ async def get_calendar_event(event_id: str) -> dict:
 
     event = None
     for e in events:
-        if e["id"] == event_id:
+        if e.id == event_id:
             event = e
             break
 
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    date_str = event["date"]
+    date_str = event.date
     linked_notes = []
     if date_str:
         for note in store.get_notes_by_date(date_str):
@@ -670,13 +670,13 @@ async def get_calendar_event(event_id: str) -> dict:
             })
 
     return {
-        "id": event["id"],
-        "summary": event["summary"],
-        "start": event["start"],
-        "end": event["end"],
-        "location": event["location"],
-        "attendees": event["attendee_names"],
-        "description": event["description"],
+        "id": event.id,
+        "summary": event.summary,
+        "start": event.start,
+        "end": event.end,
+        "location": event.location,
+        "attendees": event.attendee_names,
+        "description": event.description,
         "linked_notes": linked_notes,
     }
 

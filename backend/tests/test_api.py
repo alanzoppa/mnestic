@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest
 from fastapi.testclient import TestClient
 from constants import RERANK_MAX_CANDIDATES
+from models import CalendarEvent
 
 
 DUMMY_EMBEDDING = [0.1] * 256
@@ -167,7 +168,7 @@ def test_get_calendar_events(app_client):
     with patch("main.get_calendar") as mock_get_cal:
         mock_cal = MagicMock()
         mock_cal.process_events.return_value = [
-            {"id": "evt1", "summary": "Meeting", "date": "2024-01-01", "attendees": "Alice", "attendee_names": ["Alice"], "start": "2024-01-01T10:00:00", "end": "2024-01-01T11:00:00", "location": "Room 1", "description": "Sync", "event_type": "default"},
+            CalendarEvent(id="evt1", summary="Meeting", date="2024-01-01", attendees="Alice", attendee_names=["Alice"], start="2024-01-01T10:00:00", end="2024-01-01T11:00:00", location="Room 1", description="Sync", event_type="default"),
         ]
         mock_cal.normalize_name.side_effect = lambda n: n
         mock_get_cal.return_value = mock_cal
@@ -185,7 +186,7 @@ def test_get_calendar_date(app_client):
     with patch("main.get_calendar") as mock_get_cal:
         mock_cal = MagicMock()
         mock_cal.get_events_for_date.return_value = [
-            {"id": "evt1", "summary": "1:1", "date": "2019-12-09"},
+            CalendarEvent(id="evt1", summary="1:1", date="2019-12-09", start="2019-12-09T10:00:00", end="2019-12-09T11:00:00"),
         ]
         mock_get_cal.return_value = mock_cal
 

@@ -1,3 +1,4 @@
+from models import CalendarEvent
 import sys
 import os
 import json
@@ -49,32 +50,33 @@ def test_normalize_name_empty(loaded_calendar):
 def test_process_events_count(loaded_calendar):
     events = loaded_calendar.process_events()
     assert len(events) == 3
+    assert all(isinstance(e, CalendarEvent) for e in events)
 
 
 def test_process_events_fields(loaded_calendar):
     events = loaded_calendar.process_events()
     first = events[0]
-    assert "id" in first
-    assert "summary" in first
-    assert "start" in first
-    assert "end" in first
-    assert "location" in first
-    assert "date" in first
-    assert "attendees" in first
-    assert "attendee_names" in first
+    assert first.id
+    assert first.summary
+    assert first.start
+    assert first.end
+    assert hasattr(first, "location")
+    assert hasattr(first, "date")
+    assert hasattr(first, "attendees")
+    assert hasattr(first, "attendee_names")
 
 
 def test_process_events_all_day(loaded_calendar):
     events = loaded_calendar.process_events()
-    all_day = next(e for e in events if e["id"] == "evt003")
-    assert all_day["date"] == "2021-06-01"
-    assert "T00:00:00" in all_day["start"]
+    all_day = next(e for e in events if e.id == "evt003")
+    assert all_day.date == "2021-06-01"
+    assert "T00:00:00" in all_day.start
 
 
 def test_get_events_for_date(loaded_calendar):
     events = loaded_calendar.get_events_for_date("2019-12-09")
     assert len(events) == 1
-    assert events[0]["summary"] == "1:1 with Alice"
+    assert events[0].summary == "1:1 with Alice"
 
 
 def test_get_events_for_participant(loaded_calendar):
@@ -99,7 +101,7 @@ def test_get_events_for_date_matches_notes(tmp_store, sample_calendar):
     cal.load()
     events = cal.process_events()
 
-    matching_event = next(e for e in events if e["date"] == "2019-12-09")
+    matching_event = next(e for e in events if e.date == "2019-12-09")
 
     tmp_store.add_notes(
         ids=["n1", "n2"],
