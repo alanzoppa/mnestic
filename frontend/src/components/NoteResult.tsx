@@ -8,6 +8,7 @@ interface NoteResultProps {
   source?: string;
   folder?: string;
   created?: string;
+  date?: string;
   tags?: string[];
   snippet?: string;
   score?: number;
@@ -22,6 +23,7 @@ export function NoteResult({
   source,
   folder,
   created,
+  date,
   tags = [],
   snippet,
   score,

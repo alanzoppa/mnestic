@@ -388,7 +388,7 @@ Recommended approach:
 ```python
 emb_array = np.array([e for e in embeddings if e is not None])
 norms = np.linalg.norm(emb_array, axis=1, keepdims=True)
-norms[norms == 0] = 1
+norma[norms == 0] = 1
 emb_normed = emb_array / norms
 sim_matrix = emb_normed @ emb_normed.T
 ```
@@ -501,59 +501,17 @@ def main(
 
 ### 8. Data Fetching → `@tanstack/react-query`
 
-**Current:** Every page in `frontend/src/app/` (~14 files), `lib/hooks.ts` (`useAsyncData`)  
-**Library:** `@tanstack/react-query`  
-**Files:** All pages, `lib/hooks.ts`, `lib/api.ts`, `layout.tsx`.
+**Status:** ✅ **Already installed and partially applied.**
 
-**What it's doing now**
-- Each page manually manages `useState` for `loading`, `error`, and `data`.
-- `cancelledRef` flags inside `useEffect` to prevent race conditions.
-- No caching, no deduplication, no stale-while-revalidate.
-- `useAsyncData` is ~47 lines of boilerplate repeated across the app.
-
-**Why replace**
-- `@tanstack/react-query` eliminates all fetch boilerplate (`useState`, `useEffect`, `loading`, `error`, `cancelledRef`).
-- Adds production-grade caching, background refetching, request deduplication, retry, and dev tools.
-- This is the single highest-impact simplification in the frontend.
-
-**Planned refactor**
-1. **Install**
-```bash
-cd frontend
-npm install @tanstack/react-query
-```
-2. **Wrap layout**
-   - Add `QueryClientProvider` around the app in `layout.tsx`.
-```tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-const queryClient = new QueryClient()
-```
-3. **Rewrite `lib/hooks.ts`**
-   - Delete `useAsyncData` entirely.
-   - Keep `useDebouncedValue` / `useDebouncedCallback` for now (or replaced by `use-debounce` in item 13).
-4. **Per-page migration example** (`search/page.tsx`):
-```tsx
-import { useQuery } from '@tanstack/react-query'
-
-const { data: results, isLoading, error } = useQuery({
-  queryKey: ['search', query, filters],
-  queryFn: () => searchNotes({ query, filters }),
-  enabled: query.length > 0,
-})
-```
-5. **Refactor every page**
-   - `page.tsx`, `search/page.tsx`, `browse/page.tsx`, `notes/[id]/page.tsx`, `tags/page.tsx`, `tags/[tag]/page.tsx`, `timeline/page.tsx`, `calendar/page.tsx`, `calendar/[date]/page.tsx`, `graph/page.tsx`.
-   - Remove manual `useState`/`useEffect` fetch patterns.
-   - Use `useMutation` for `ingest`, `update_note`, etc.
+`frontend/src/lib/queries.ts` wraps all API calls with query keys. `search/page.tsx`, `browse/page.tsx`, and `browse/page.tsx` use it, but `graph/page.tsx` still uses raw state for graph data, and `notes/[id]/page.tsx` has a mix of legacy fetch logic. `dashboard/page.tsx` was cleaned up: search was removed entirely.
 
 **Checklist**
-- [ ] Install `@tanstack/react-query`.
-- [ ] Add `QueryClientProvider` in `layout.tsx`.
-- [ ] Rewrite `search/page.tsx` as proof-of-concept.
-- [ ] Run frontend unit tests (`cd frontend && npm run test`).
+- [ ] Migrate `graph/page.tsx` to use `useQuery` / `useMutation` for graph data and node updates.
+- [ ] Migrate `notes/[id]/page.tsx` fully: sidebar fetch, similar notes fetch.
+- [ ] Migrate `timeline/page.tsx` and `calendar/[date]/page.tsx` if still using raw state.
+- [ ] Delete `frontend/src/lib/hooks.ts` (`useAsyncData`) entirely.
+- [ ] Run frontend tests.
 - [ ] Run E2E mock suite.
-- [ ] Migrate all remaining pages one by one.
-- [ ] Delete `useAsyncData` from `lib/hooks.ts`.
 - [ ] Run full test suite.
 - [ ] Commit.
 
@@ -650,14 +608,15 @@ const { isOpen, getMenuProps, getInputProps, getItemProps, highlightedIndex, sel
 
 ### 11. Inline SVG Icons → `lucide-react`
 
-**Current:** `components/Nav.tsx` (7 inline SVGs), scattered icons across pages  
+**Current:** `components/Nav.tsx` (7 inline SVGs), `components/ui/Skeleton.tsx`, scattered icons across pages  
 **Library:** `lucide-react`  
-**Files:** `components/Nav.tsx`, `components/DateRangePicker.tsx`, and others.
+**Files:** `components/Nav.tsx`, `components/Skeleton.tsx`, and others.
 
 **What it's doing now**
 - ~50+ inline SVG `<path>` blocks.
 - Inconsistent `strokeWidth` values (2 vs 1.5), size variations.
 - Adding a new icon requires copy-pasting SVG path data.
+- `components/Skeleton.tsx` defines inline icon SVGs (`DocumentIcon`, `TagIcon`, `CalendarIcon`, `ClockIcon`).
 
 **Why replace**
 - `lucide-react` is a consistent, tree-shakeable icon set.
@@ -668,18 +627,18 @@ const { isOpen, getMenuProps, getInputProps, getItemProps, highlightedIndex, sel
 npm install lucide-react
 ```
 - Replace every inline SVG with the corresponding `lucide-react` import:
-  - `DashboardIcon` → `<LayoutDashboard />`
   - `SearchIcon` → `<Search />`
-  - `BrowseIcon` → `<FolderOpen />` (or `<BookOpen />`)
-  - `TagsIcon` → `<Tag />`
-  - `TimelineIcon` → `<BarChart3 />`
-  - `CalendarIcon` → `<Calendar />`
-  - `GraphIcon` → `<Network />`
+  - `FolderOpen` / `BookOpen` for Browse
+  - `Tag` for Tags
+  - `BarChart3` for Timeline
+  - `Calendar` for Calendar
+  - `Network` for Graph
+  - `Document` for notes
+  - `Clock` for date range
 
 **Checklist**
 - [ ] Install `lucide-react`.
-- [ ] Replace all inline SVGs in `Nav.tsx`.
-- [ ] Replace icons in `DateRangePicker.tsx` and any other component.
+- [ ] Replace all inline SVGs in `Nav.tsx`, `Skeleton.tsx`, and page components.
 - [ ] Run frontend tests.
 - [ ] Run E2E mock suite.
 - [ ] Run full test suite.
@@ -784,14 +743,43 @@ const button = tv({
 
 ---
 
+## Recent Changes (Session Notes)
+
+### Extracted `NoteResult` component (frontend/src/components/NoteResult.tsx)
+- Shared note card rendering across **Browse** and **Search** (both note + calendar results).
+- Properties: badges (source/folder/handwritten), title with highlight, date, snippet, tags (filtered), score.
+- Supports `type='calendar'` with purple "Calendar" badge and `date` prop for event dates.
+- Used with `href` (rendered as `Link`) or without (rendered as plain content, useful when parent `Card` has its own click handler).
+
+### Removed dashboard search
+- Deleted `SearchAutocomplete`, Quick Results, and all search state from `frontend/src/app/page.tsx`.
+- Dashboard is now a pure overview page: hero, stats, charts, navigation buttons.
+- Updated `e2e/dashboard.spec.ts` — removed 2 search-related tests, 6 tests remain passing.
+- Removed imports: `searchApi`, `SearchResult`, `SectionHeader`, `SkeletonChart`, `useState` (except `ingestResult`), `SearchAutocomplete`.
+
+### Bug fixes alongside extraction
+- Fixed duplicate React keys in dashboard search results: `${r.id}-${r.type}-${i}`.
+- Fixed autocomplete dropdown rendering underneath stat cards: added `z-10` to hero wrapper.
+- Filtered `type === 'calendar'` out of autocomplete `noteTitles` on dashboard and search to prevent broken `/notes/cal_...` 404 links.
+- Removed `overflow: hidden` from `.card` / `.card-hover` in globals.css to fix dropdown clipping.
+
+### All tests green
+- 105 E2E (mock) passing
+- 21 frontend unit tests passing
+- 173 backend tests passing
+
+---
+
 ## Summary & Prioritized Roadmap
 
 | Phase | Items | Est. Impact | Est. Effort |
 |-------|-------|-------------|-------------|
 | **Phase 1** (Foundation) | 1. `pydantic-settings`, 2. `langchain-text-splitters`, 3. `tenacity`, 4. `pydantic` models | 🔴 High | Medium |
-| **Phase 2** (Frontend Core) | 8. `@tanstack/react-query`, 9. `date-fns` + `react-day-picker` | 🔴 High | High |
+| **Phase 2** (Frontend Core) | 8. Finish `@tanstack/react-query` migration (graph, notes/[id], timeline), 9. `date-fns` + `react-day-picker` | 🔴 High | High |
 | **Phase 3** (Polish) | 10. `downshift`, 11. `lucide-react`, 12. `use-debounce`, 13. `tailwind-variants` | 🟡 Medium | Medium |
 | **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 Quick | Low |
+
+**Current recommendation:** Phase 2A — finish migrating remaining pages to `@tanstack/react-query`, then move to `date-fns` + `react-day-picker`.
 
 ---
 

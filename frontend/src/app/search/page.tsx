@@ -388,32 +388,19 @@ export default function SearchPage() {
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      {result.type === 'note' ? (
-                        <NoteResult
-                          title={result.metadata?.title || result.title}
-                          source={result.metadata?.source}
-                          folder={result.metadata?.folder}
-                          created={result.metadata?.created}
-                          tags={result.metadata?.tags || []}
-                          snippet={result.snippet}
-                          score={result.score}
-                          showScore={true}
-                          highlightQuery={query}
-                        />
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="purple">Calendar</Badge>
-                            <span className="text-xs text-zinc-500">Score: {result.score.toFixed(2)}</span>
-                          </div>
-                          <h3 className="font-medium text-zinc-100 group-hover:text-blue-400 transition-colors">
-                            {result.title}
-                          </h3>
-                          {result.snippet && (
-                            <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{result.snippet}</p>
-                          )}
-                        </>
-                      )}
+                      <NoteResult
+                        title={result.metadata?.title || result.title}
+                        source={result.metadata?.source}
+                        folder={result.metadata?.folder}
+                        created={result.metadata?.created}
+                        date={result.metadata?.date}
+                        tags={result.metadata?.tags || []}
+                        type={result.type === 'calendar' ? 'calendar' : 'note'}
+                        snippet={result.snippet}
+                        score={result.score}
+                        showScore={true}
+                        highlightQuery={query}
+                      />
                     </div>
                     <div className="text-zinc-600 group-hover:text-blue-400 transition-colors">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
