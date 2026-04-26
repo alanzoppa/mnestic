@@ -33,6 +33,13 @@ import time
 
 import httpx
 
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 IMAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "images")
 CAPTION_MARKER = "[AI caption]"
@@ -120,6 +127,12 @@ def resize_image_if_needed(image_path: str, max_size_mb: float = 5.0) -> bytes:
         scale *= 0.7
 
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=15),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.ConnectError)),
+    reraise=True,
+)
 def caption_image(image_path: str) -> str:
     img_bytes = resize_image_if_needed(image_path)
     img_b64 = base64.b64encode(img_bytes).decode()

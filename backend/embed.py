@@ -3,6 +3,13 @@ from __future__ import annotations
 import math
 import httpx
 
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
 from constants import EMBED_DIM, BATCH_SIZE, EMBED_PREFIX_DOC, EMBED_PREFIX_QUERY
 
 OLLAMA_BASE_URL = "http://localhost:11434"
@@ -16,6 +23,22 @@ def _l2_normalize(vec: list[float]) -> list[float]:
     return [x / norm for x in vec]
 
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.ConnectError)),
+    reraise=True,
+)
+def _embed_batch(client: httpx.Client, full_batch: list[str]) -> list[list[float]]:
+    resp = client.post(
+        f"{OLLAMA_BASE_URL}/api/embed",
+        json={"model": EMBED_MODEL, "input": full_batch},
+    )
+    resp.raise_for_status()
+    embeddings = resp.json()["embeddings"]
+    return [_l2_normalize(emb[:EMBED_DIM]) for emb in embeddings]
+
+
 def embed_texts_sync(texts: list[str], prefix: str = "search_document") -> list[list[float]]:
     if not texts:
         return []
@@ -24,28 +47,14 @@ def embed_texts_sync(texts: list[str], prefix: str = "search_document") -> list[
         for i in range(0, len(texts), BATCH_SIZE):
             batch = texts[i : i + BATCH_SIZE]
             full_batch = [f"{prefix}: {t}" for t in batch]
-            for attempt in range(2):
-                try:
-                    resp = client.post(
-                        f"{OLLAMA_BASE_URL}/api/embed",
-                        json={"model": EMBED_MODEL, "input": full_batch},
-                    )
-                    resp.raise_for_status()
-                    embeddings = resp.json()["embeddings"]
-                    for emb in embeddings:
-                        truncated = emb[:EMBED_DIM]
-                        results.append(_l2_normalize(truncated))
-                    break
-                except Exception:
-                    if attempt == 1:
-                        raise
-                    if len(batch) > 1:
-                        mid = (len(batch) + 1) // 2
-                        first_half = embed_texts_sync(batch[:mid], prefix)
-                        second_half = embed_texts_sync(batch[mid:], prefix)
-                        results.extend(first_half)
-                        results.extend(second_half)
-                        break
+            try:
+                results.extend(_embed_batch(client, full_batch))
+            except Exception:
+                if len(batch) > 1:
+                    mid = (len(batch) + 1) // 2
+                    results.extend(embed_texts_sync(batch[:mid], prefix))
+                    results.extend(embed_texts_sync(batch[mid:], prefix))
+                else:
                     raise
     return results
 

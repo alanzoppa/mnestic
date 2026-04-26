@@ -1,3 +1,4 @@
+tenacity
 fastapi
 uvicorn[standard]
 chromadb
