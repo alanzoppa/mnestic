@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { Lock, X } from 'lucide-react'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 
 const MAX_TAGS = 8
@@ -88,9 +89,7 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
           className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 cursor-default"
           title="Structural tag (immutable)"
         >
-          <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+          <Lock className="w-3 h-3 opacity-50" strokeWidth={2} />
           {tag}
         </span>
       ))}
@@ -111,9 +110,7 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
             className="ml-0.5 text-purple-400/50 hover:text-red-400 transition-colors"
             aria-label={`Remove tag ${tag}`}
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-3 h-3" strokeWidth={2} />
           </button>
         </span>
       ))}

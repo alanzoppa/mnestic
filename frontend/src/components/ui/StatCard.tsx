@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { TrendingUp } from 'lucide-react';
 
 interface StatCardProps {
   value: string | number;
@@ -25,14 +26,10 @@ export function StatCard({
           </p>
           {trend && (
             <div className={`mt-2 flex items-center gap-1 text-sm ${trend.positive ? 'text-emerald-400' : 'text-red-400'}`}>
-              <svg 
-                className={`w-4 h-4 ${trend.positive ? '' : 'rotate-180'}`} 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
+              <TrendingUp
+                className={`w-4 h-4 ${!trend.positive ? 'rotate-180' : ''}`}
+                strokeWidth={2}
+              />
               <span>{trend.value}%</span>
             </div>
           )}

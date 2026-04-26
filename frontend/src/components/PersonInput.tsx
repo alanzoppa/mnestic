@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { User, X } from 'lucide-react'
 
 const MAX_PARTICIPANTS = 10
 
@@ -93,18 +94,14 @@ export function PersonInput({ participants, people, onChange }: PersonInputProps
           key={p}
           className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 transition-colors group"
         >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
+          <User className="w-3 h-3" strokeWidth={2} />
           {p}
           <button
             onClick={() => removePerson(p)}
             className="ml-0.5 text-zinc-500 hover:text-red-400 transition-colors"
             aria-label={`Remove participant ${p}`}
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-3 h-3" strokeWidth={2} />
           </button>
         </span>
       ))}

@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -60,14 +61,7 @@ export function Select({
       )}
       <div className="relative">
         <select
-          className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer ${error ? 'border-red-500/50' : ''} ${className}`}
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 12px center',
-            backgroundSize: '16px',
-            paddingRight: '40px',
-          }}
+          className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer pr-10 ${error ? 'border-red-500/50' : ''} ${className}`}
           {...props}
         >
           {options.map((opt) => (
@@ -76,6 +70,9 @@ export function Select({
             </option>
           ))}
         </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
+          <ChevronDown className="w-4 h-4" strokeWidth={2} />
+        </div>
       </div>
       {error && (
         <p className="mt-1 text-sm text-red-400">{error}</p>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { CalendarDays, X } from 'lucide-react'
 import { getDatePresets } from '@/lib/dates'
 
 interface DateRange {
@@ -44,9 +45,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
             : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700'
         }`}
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
+        <CalendarDays className="w-4 h-4" strokeWidth={2} />
         {activePreset ? activePreset.label : hasRange ? 'Custom range' : 'Date range'}
         {hasRange && (
           <button
@@ -57,9 +56,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
             }}
             className="ml-1 hover:text-white"
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-3 h-3" strokeWidth={2} />
           </button>
         )}
       </button>
