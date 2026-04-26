@@ -20,27 +20,6 @@ test.describe("Dashboard", () => {
     await expect(mainContent.locator("text=Date Range")).toBeVisible();
   });
 
-  test("should have search functionality", async ({ page }) => {
-    const mainContent = page.locator("main");
-    const searchInput = mainContent.locator('[data-search-input]');
-    await expect(searchInput).toBeVisible();
-
-    await searchInput.fill("management");
-    await searchInput.press("Enter");
-
-    await expect(mainContent.locator("text=Quick Results")).toBeVisible();
-  });
-
-  test("should display search results from dashboard search", async ({ page }) => {
-    const mainContent = page.locator("main");
-    const searchInput = mainContent.locator('[data-search-input]');
-    await searchInput.fill("management");
-    await searchInput.press("Enter");
-
-    await expect(mainContent.locator("text=1:1 with Alice")).toBeVisible();
-    await expect(mainContent.locator("text=Zendesk Chat Architecture")).toBeVisible();
-  });
-
   test("should have ingest management buttons", async ({ page }) => {
     const mainContent = page.locator("main");
     await expect(mainContent.locator("text=Index Management")).toBeVisible();

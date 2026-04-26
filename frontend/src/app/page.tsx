@@ -1,22 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { type Stats, type SearchResult } from '@/lib/api';
+import { type Stats } from '@/lib/api';
 import {
   statsKeys, statsApi,
   tagKeys, tagsApi,
   ingestApi,
-  searchApi,
 } from '@/lib/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatCard, StatsGrid } from '@/components/ui/StatCard';
-import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DonutChart } from '@/components/charts/PieCharts';
-import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton';
-import { SearchAutocomplete } from '@/components/SearchAutocomplete';
+import { SkeletonStatCards } from '@/components/ui/Skeleton';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 
 // Icons
@@ -47,29 +44,13 @@ const ClockIcon = () => (
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
-  // Local state (search is user-triggered)
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  // Local state
   const [ingestResult, setIngestResult] = useState<string | null>(null);
 
   // Queries
   const { data: stats } = useQuery({ queryKey: statsKeys.all, queryFn: statsApi.get });
   const { data: tagsData } = useQuery({ queryKey: tagKeys.all, queryFn: tagsApi.all });
   const tags = (tagsData?.tags ?? []).slice(0, 10);
-
-  const { data: rawTitles = [] } = useQuery({
-    queryKey: ['autocomplete', 'titles'],
-    queryFn: () => searchApi.all({ query: '', n: 500 }),
-    staleTime: Infinity,
-  });
-  const allNoteTitles = rawTitles
-    .filter((r) => r.type === 'note')
-    .map((r) => ({
-      id: r.id,
-      title: r.title,
-      note_id: r.note_id || r.metadata?.note_id,
-    }));
 
   // Mutations
   const ingestMutation = useMutation({
@@ -93,21 +74,6 @@ export default function Dashboard() {
     ingestMutation.mutate(full);
   };
 
-  const doSearch = async () => {
-    if (!query.trim()) return;
-    setSearching(true);
-    try {
-      const data = await searchApi.all({ query, n: 20 });
-      setResults(data.slice(0, 5));
-    } catch {}
-    setSearching(false);
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    doSearch();
-  };
-
   // Prepare tag distribution data for chart
   const tagDistributionData = tags.map(tag => ({
     name: tag.name,
@@ -116,52 +82,15 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl space-y-8">
-      {/* Header with Search */}
-      <div className="relative z-10">
+      {/* Header */}
+      <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
         <Card className="relative">
           <CardContent className="p-8">
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
               Notes Browser
             </h1>
-            <p className="text-zinc-500 mb-6">Search and explore your archived notes with semantic understanding</p>
-
-            <SearchAutocomplete
-              query={query}
-              onQueryChange={setQuery}
-              tags={tags}
-              noteTitles={allNoteTitles}
-              onSubmit={doSearch}
-              placeholder="Search your notes..."
-            />
-
-            {/* Quick Search Results */}
-            {results.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <h3 className="text-sm font-medium text-zinc-400 mb-3">Quick Results</h3>
-                {results.map((r, i) => (
-                  <Link
-                    key={`${r.id}-${r.type}-${i}`}
-                    href={r.type === 'note' ? `/notes/${r.note_id || r.metadata?.note_id || r.id}` : `/calendar`}
-                    className="block p-4 bg-zinc-950/50 border border-zinc-800/60 rounded-lg hover:border-zinc-700/60 transition-colors"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-zinc-100">{r.title}</h4>
-                        <p className="text-sm text-zinc-500 mt-1 line-clamp-2">{r.snippet}</p>
-                      </div>
-                      <span className={`ml-4 px-2 py-1 rounded text-xs ${
-                        r.type === 'calendar'
-                          ? 'bg-purple-500/10 text-purple-400'
-                          : 'bg-blue-500/10 text-blue-400'
-                      }`}>
-                        {r.type}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+            <p className="text-zinc-500">Search and explore your archived notes with semantic understanding</p>
           </CardContent>
         </Card>
       </div>
