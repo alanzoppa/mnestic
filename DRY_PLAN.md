@@ -501,19 +501,26 @@ def main(
 
 ### 8. Data Fetching → `@tanstack/react-query`
 
-**Status:** ✅ **Already installed and partially applied.**
+**Status:** ✅ **Already installed and mostly applied.**
 
-`frontend/src/lib/queries.ts` wraps all API calls with query keys. `search/page.tsx`, `browse/page.tsx`, and `browse/page.tsx` use it, but `graph/page.tsx` still uses raw state for graph data, and `notes/[id]/page.tsx` has a mix of legacy fetch logic. `dashboard/page.tsx` was cleaned up: search was removed entirely.
+`frontend/src/lib/queries.ts` wraps all API calls with query keys. Migrated pages:
+- ✅ `dashboard/page.tsx` — cleaned up (search removed), uses `useQuery` for stats/tags
+- ✅ `browse/page.tsx` — uses `useQuery` for notes list and schema
+- ✅ `search/page.tsx` — **recently migrated search results from manual `useState` to `useMutation`**; autocomplete still local state
+- ✅ `notes/[id]/page.tsx` — uses `useQuery` for note detail, tags, people; `useMutation` for updates
+- ✅ `graph/page.tsx` — uses `useQuery` for graph data and tags
+- ✅ `tags/page.tsx`, `tags/[tag]/page.tsx` — uses `useQuery`
+- ✅ `timeline/page.tsx` — uses `useQuery`
+- ✅ `calendar/page.tsx`, `calendar/[date]/page.tsx` — uses `useQuery`
+
+**No longer using raw `useEffect` fetch anywhere.** `lib/hooks.ts` never had `useAsyncData`; it only has `useDebouncedValue`, `useDebouncedCallback`, and `useLocalStorage`, all of which are still used.
 
 **Checklist**
-- [ ] Migrate `graph/page.tsx` to use `useQuery` / `useMutation` for graph data and node updates.
-- [ ] Migrate `notes/[id]/page.tsx` fully: sidebar fetch, similar notes fetch.
-- [ ] Migrate `timeline/page.tsx` and `calendar/[date]/page.tsx` if still using raw state.
-- [ ] Delete `frontend/src/lib/hooks.ts` (`useAsyncData`) entirely.
-- [ ] Run frontend tests.
-- [ ] Run E2E mock suite.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] All pages migrated to `useQuery` / `useMutation`.
+- [x] Run frontend tests.
+- [x] Run E2E mock suite.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
