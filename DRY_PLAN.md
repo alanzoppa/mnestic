@@ -180,7 +180,7 @@ def embed_texts_sync(texts, prefix="search_document"):
 
 **Current:** `backend/calendar_data.py`, `backend/main.py` (calendar endpoints), `backend/store.py` (metadata)  
 **Library:** `pydantic` (already in `requirements.txt`, underutilized)  
-**Files:** `backend/calendar_data.py`, `backend/main.py`, `backend/store.py`, `backend/utils.py`.
+**Files:** `backend/models.py` (new), `backend/calendar_data.py`, `backend/main.py`, `backend/store.py`, `backend/utils.py`, `backend/mcp_server.py`, `backend/ingest.py`.
 
 **What it's doing now**
 - Calendar events are plain `dict`s built by manual string concatenation (`start_dt[:10]`).
@@ -192,8 +192,8 @@ def embed_texts_sync(texts, prefix="search_document"):
 - Pydantic validators enforce `YYYY-MM-DD` format, coerce lists automatically, and make the data contract explicit.
 - Eliminates the `_normalize_meta` mutation hack if metadata is modeled correctly.
 
-**Planned refactor**
-1. **Models**
+**New file: `backend/models.py`**
+
 ```python
 from pydantic import BaseModel, field_validator
 from datetime import date as date_type
@@ -210,10 +210,11 @@ class CalendarEvent(BaseModel):
     event_type: str = "default"
     date: str
 
-    @field_validator('date')
+    @field_validator("date")
     @classmethod
     def validate_date(cls, v: str) -> str:
-        date_type.fromisoformat(v)  # will raise ValueError on bad format
+        if v:
+            date_type.fromisoformat(v)  # raises ValueError on bad format
         return v
 
 class NoteMetadata(BaseModel):
@@ -228,26 +229,151 @@ class NoteMetadata(BaseModel):
     source_id: str = ""
     date: str = ""
 
-    @field_validator('tags', 'participants', mode='before')
+    @field_validator("tags", "participants", mode="before")
     @classmethod
     def split_csv(cls, v):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
         return v or []
 ```
-2. **`calendar_data.py`**: Make `CalendarProcessor.process_events()` return `list[CalendarEvent]` instead of `list[dict]`.
-3. **`main.py`**: Update calendar endpoint return types. Make `date` query params use `date_type` or a constrained str.
-4. **`store.py`**: Use `NoteMetadata` when returning from `get_note()` and friends.
-5. **`utils.py`**: Deprecate `_normalize_meta` by baking coercion into the Pydantic model. Keep temporarily for backward compat, then delete.
+
+---
+
+#### Phase A – CalendarEvent (isolated, low-risk)
+
+`CalendarProcessor` refactor in `backend/calendar_data.py`:
+
+| Method | Change |
+|--------|--------|
+| `process_events()` | Returns `list[CalendarEvent]` instead of `list[dict]` |
+| `get_events_for_date()` | Returns `list[CalendarEvent]` |
+| `get_events_for_participant()` | Returns `list[CalendarEvent]` |
+| `get_embedding_text()` | Duck-typed: accepts `dict` or `CalendarEvent` (no change needed unless explicitly typed) |
+
+Downstream callers (update access from `event["..."]` to `event.summary`, `event.date`, etc.):
+
+| File | Scope |
+|------|-------|
+| `backend/main.py` | Calendar endpoints return validated models; FastAPI auto-serializes Pydantic models |
+| `backend/ingest.py` | `get_calendar_context()` reads from `CalendarEvent` objects |
+| `backend/mcp_server.py` | Calendar tools return models directly |
+
+Test impact:
+
+| File | Change |
+|------|--------|
+| `backend/tests/test_calendar.py` | Dict accessors → model `.model_dump()` or dot accessors |
+
+---
+
+#### Phase B – NoteMetadata (broader, medium-risk)
+
+**Strategy:** Keep public API responses as `dict` initially: `meta = NoteMetadata(**raw_meta).model_dump()`. This lets us eliminate `_normalize_meta` without changing endpoint return types. After all call sites are proven, migrate to passing models natively.
+
+Replace `_normalize_meta(meta)` with `meta = NoteMetadata(**meta).model_dump()` at the following call sites:
+
+| File | Line(s) |
+|------|---------|
+| `backend/main.py` | search (`222`), get_note (`281`), update_note (`347`, `398`), graph (`527`, `546`, `692`), get_similar (`301`, `453`) |
+| `backend/mcp_server.py` | tools returning notes (`99`, `191`) and similar results (`78`, `122`, `234`) |
+| `backend/utils.py` | `normalize_and_dedup_results` currently calls `_normalize_meta` directly; replace that call |
+
+Once all call sites are migrated, delete `_normalize_meta` and its imports from `main.py`, `mcp_server.py`, and `utils.py`.
+
+ChromaDB serialization path (unchanged):
+```
+ingest → metadata dict with lists → _serialize_metadata() → comma-joined strings → ChromaDB
+```
+
+ChromaDB deserialization path (improved):
+```
+Current: ChromaDB → raw dicts with strings → _normalize_meta (mutation hack) → dicts with lists
+New:     ChromaDB → raw dicts with strings → NoteMetadata(**raw) (validator coerces) → model dict
+```
+
+Test impact:
+
+| File | Risk |
+|------|------|
+| `backend/tests/test_calendar.py` | Low – Phase A covers this |
+| `backend/tests/test_api.py` | Low – keep `model_dump()` to preserve dict output |
+| `backend/tests/test_mcp_server.py` | Low – same pattern |
+| `backend/tests/test_store.py` | Low – `_format_results` metadata kept as dict for now |
+
+---
+
+#### Phase C – FastAPI Response Models (optional, higher value)
+
+Define response schemas for every API endpoint and annotate them with `response_model`.
+
+```python
+class SearchResultItem(BaseModel):
+    id: str
+    title: str
+    snippet: str
+    metadata: NoteMetadata
+    score: float
+    type: str
+
+class SearchResponse(BaseModel):
+    results: list[SearchResultItem]
+
+class NoteDetailResponse(BaseModel):
+    id: str
+    metadata: NoteMetadata
+    content: str
+    calendar_events: list[CalendarEvent]
+    similar_notes: list[dict]  # upgrade later to NoteReference
+
+class CalendarEventsResponse(BaseModel):
+    events: list[CalendarEvent]
+
+class CalendarEventDetailResponse(BaseModel):
+    id: str
+    summary: str
+    start: str
+    end: str
+    location: str
+    attendees: list[str]
+    description: str
+    linked_notes: list[dict]
+```
+
+Benefits:
+- Automatic OpenAPI schema generation with correct types.
+- Request/response validation at the HTTP boundary.
+- IDE autocomplete on response data in tests.
+
+Risks:
+- `NoteMetadata` in response models means every endpoint using it must return the model directly (not a wrapped dict). This cascades through all handler code.
+- Frontend tests may fail if property names shift or lists vs strings differ.
+
+Recommended approach:
+1. Add `response_model` to **read-only** endpoints first: `/api/notes/{id}`, `/api/tags`, `/api/calendar`, `/api/timeline`, `/api/search`.
+2. Skip write endpoints (`PATCH /api/notes/{id}`, `POST /api/ingest`) until read-only is stable.
+3. Keep `NoteMetadata.model_dump_json()` in ChromaDB storage path separate from response path.
+
+---
 
 **Checklist**
-- [ ] Define `CalendarEvent` and `NoteMetadata` in `backend/schema.py` or new `backend/models.py`.
+- [ ] **Phase A:** Create `backend/models.py` with `CalendarEvent`.
 - [ ] Update `CalendarProcessor.process_events()` to return `list[CalendarEvent]`.
-- [ ] Update `main.py` calendar endpoints to return validated models.
-- [ ] Update `store.py` `_format_results` to return `NoteMetadata`.
-- [ ] Mark `_normalize_meta` for deletion.
+- [ ] Update all calendar event callers (main.py, ingest.py, mcp_server.py).
+- [ ] Update `backend/tests/test_calendar.py`.
 - [ ] Run backend tests.
 - [ ] Run full test suite.
+- [ ] Commit.
+- [ ] **Phase B:** Add `NoteMetadata` to `backend/models.py`.
+- [ ] Replace `_normalize_meta(meta)` with `NoteMetadata(**meta).model_dump()` at every call site.
+- [ ] Update `store.py` `_format_results` to apply `NoteMetadata` coercion.
+- [ ] Update `backend/tests/test_api.py`, `test_mcp_server.py`, `test_store.py` as needed.
+- [ ] Delete `_normalize_meta` from `utils.py` and remove imports from `main.py`, `mcp_server.py`.
+- [ ] Run backend tests.
+- [ ] Run full test suite.
+- [ ] Commit.
+- [ ] **Phase C** (optional): Define `SearchResultItem`, `NoteDetailResponse`, `CalendarEventsResponse`, `CalendarEventDetailResponse` in `backend/models.py`.
+- [ ] Add `response_model=...` to read-only FastAPI endpoints one by one.
+- [ ] Verify frontend E2E tests still pass.
 - [ ] Commit.
 
 ---
