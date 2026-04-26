@@ -16,6 +16,8 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.100.5",
+    "@tanstack/react-query-devtools": "^5.100.5",
     "force-graph": "^1.51.4",
     "next": "16.2.4",
     "react": "19.2.4",

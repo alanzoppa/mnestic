@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import TimelinePage from "@/app/timeline/page";
 
 const mockPush = vi.fn();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -28,7 +32,11 @@ describe("TimelinePage", () => {
     });
     (getTimeline as any).mockReturnValue(timelinePromise);
 
-    render(<TimelinePage />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TimelinePage />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(document.querySelector(".animate-pulse")).toBeInTheDocument();

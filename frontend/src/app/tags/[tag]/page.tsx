@@ -1,27 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { search } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
 
 export default function TagPage() {
   const params = useParams()
   const router = useRouter()
   const tag = params.tag as string
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: results = [], isLoading } = useQuery({
+    queryKey: ['search', 'tag', tag],
+    queryFn: () => searchApi.byTag(tag),
+    enabled: !!tag,
+  })
 
-  useEffect(() => {
-    if (!tag) return
-    setLoading(true)
-    search('', { tags: tag }).then((res) => {
-      setResults(res.results.filter((r) => r.type === 'note'))
-      setLoading(false)
-    })
-  }, [tag])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
         <div className="text-zinc-400">Loading...</div>

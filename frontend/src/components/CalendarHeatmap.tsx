@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { getTimeline, type TimelinePeriod } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { timelineKeys, timelineApi } from '@/lib/queries'
+import type { TimelinePeriod } from '@/lib/api'
 
 const COLORS = [
   'bg-zinc-800',
@@ -21,13 +23,15 @@ interface DayData {
 }
 
 export function CalendarHeatmap() {
-  const [data, setData] = useState<TimelinePeriod[]>([])
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [tooltip, setTooltip] = useState<{ date: string; count: number; x: number; y: number } | null>(null)
 
-  useEffect(() => {
-    getTimeline('day').then(res => setData(res.periods)).catch(() => {})
-  }, [])
+  const { data: periods } = useQuery({
+    queryKey: timelineKeys.all('day'),
+    queryFn: () => timelineApi.get('day'),
+    staleTime: Infinity,
+  });
+  const data = periods ?? [];
 
   const yearData = useMemo(() => {
     const dayMap = new Map<string, number>()

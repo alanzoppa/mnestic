@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { search, getSchema } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { schemaKeys, schemaApi, searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
 import { useDebouncedValue } from '@/lib/hooks'
 import { useFavorites } from '@/lib/favorites'
@@ -21,10 +22,7 @@ const PAGE_SIZE = 50
 export default function BrowsePage() {
   const router = useRouter()
   const { isFav, toggle, favorites } = useFavorites()
-  const [allResults, setAllResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(true)
-  const [schema, setSchema] = useState<{ folders?: string[]; tags?: string[] } | null>(null)
-  
+
   // Filters
   const [sourceFilter, setSourceFilter] = useState('')
   const [folderFilter, setFolderFilter] = useState('')
@@ -33,20 +31,24 @@ export default function BrowsePage() {
   const debouncedSearch = useDebouncedValue(searchQuery, 200)
   const [showFilters, setShowFilters] = useState(false)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  
+
   const [currentPage, setCurrentPage] = useState(1)
 
-  useEffect(() => {
-    setLoading(true)
-    Promise.all([
-      search('', {}, 500),
-      getSchema().catch(() => null)
-    ]).then(([res, schemaData]) => {
-      setAllResults(res.results.filter((r) => r.type === 'note'))
-      setSchema(schemaData)
-      setLoading(false)
-    })
-  }, [])
+  // Queries
+  const { data: allResults = [], isLoading: loading } = useQuery({
+    queryKey: ['browse', 'all-notes'],
+    queryFn: async () => {
+      const res = await searchApi.all({ query: '', n: 500 });
+      return res.filter((r: SearchResult) => r.type === 'note');
+    },
+    staleTime: Infinity,
+  });
+
+  const { data: schema = null } = useQuery({
+    queryKey: schemaKeys.all,
+    queryFn: schemaApi.get,
+    staleTime: Infinity,
+  });
 
   // Calculate facet counts
   const facets = useMemo(() => {

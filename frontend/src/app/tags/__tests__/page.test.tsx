@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import TagsPage from "@/app/tags/page";
 
 const mockPush = vi.fn();
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -29,7 +34,11 @@ describe("TagsPage", () => {
       co_occurrence: [],
     });
 
-    render(<TagsPage />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TagsPage />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(document.querySelector('[data-testid="tag-cloud"]')).toBeInTheDocument();

@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { getTags, type TagInfo, type CoOccurrence } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { type TagInfo, type CoOccurrence } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
-import { useAsyncData } from '@/lib/hooks'
+import { tagKeys, tagsApi } from '@/lib/queries'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -30,10 +31,10 @@ const SORT_OPTIONS = [
 
 export default function TagsPage() {
   const router = useRouter()
-  const { data, loading } = useAsyncData(
-    useCallback(() => getTags(), []),
-    []
-  )
+  const { data, isLoading: loading } = useQuery({
+    queryKey: tagKeys.all,
+    queryFn: tagsApi.all,
+  })
   const tags = data?.tags || []
   const coOccurrence = data?.co_occurrence || []
   const [searchQuery, setSearchQuery] = useState('')

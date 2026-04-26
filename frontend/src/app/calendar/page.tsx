@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getCalendarEvents, type CalendarEvent } from "@/lib/api";
-import { useAsyncData } from "@/lib/hooks";
+import { type CalendarEvent } from "@/lib/api";
+import { useQuery } from '@tanstack/react-query';
+import { calendarEventKeys, calendarApi } from '@/lib/queries';
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
@@ -18,16 +19,13 @@ export default function CalendarPage() {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-
-  const { data: events, loading } = useAsyncData(
-    useCallback(() => {
-      const startStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      const endStr = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
-      return getCalendarEvents(startStr, endStr).then((res) => res.events);
-    }, [year, month]),
-    [year, month]
-  );
+  const startStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const endStr = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
+  const { data: events, isLoading: loading } = useQuery({
+    queryKey: calendarEventKeys.range(startStr, endStr),
+    queryFn: () => calendarApi.events(startStr, endStr),
+  });
 
   const rawEvents = events || [];
 

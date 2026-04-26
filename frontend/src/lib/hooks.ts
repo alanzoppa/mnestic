@@ -37,51 +37,6 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   ) as T
 }
 
-interface AsyncState<T> {
-  data: T | null;
-  loading: boolean;
-  error: Error | null;
-}
-
-export function useAsyncData<T>(
-  fetcher: () => Promise<T>,
-  deps: unknown[] = []
-): AsyncState<T> & { refetch: () => void; setData: (data: T) => void } {
-  const [state, setState] = useState<AsyncState<T>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
-  const cancelledRef = useRef(false);
-
-  const execute = useCallback(async () => {
-    setState((s) => ({ ...s, loading: true, error: null }));
-    cancelledRef.current = false;
-    try {
-      const result = await fetcher();
-      if (!cancelledRef.current) {
-        setState({ data: result, loading: false, error: null });
-      }
-    } catch (err) {
-      if (!cancelledRef.current) {
-        setState({ data: null, loading: false, error: err instanceof Error ? err : new Error(String(err)) });
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher, ...deps]);
-
-  useEffect(() => {
-    execute();
-    return () => { cancelledRef.current = true; };
-  }, [execute]);
-
-  const setData = useCallback((data: T) => {
-    setState({ data, loading: false, error: null });
-  }, []);
-
-  return { ...state, refetch: execute, setData };
-}
-
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === 'undefined') return initialValue

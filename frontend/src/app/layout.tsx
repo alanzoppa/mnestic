@@ -3,6 +3,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import QueryProvider from "@/components/QueryProvider";
 
 export const metadata: Metadata = {
   title: "Notes Browser",
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="flex-1 p-6 overflow-auto" data-testid="main-content">
             <ErrorBoundary>
               <KeyboardShortcuts />
-              {children}
+              <QueryProvider>{children}</QueryProvider>
             </ErrorBoundary>
           </main>
         </div>

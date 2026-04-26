@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getCalendarDate, type CalendarEvent } from "@/lib/api";
+import { useQuery } from '@tanstack/react-query';
+import { calendarEventKeys, calendarApi } from '@/lib/queries';
+import { type CalendarEvent } from "@/lib/api";
 
 interface Note {
   id: string;
@@ -21,20 +22,13 @@ export default function CalendarDatePage() {
   const params = useParams();
   const date = params.date as string;
 
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const result = await getCalendarDate(date);
-      setEvents(result.events);
-      setNotes(result.notes || []);
-      setLoading(false);
-    };
-    load();
-  }, [date]);
+  const { data, isLoading: loading } = useQuery({
+    queryKey: calendarEventKeys.date(date),
+    queryFn: () => calendarApi.date(date),
+    enabled: !!date,
+  });
+  const events = data?.events ?? [];
+  const notes = (data?.notes ?? []) as Note[];
 
   const formatDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split("-").map(Number);

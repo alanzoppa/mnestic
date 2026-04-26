@@ -1,8 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { getStats, search, getTags, triggerIngest, type Stats, type SearchResult, type TagInfo } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { type Stats, type SearchResult } from '@/lib/api';
+import {
+  statsKeys, statsApi,
+  tagKeys, tagsApi,
+  ingestApi,
+  searchApi,
+} from '@/lib/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatCard, StatsGrid } from '@/components/ui/StatCard';
@@ -38,57 +45,58 @@ const ClockIcon = () => (
 );
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [tags, setTags] = useState<TagInfo[]>([]);
-  const [allNoteTitles, setAllNoteTitles] = useState<{ id: string; title: string; note_id?: string }[]>([]);
+  const queryClient = useQueryClient();
+
+  // Local state (search is user-triggered)
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [ingesting, setIngesting] = useState(false);
   const [ingestResult, setIngestResult] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Load stats
-    getStats().then(setStats).catch(() => {});
-    
-    // Load tags for distribution and autocomplete
-    getTags().then(res => {
-      setTags(res.tags.slice(0, 10));
-    }).catch(() => {});
+  // Queries
+  const { data: stats } = useQuery({ queryKey: statsKeys.all, queryFn: statsApi.get });
+  const { data: tagsData } = useQuery({ queryKey: tagKeys.all, queryFn: tagsApi.all });
+  const tags = (tagsData?.tags ?? []).slice(0, 10);
 
-    // Load note titles for autocomplete
-    search('').then(res => {
-      setAllNoteTitles(res.results.map(r => ({
-        id: r.id,
-        title: r.title,
-        note_id: r.note_id || r.metadata?.note_id,
-      })));
-    }).catch(() => {});
-  }, []);
+  const { data: rawTitles = [] } = useQuery({
+    queryKey: ['autocomplete', 'titles'],
+    queryFn: () => searchApi.all({ query: '', n: 500 }),
+    staleTime: Infinity,
+  });
+  const allNoteTitles = rawTitles.map(r => ({
+    id: r.id,
+    title: r.title,
+    note_id: r.note_id || r.metadata?.note_id,
+  }));
 
-  const handleIngest = async (full: boolean) => {
-    setIngesting(true);
-    setIngestResult(null);
-    try {
-      const result = await triggerIngest(full);
+  // Mutations
+  const ingestMutation = useMutation({
+    mutationFn: (full: boolean) => ingestApi.trigger(full),
+    onMutate: () => { setIngestResult(null); },
+    onSuccess: (result) => {
       const n = result.notes_result || {};
       const c = result.calendar_result || {};
       setIngestResult(
         `Notes: ${n.notes_ingested || 0} ingested, ${n.notes_skipped || 0} skipped, ${n.chunks_created || 0} chunks. Calendar: ${c.events_ingested || 0} events.`
       );
-      getStats().then(setStats);
-    } catch (e: any) {
+      queryClient.invalidateQueries({ queryKey: statsKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+    },
+    onError: (e: any) => {
       setIngestResult(`Error: ${e.message}`);
-    }
-    setIngesting(false);
+    },
+  });
+
+  const handleIngest = (full: boolean) => {
+    ingestMutation.mutate(full);
   };
 
   const doSearch = async () => {
     if (!query.trim()) return;
     setSearching(true);
     try {
-      const data = await search(query);
-      setResults(data.results.slice(0, 5));
+      const data = await searchApi.all({ query, n: 20 });
+      setResults(data.slice(0, 5));
     } catch {}
     setSearching(false);
   };
@@ -115,7 +123,7 @@ export default function Dashboard() {
               Notes Browser
             </h1>
             <p className="text-zinc-500 mb-6">Search and explore your archived notes with semantic understanding</p>
-            
+
             <SearchAutocomplete
               query={query}
               onQueryChange={setQuery}
@@ -141,8 +149,8 @@ export default function Dashboard() {
                         <p className="text-sm text-zinc-500 mt-1 line-clamp-2">{r.snippet}</p>
                       </div>
                       <span className={`ml-4 px-2 py-1 rounded text-xs ${
-                        r.type === 'calendar' 
-                          ? 'bg-purple-500/10 text-purple-400' 
+                        r.type === 'calendar'
+                          ? 'bg-purple-500/10 text-purple-400'
                           : 'bg-blue-500/10 text-blue-400'
                       }`}>
                         {r.type}
@@ -272,21 +280,21 @@ export default function Dashboard() {
               <Button
                 variant="secondary"
                 onClick={() => handleIngest(false)}
-                loading={ingesting}
-                disabled={ingesting}
+                loading={ingestMutation.isPending}
+                disabled={ingestMutation.isPending}
               >
                 Incremental Ingest
               </Button>
               <Button
                 variant="primary"
                 onClick={() => handleIngest(true)}
-                loading={ingesting}
-                disabled={ingesting}
+                loading={ingestMutation.isPending}
+                disabled={ingestMutation.isPending}
               >
                 Full Re-ingest
               </Button>
             </div>
-            
+
             {ingestResult && (
               <div className="mt-4 p-3 bg-zinc-950/50 border border-zinc-800 rounded-lg">
                 <p className="text-sm text-zinc-400">{ingestResult}</p>

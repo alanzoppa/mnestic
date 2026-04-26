@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import * as THREE from 'three'
-import { useAsyncData } from '@/lib/hooks'
-import { getGraph, getTags, type GraphNode } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { type GraphNode } from '@/lib/api'
+import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import Link from 'next/link'
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false, loading: () => null })
@@ -93,15 +93,15 @@ export default function GraphPage() {
     }
   }, [])
 
-  const { data: tagsData } = useAsyncData(
-    useCallback(() => getTags().then(res => res.tags.slice(0, 30)), []),
-    []
-  )
+  const { data: tagsData } = useQuery({
+    queryKey: tagKeys.list,
+    queryFn: graphApi.tags,
+  });
 
-  const { data, loading, error } = useAsyncData(
-    useCallback(() => getGraph(selectedTag || undefined, undefined, threshold), [selectedTag, threshold]),
-    [selectedTag, threshold]
-  )
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: graphKeys.all(selectedTag || undefined, threshold),
+    queryFn: () => graphApi.get(selectedTag || undefined, threshold),
+  });
 
   const graphData = useMemo(() => {
     if (!data) return null

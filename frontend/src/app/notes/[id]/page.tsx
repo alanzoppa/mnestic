@@ -1,13 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { getNote, updateNote, getTags, getPeople } from '@/lib/api'
-import type { NoteDetail, TagInfo, PersonInfo } from '@/lib/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  noteKeys, notesApi,
+  tagKeys, tagsApi,
+  peopleKeys, peopleApi,
+  notesMutations,
+} from '@/lib/queries'
+import type { NoteDetail } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -114,75 +120,68 @@ const MarkdownComponents = {
 export default function NotePage() {
   const params = useParams()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const id = params.id as string
-  const [note, setNote] = useState<NoteDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [attachments, setAttachments] = useState<ExtractedImage[]>([])
-  const [content, setContent] = useState<string>('')
+
   const [editing, setEditing] = useState(false)
   const [editDraft, setEditDraft] = useState<string>('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
-  const [allTagNames, setAllTagNames] = useState<string[]>([])
-  const [allPeople, setAllPeople] = useState<PersonInfo[]>([])
   const { isFav, toggle } = useFavorites()
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIndex, setGalleryIndex] = useState(0)
 
-useEffect(() => {
-    if (!id) {
-      setLoading(false)
-      return
-    }
-    
-    let cancelled = false
-    
-    getNote(id)
-      .then((n) => {
-        if (cancelled) return
-        // Redirect chunk URLs to canonical note_id URLs
-        const canonicalId = n.metadata?.note_id
-        if (canonicalId && canonicalId !== id) {
-          router.replace(`/notes/${encodeURIComponent(canonicalId)}`)
-          return
-        }
-        setNote(n)
-        const { content: cleanedContent, images } = extractImages(n.content || '')
-        setContent(cleanedContent)
-        setAttachments(images)
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        console.error('Error loading note:', err)
-        setError('Failed to load note')
-        setLoading(false)
-      })
+  // Queries
+  const {
+    data: note,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: noteKeys.detail(id),
+    queryFn: () => notesApi.detail(id),
+    enabled: !!id,
+  });
 
-    getTags()
-      .then((data) => {
-        if (!cancelled) setAllTagNames(data.tags.map((t: TagInfo) => t.name))
-      })
-      .catch(() => {})
-
-    getPeople()
-      .then((data) => {
-        if (!cancelled) setAllPeople(data.people)
-      })
-      .catch(() => {})
-      
-    return () => { cancelled = true }
-  }, [id])
-
-  const refreshNote = async (nid?: string) => {
-    const fetchId = nid || note?.metadata?.note_id || note?.id || id
-    const fresh = await getNote(fetchId)
-    setNote(fresh)
-    const { content: cleanedContent, images } = extractImages(fresh.content || '')
-    setContent(cleanedContent)
-    setAttachments(images)
+  // Redirect chunk URLs → canonical note_id
+  const canonicalId = note?.metadata?.note_id;
+  if (canonicalId && canonicalId !== id) {
+    router.replace(`/notes/${encodeURIComponent(canonicalId)}`);
   }
+
+  // Derived state from note
+  const { content, attachments } = useMemo(() => {
+    if (!note) return { content: '', attachments: [] as ExtractedImage[] };
+    const { content: cleanedContent, images } = extractImages(note.content || '');
+    return { content: cleanedContent, attachments: images };
+  }, [note]);
+
+  const { data: tagsData } = useQuery({
+    queryKey: tagKeys.all,
+    queryFn: tagsApi.all,
+    staleTime: Infinity,
+  });
+  const allTagNames = tagsData?.tags?.map((t) => t.name) ?? [];
+
+  const { data: peopleData } = useQuery({
+    queryKey: peopleKeys.all,
+    queryFn: peopleApi.all,
+    staleTime: Infinity,
+  });
+  const allPeople = peopleData ?? [];
+
+  // Mutations
+  const updateMutation = useMutation({
+    mutationFn: notesMutations.update,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: noteKeys.detail(id) });
+      setEditing(false);
+      setEditSaving(false);
+    },
+    onError: (e: any) => {
+      setEditError(e?.message || 'Failed to save');
+      setEditSaving(false);
+    },
+  });
 
   const handleStartEdit = () => {
     setEditDraft(note?.content || '')
@@ -195,15 +194,7 @@ useEffect(() => {
     const nid = note.metadata?.note_id || note.id
     setEditSaving(true)
     setEditError(null)
-    try {
-      const result = await updateNote(nid, { content: editDraft })
-      await refreshNote(nid)
-      setEditing(false)
-    } catch (e: any) {
-      setEditError(e?.message || 'Failed to save')
-    } finally {
-      setEditSaving(false)
-    }
+    updateMutation.mutate({ id: nid, data: { content: editDraft } })
   }
 
   const handleCancelEdit = () => {
@@ -212,6 +203,12 @@ useEffect(() => {
     setEditing(false)
   }
 
+  const handleUpdateField = async (field: string, value: any) => {
+    if (!note) return;
+    const nid = note.metadata?.note_id || note.id;
+    await updateMutation.mutateAsync({ id: nid, data: { [field]: value } });
+  };
+
   if (loading) {
     return <SkeletonNoteDetail />
   }
@@ -219,7 +216,7 @@ useEffect(() => {
   if (error || !note) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <div className="text-zinc-500">{error || 'Note not found'}</div>
+        <div className="text-zinc-500">{error?.message || 'Note not found'}</div>
         <Button variant="secondary" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -254,10 +251,7 @@ useEffect(() => {
                   <div className="flex items-center gap-3">
                     <EditableTitle
                       value={meta.title || 'Untitled'}
-                      onSave={async (newTitle) => {
-                        await updateNote(noteId, { title: newTitle })
-                        await refreshNote(noteId)
-                      }}
+                      onSave={(newTitle) => handleUpdateField('title', newTitle)}
                     />
                     <FavoriteButton noteId={noteId} isFavorite={isFav(noteId)} onToggle={toggle} />
                   </div>
@@ -299,22 +293,14 @@ useEffect(() => {
                   <TagInput
                     tags={tags}
                     allTags={allTagNames}
-                    onChange={async (newTags) => {
-                      const nid = note.metadata?.note_id || note.id
-                      await updateNote(nid, { tags: newTags })
-                      await refreshNote(nid)
-                    }}
+                    onChange={(newTags) => handleUpdateField('tags', newTags)}
                   />
 
                   {/* Participants */}
                   <PersonInput
                     participants={participants}
                     people={allPeople}
-                    onChange={async (newParticipants) => {
-                      const nid = note.metadata?.note_id || note.id
-                      await updateNote(nid, { participants: newParticipants })
-                      await refreshNote(nid)
-                    }}
+                    onChange={(newParticipants) => handleUpdateField('participants', newParticipants)}
                   />
                 </div>
               </div>

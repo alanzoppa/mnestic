@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTimeline, type TimelinePeriod } from '@/lib/api';
-import { useAsyncData } from '@/lib/hooks';
+import { type TimelinePeriod } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { timelineKeys, timelineApi } from '@/lib/queries';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Select } from '@/components/ui/Input';
@@ -61,16 +62,13 @@ export default function TimelinePage() {
 
   const {
     data: timelineData,
-    loading,
+    isLoading: loading,
     error,
-  } = useAsyncData(
-    useCallback(
-      () => getTimeline(groupBy, tagFilter || undefined).then((res) => res.periods),
-      [groupBy, tagFilter]
-    ),
-    [groupBy, tagFilter]
-  );
-  const data = timelineData || [];
+  } = useQuery({
+    queryKey: timelineKeys.all(groupBy, tagFilter || undefined),
+    queryFn: () => timelineApi.get(groupBy, tagFilter || undefined),
+  });
+  const data = timelineData ?? [];
 
   const totalCount = data.reduce((sum, d) => sum + d.count, 0);
   const avgPerPeriod = data.length > 0 ? Math.round(totalCount / data.length) : 0;

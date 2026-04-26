@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import CalendarPage from "@/app/calendar/page";
 
 const mockPush = vi.fn();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -35,7 +39,11 @@ describe("CalendarPage", () => {
       ],
     });
 
-    render(<CalendarPage />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CalendarPage />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(document.querySelector('[data-testid="calendar-event-evt-1"]')).toBeInTheDocument();

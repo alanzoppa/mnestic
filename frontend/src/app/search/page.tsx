@@ -1,8 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { search, getTags, getSchema } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import {
+  tagKeys, tagsApi,
+  schemaKeys, schemaApi,
+  searchApi,
+} from '@/lib/queries'
 import type { SearchResult, TagInfo } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -31,11 +36,8 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [allTags, setAllTags] = useState<TagInfo[]>([])
-  const [allSources, setAllSources] = useState<string[]>([])
-  const [noteTitles, setNoteTitles] = useState<{ id: string; title: string; note_id?: string }[]>([])
   const [showFilters, setShowFilters] = useState(false)
-  
+
   const [filters, setFilters] = useState<SearchFilters>({
     source: '',
     folder: '',
@@ -44,33 +46,30 @@ export default function SearchPage() {
     dateTo: '',
   })
 
-  // Load tags and sources on mount
-  useEffect(() => {
-    getTags().then(res => setAllTags(res.tags)).catch(() => {})
-    getSchema().then(s => setAllSources(s.sources || [])).catch(() => {})
-  }, [])
+  // Static data (tags, sources, autocomplete titles)
+  const { data: tagsData } = useQuery({ queryKey: tagKeys.all, queryFn: tagsApi.all });
+  const allTags = tagsData?.tags ?? [];
 
-  // Cache note titles for autocomplete
-  useEffect(() => {
-    let cancelled = false
-    search('').then(res => {
-      if (!cancelled) {
-        setNoteTitles(res.results.map(r => ({
-          id: r.id,
-          title: r.title,
-          note_id: r.note_id || r.metadata?.note_id,
-        })))
-      }
-    }).catch(() => {})
-    return () => { cancelled = true }
-  }, [])
+  const { data: schemaData } = useQuery({ queryKey: schemaKeys.all, queryFn: schemaApi.get });
+  const allSources = schemaData?.sources ?? [];
+
+  const { data: rawTitleResults = [] } = useQuery({
+    queryKey: ['autocomplete', 'titles'],
+    queryFn: () => searchApi.all({ query: '', n: 500 }),
+    staleTime: Infinity,
+  });
+  const noteTitles = rawTitleResults.map(r => ({
+    id: r.id,
+    title: r.title,
+    note_id: r.note_id || r.metadata?.note_id,
+  }));
 
   const doSearch = async () => {
     if (!query.trim() && !filters.tags.length && !filters.source && !filters.folder) return
-    
+
     setLoading(true)
     setSearched(true)
-    
+
     const apiFilters: Record<string, string> = {}
     if (filters.source) apiFilters.source = filters.source
     if (filters.folder) apiFilters.folder = filters.folder
@@ -79,8 +78,13 @@ export default function SearchPage() {
     if (filters.dateTo) apiFilters.date_lte = filters.dateTo
 
     try {
-      const res = await search(query || '*', Object.keys(apiFilters).length ? apiFilters : undefined, 50, true)
-      setResults(res.results)
+      const data = await searchApi.all({
+        query: query || '*',
+        filters: Object.keys(apiFilters).length ? apiFilters : undefined,
+        n: 50,
+        includeCalendar: true,
+      });
+      setResults(data)
     } catch {
       setResults([])
     }
@@ -111,7 +115,7 @@ export default function SearchPage() {
     })
   }
 
-  const activeFiltersCount = 
+  const activeFiltersCount =
     (filters.source ? 1 : 0) +
     (filters.folder ? 1 : 0) +
     filters.tags.length +
@@ -131,7 +135,7 @@ export default function SearchPage() {
       acc[tag as string] = (acc[tag as string] || 0) + 1
       return acc
     }, {} as Record<string, number>)
-  
+
   const topResultTags = (Object.entries(resultTags) as [string, number][])
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
@@ -187,7 +191,7 @@ export default function SearchPage() {
                 </svg>
                 Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
               </Button>
-              
+
               <DateRangePicker
                 value={{ from: filters.dateFrom, to: filters.dateTo }}
                 onChange={({ from, to }) => setFilters(prev => ({ ...prev, dateFrom: from, dateTo: to }))}
@@ -204,7 +208,7 @@ export default function SearchPage() {
                         onClick={() => toggleTag(tag.name)}
                         className={`transition-all ${filters.tags.includes(tag.name) ? 'ring-2 ring-purple-500/50' : ''}`}
                       >
-                        <Badge 
+                        <Badge
                           variant={filters.tags.includes(tag.name) ? 'purple' : 'zinc'}
                           size="sm"
                           className="whitespace-nowrap"
@@ -269,8 +273,8 @@ export default function SearchPage() {
                         className={`transition-all ${filters.tags.includes(tag.name) ? 'ring-2 ring-purple-500/50' : ''}`}
                       >
                         <Badge
-                          variant={filters.tags.includes(tag.name) 
-                            ? 'purple' 
+                          variant={filters.tags.includes(tag.name)
+                            ? 'purple'
                             : STRUCTURAL_TAGS.includes(tag.name) ? 'blue' : 'green'
                           }
                         >
@@ -328,11 +332,11 @@ export default function SearchPage() {
                     <BarChart data={topResultTags} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
                       <XAxis type="number" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
+                      <YAxis
+                        dataKey="name"
+                        type="category"
                         width={100}
-                        stroke="#52525b" 
+                        stroke="#52525b"
                         tick={{ fill: '#a1a1aa', fontSize: 10 }}
                       />
                       <Tooltip
@@ -343,9 +347,9 @@ export default function SearchPage() {
                           color: '#fafafa',
                         }}
                       />
-                      <Bar 
-                        dataKey="value" 
-                        fill="#8b5cf6" 
+                      <Bar
+                        dataKey="value"
+                        fill="#8b5cf6"
                         radius={[0, 4, 4, 0]}
                       />
                     </BarChart>
@@ -362,7 +366,7 @@ export default function SearchPage() {
           {/* Results List */}
           <div className="space-y-3">
             {results.map((result) => (
-              <Card 
+              <Card
                 key={result.id}
                 hover
                 className="cursor-pointer group"
@@ -383,27 +387,27 @@ export default function SearchPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge 
+                        <Badge
                           variant={result.type === 'calendar' ? 'purple' : 'blue'}
                         >
                           {result.type}
                         </Badge>
                         <span className="text-xs text-zinc-500">Score: {result.score.toFixed(2)}</span>
                       </div>
-                      
+
                       <h3 className="font-medium text-zinc-100 group-hover:text-blue-400 transition-colors">
                         <HighlightText text={result.title} query={query} />
                       </h3>
-                      
+
                       <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
                         <HighlightText text={result.snippet} query={query} />
                       </p>
-                      
+
                       {(result.metadata?.tags?.length > 0) && (
                         <div className="flex flex-wrap gap-1 mt-3">
                           {result.metadata.tags.slice(0, 5).map((tag: string) => (
-                            <Badge 
-                              key={tag} 
+                            <Badge
+                              key={tag}
                               variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'}
                               size="sm"
                             >
@@ -413,7 +417,7 @@ export default function SearchPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="text-zinc-600 group-hover:text-blue-400 transition-colors">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
