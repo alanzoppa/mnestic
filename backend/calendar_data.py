@@ -5,6 +5,8 @@ import os
 from collections import defaultdict
 from datetime import datetime
 
+from cachetools import TTLCache
+
 from config import CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
 from models import CalendarEvent
 
@@ -17,9 +19,8 @@ class CalendarProcessor:
         self._registry_path = registry_path
         self._events: list[dict] = []
         self._alias_map: dict[str, str] = {}
-        self._cached_events: list[CalendarEvent] | None = None
-        self._events_by_date: dict[str, list[CalendarEvent]] = {}
-        self._events_by_participant: dict[str, list[CalendarEvent]] = {}
+        # Single TTLCache key for processed events + indexes
+        self._cache = TTLCache(maxsize=1, ttl=300)
 
     def load(self) -> None:
         try:
@@ -29,9 +30,8 @@ class CalendarProcessor:
         except (FileNotFoundError, json.JSONDecodeError, PermissionError):
             self._events = []
 
-        self._cached_events = None
-        self._events_by_date = {}
-        self._events_by_participant = {}
+        # Invalidate caches when raw data changes
+        self._cache.clear()
 
         try:
             registry: dict = {}
@@ -62,10 +62,8 @@ class CalendarProcessor:
             return self._alias_map[lower_key]
         return normalized
 
-    def process_events(self) -> list[CalendarEvent]:
-        if self._cached_events is not None:
-            return self._cached_events
-
+    def _build_events(self) -> tuple[list[CalendarEvent], dict[str, list[CalendarEvent]], dict[str, list[CalendarEvent]]]:
+        """Rebuild processed events and indexes from raw data."""
         processed: list[CalendarEvent] = []
         by_date: dict[str, list[CalendarEvent]] = defaultdict(list)
         by_participant: dict[str, list[CalendarEvent]] = defaultdict(list)
@@ -110,20 +108,29 @@ class CalendarProcessor:
             for name in normalized_names:
                 by_participant[name].append(pe)
 
-        self._cached_events = processed
-        self._events_by_date = dict(by_date)
-        self._events_by_participant = dict(by_participant)
+        return processed, dict(by_date), dict(by_participant)
+
+    def _get_cached(self) -> tuple[list[CalendarEvent], dict[str, list[CalendarEvent]], dict[str, list[CalendarEvent]]]:
+        """Return cached events + indexes, rebuilding if needed."""
+        try:
+            return self._cache[0]
+        except KeyError:
+            data = self._build_events()
+            self._cache[0] = data
+            return data
+
+    def process_events(self) -> list[CalendarEvent]:
+        processed, _, _ = self._get_cached()
         return processed
 
     def get_events_for_date(self, date: str) -> list[CalendarEvent]:
-        self.process_events()
-        return self._events_by_date.get(date, [])
+        _, by_date, _ = self._get_cached()
+        return by_date.get(date, [])
 
     def get_events_for_participant(self, name: str) -> list[CalendarEvent]:
-        self.process_events()
+        _, _, by_participant = self._get_cached()
         normalized = self.normalize_name(name)
-        return self._events_by_participant.get(normalized, [])
+        return by_participant.get(normalized, [])
 
     def get_embedding_text(self, event: CalendarEvent) -> str:
         return f"search_document: {event.summary}. {event.description}. Attendees: {event.attendees}. Location: {event.location}"
-

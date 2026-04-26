@@ -285,12 +285,12 @@ with FileLock(str(STATE_LOCK), timeout=10):
 ```
 
 **Checklist**
-- [ ] Add `cachetools` and `filelock` to `requirements.txt`.
-- [ ] Replace calendar dict caches with `TTLCache`.
-- [ ] Add `FileLock` around all `.ingest_state.json` read/write paths.
-- [ ] Run backend tests.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Add `cachetools` and `filelock` to `requirements.txt`.
+- [x] Replace calendar dict caches with `TTLCache`.
+- [x] Add `FileLock` around all `.ingest_state.json` read/write paths.
+- [x] Run backend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 

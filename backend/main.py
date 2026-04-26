@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import frontmatter
+from cachetools import TTLCache
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -95,12 +96,11 @@ if os.path.exists(images_dir):
     app.mount("/images", StaticFiles(directory=images_dir), name="images")
 
 
-_source_id_to_file: dict[str, str] = {}
+_source_id_cache = TTLCache(maxsize=1000, ttl=300)
 
 
 def _build_source_id_cache() -> None:
-    global _source_id_to_file
-    if _source_id_to_file:
+    if len(_source_id_cache) > 0:
         return
     for f in os.listdir(NOTES_DIR):
         if not f.endswith(".md"):
@@ -109,7 +109,7 @@ def _build_source_id_cache() -> None:
             post = frontmatter.load(os.path.join(NOTES_DIR, f))
             sid = post.get("source_id", "")
             if sid:
-                _source_id_to_file[sid] = f
+                _source_id_cache[sid] = f
         except Exception as e:
             logger.warning("Skipping unreadable note file %s: %s", f, e)
             continue
@@ -124,7 +124,7 @@ def _is_safe_filename(name: str) -> bool:
 
 def find_note_file(source_id: str) -> Optional[str]:
     _build_source_id_cache()
-    filename = _source_id_to_file.get(source_id)
+    filename = _source_id_cache.get(source_id)
     if filename:
         return os.path.join(NOTES_DIR, filename)
     # Fallback: try matching source_id directly as a filename (must be safe)
@@ -138,8 +138,7 @@ def find_note_file(source_id: str) -> Optional[str]:
 
 
 def _invalidate_source_id_cache() -> None:
-    global _source_id_to_file
-    _source_id_to_file = {}
+    _source_id_cache.clear()
 
 
 def _sanitize_filename(title: str) -> str:

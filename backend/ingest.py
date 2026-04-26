@@ -7,11 +7,33 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from filelock import FileLock
 from langchain_text_splitters import MarkdownTextSplitter
 
 from embed import embed_texts_sync, BATCH_SIZE
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
+
+
+def _state_lock(state_file: Path) -> Path:
+    return state_file.with_suffix(state_file.suffix + ".lock")
+
+
+def _read_state(state_file: Path) -> dict:
+    lock = FileLock(str(_state_lock(state_file)))
+    with lock.acquire(timeout=10):
+        if state_file.exists():
+            try:
+                return json.loads(state_file.read_text())
+            except Exception:
+                pass
+        return {}
+
+
+def _write_state(state_file: Path, data: dict) -> None:
+    lock = FileLock(str(_state_lock(state_file)))
+    with lock.acquire(timeout=10):
+        state_file.write_text(json.dumps(data, indent=2))
 
 
 def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[str]:
@@ -153,10 +175,10 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     state_file = notes_path / ".ingest_state.json"
 
     ingest_state = {"last_ingest": "", "files": {}}
-    if state_file.exists() and not force:
+    if not force:
         try:
-            ingest_state = json.loads(state_file.read_text())
-        except (json.JSONDecodeError, IOError):
+            ingest_state = _read_state(state_file)
+        except Exception:
             pass
 
     cal = CalendarProcessor()
@@ -240,7 +262,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
 
     ingest_state["last_ingest"] = datetime.utcnow().isoformat() + "Z"
     try:
-        state_file.write_text(json.dumps(ingest_state, indent=2))
+        _write_state(state_file, ingest_state)
     except IOError as e:
         errors.append(f"State file error: {str(e)}")
 

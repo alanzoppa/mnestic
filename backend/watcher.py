@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import frontmatter
+from filelock import FileLock
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -19,6 +20,27 @@ logger = logging.getLogger(__name__)
 
 DEBOUNCE_SECONDS = 5
 STATUS_RECENT_MAX = 20
+
+
+def _state_lock(state_file: Path) -> Path:
+    return state_file.with_suffix(state_file.suffix + ".lock")
+
+
+def _read_state(state_file: Path) -> dict:
+    lock = FileLock(str(_state_lock(state_file)))
+    with lock.acquire(timeout=10):
+        if state_file.exists():
+            try:
+                return json.loads(state_file.read_text())
+            except Exception:
+                pass
+        return {}
+
+
+def _write_state(state_file: Path, data: dict) -> None:
+    lock = FileLock(str(_state_lock(state_file)))
+    with lock.acquire(timeout=10):
+        state_file.write_text(json.dumps(data, indent=2))
 
 
 class _DebounceEntry:
@@ -76,12 +98,7 @@ class NoteWatcher:
         """After startup, index any files on disk that aren't tracked or have changed,
         and clean up orphaned entries in state / ChromaDB."""
         state_file = self._notes_dir / ".ingest_state.json"
-        tracked: dict = {}
-        if state_file.exists():
-            try:
-                tracked = json.loads(state_file.read_text()).get("files", {})
-            except Exception:
-                pass
+        tracked: dict = _read_state(state_file).get("files", {})
         queued = 0
         for md_file in self._notes_dir.iterdir():
             if md_file.suffix != ".md":
@@ -280,26 +297,22 @@ class NoteWatcher:
     def _update_ingest_state(self, note_id: str, md_path: Path, chunk_count: int) -> None:
         state_file = self._notes_dir / ".ingest_state.json"
         try:
-            state: dict = {}
-            if state_file.exists():
-                state = json.loads(state_file.read_text())
+            state = _read_state(state_file)
             mtime = md_path.stat().st_mtime
             state.setdefault("files", {})[note_id] = {
                 "mtime": mtime,
                 "chunks": chunk_count,
             }
-            state_file.write_text(json.dumps(state, indent=2))
+            _write_state(state_file, state)
         except Exception as e:
             logger.warning("Watcher: failed to update ingest state for %s: %s", note_id, e)
 
     def _remove_from_ingest_state(self, note_id: str) -> None:
         state_file = self._notes_dir / ".ingest_state.json"
         try:
-            if not state_file.exists():
-                return
-            state = json.loads(state_file.read_text())
+            state = _read_state(state_file)
             state.get("files", {}).pop(note_id, None)
-            state_file.write_text(json.dumps(state, indent=2))
+            _write_state(state_file, state)
         except Exception as e:
             logger.warning("Watcher: failed to remove %s from ingest state: %s", note_id, e)
 
