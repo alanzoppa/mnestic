@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
+import { useCombobox } from 'downshift'
 import { Lock, X } from 'lucide-react'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 
@@ -15,9 +16,6 @@ interface TagInputProps {
 
 export function TagInput({ tags, allTags, onChange }: TagInputProps) {
   const [input, setInput] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [selectedIdx, setSelectedIdx] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const editableTags = tags.filter(t => !STRUCTURAL_TAGS.includes(t))
@@ -32,27 +30,11 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
         .filter(t => !tags.includes(t))
         .slice(0, 8)
 
-  useEffect(() => {
-    setSelectedIdx(0)
-  }, [input])
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const addTag = (tag: string) => {
     const normalized = tag.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     if (!normalized || tags.includes(normalized) || tags.length >= MAX_TAGS) return
     onChange([...tags, normalized])
     setInput('')
-    setShowSuggestions(false)
-    inputRef.current?.focus()
   }
 
   const removeTag = (tag: string) => {
@@ -60,26 +42,48 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
     onChange(tags.filter(t => t !== tag))
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (suggestions.length > 0 && showSuggestions) {
-        addTag(suggestions[selectedIdx])
-      } else if (input.trim()) {
-        addTag(input.trim())
+  const {
+    isOpen,
+    getInputProps,
+    getMenuProps,
+    getItemProps,
+    highlightedIndex,
+    closeMenu,
+  } = useCombobox({
+    items: suggestions,
+    inputValue: input,
+    onInputValueChange: (changes) => {
+      setInput(changes.inputValue || '')
+    },
+    onSelectedItemChange: (changes) => {
+      const item = changes.selectedItem
+      if (item) {
+        addTag(item)
+        closeMenu()
       }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIdx(i => Math.min(i + 1, suggestions.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIdx(i => Math.max(i - 1, 0))
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-    } else if (e.key === 'Backspace' && !input && editableTags.length > 0) {
-      removeTag(editableTags[editableTags.length - 1])
-    }
-  }
+    },
+    itemToString: (item) => (item || ''),
+  })
+
+  const inputProps = getInputProps({
+    placeholder: tags.length === 0 ? 'Add tag...' : '+',
+    className: 'w-24 px-2 py-0.5 text-xs bg-transparent border border-zinc-700 rounded-full text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50',
+    'data-testid': 'tag-add-input',
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && input.trim()) {
+        e.preventDefault()
+        if (suggestions.length > 0 && highlightedIndex >= 0) {
+          addTag(suggestions[highlightedIndex])
+        } else {
+          addTag(input.trim())
+        }
+      } else if (e.key === 'Escape') {
+        closeMenu()
+      } else if (e.key === 'Backspace' && !input && editableTags.length > 0) {
+        removeTag(editableTags[editableTags.length - 1])
+      }
+    },
+  })
 
   return (
     <div ref={containerRef} className="flex flex-wrap gap-2 mt-3 items-center">
@@ -116,30 +120,21 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
       ))}
       {canAdd && (
         <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={e => {
-              setInput(e.target.value)
-              setShowSuggestions(true)
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            onKeyDown={handleKeyDown}
-            placeholder={tags.length === 0 ? 'Add tag...' : '+'}
-            className="w-24 px-2 py-0.5 text-xs bg-transparent border border-zinc-700 rounded-full text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50"
-            data-testid="tag-add-input"
-          />
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 py-1 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+          <input {...inputProps} />
+          {isOpen && suggestions.length > 0 && (
+            <div
+              {...getMenuProps()}
+              className="absolute z-20 mt-1 py-1 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto"
+            >
               {suggestions.map((tag, i) => (
                 <button
                   key={tag}
-                  onMouseDown={e => {
-                    e.preventDefault()
-                    addTag(tag)
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${i === selectedIdx ? 'bg-purple-500/20 text-purple-300' : 'text-zinc-400 hover:bg-zinc-700'}`}
+                  {...getItemProps({ item: tag, index: i })}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                    i === highlightedIndex
+                      ? 'bg-purple-500/20 text-purple-300'
+                      : 'text-zinc-400 hover:bg-zinc-700'
+                  }`}
                 >
                   {tag}
                 </button>

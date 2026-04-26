@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCombobox } from 'downshift'
 import { Search, Tag, FileText } from 'lucide-react'
 import { useDebouncedValue } from '@/lib/hooks'
 
@@ -33,76 +34,62 @@ export function SearchAutocomplete({
   className = '',
 }: SearchAutocompleteProps) {
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(-1)
   const debouncedQuery = useDebouncedValue(query, 150)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const suggestions = buildSuggestions(debouncedQuery, tags, noteTitles)
   const maxVisible = 8
   const visibleSuggestions = suggestions.slice(0, maxVisible)
 
-  useEffect(() => {
-    setSelectedIndex(-1)
-  }, [debouncedQuery])
+  const handleSelection = useCallback(
+    (item: AutocompleteSuggestion | null) => {
+      if (!item) return
+      if (item.onSelect) {
+        item.onSelect()
+      } else if (item.href) {
+        router.push(item.href)
+      }
+    },
+    [router]
+  )
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen || visibleSuggestions.length === 0) {
-      if (e.key === 'Enter') {
+  const {
+    isOpen,
+    getInputProps,
+    getMenuProps,
+    getItemProps,
+    highlightedIndex,
+    openMenu,
+  } = useCombobox({
+    items: visibleSuggestions,
+    inputValue: query,
+    onInputValueChange: (changes) => {
+      onQueryChange(changes.inputValue || '')
+    },
+    onSelectedItemChange: (changes) => {
+      handleSelection(changes.selectedItem)
+    },
+    itemToString: (item) => (item ? item.text : ''),
+  })
+
+  const inputProps = getInputProps({
+    placeholder,
+    className: 'input h-12 pl-10 pr-10',
+    'data-search-input': '',
+    onFocus: () => openMenu(),
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && highlightedIndex === -1) {
         e.preventDefault()
         onSubmit()
       }
-      return
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault()
-        setSelectedIndex(i => Math.min(i + 1, visibleSuggestions.length - 1))
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        setSelectedIndex(i => Math.max(i - 1, 0))
-        break
-      case 'Enter':
-        e.preventDefault()
-        if (selectedIndex >= 0 && selectedIndex < visibleSuggestions.length) {
-          const suggestion = visibleSuggestions[selectedIndex]
-          if (suggestion.onSelect) {
-            suggestion.onSelect()
-          } else if (suggestion.href) {
-            router.push(suggestion.href)
-          }
-          setIsOpen(false)
-        } else {
-          onSubmit()
-          setIsOpen(false)
-        }
-        break
-      case 'Escape':
-        setIsOpen(false)
-        inputRef.current?.blur()
-        break
-    }
-  }, [isOpen, visibleSuggestions, selectedIndex, router, onSubmit])
+    },
+  })
 
   return (
     <div className={`relative ${className}`}>
       <div className="relative">
         <input
-          ref={inputRef}
           type="text"
-          value={query}
-          onChange={(e) => {
-            onQueryChange(e.target.value)
-            setIsOpen(true)
-          }}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="input h-12 pl-10 pr-10"
-          data-search-input
+          {...inputProps}
         />
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
           <Search className="w-5 h-5" strokeWidth={2} />
@@ -114,26 +101,18 @@ export function SearchAutocomplete({
 
       {isOpen && debouncedQuery.length > 0 && visibleSuggestions.length > 0 && (
         <div
-          ref={dropdownRef}
+          {...getMenuProps()}
           className="absolute z-50 w-full mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
         >
           {visibleSuggestions.map((suggestion, i) => (
-            <button
+            <div
               key={`${suggestion.type}-${suggestion.text}`}
-              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${
-                i === selectedIndex
+              {...getItemProps({ item: suggestion, index: i })}
+              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
+                i === highlightedIndex
                   ? 'bg-zinc-800 text-zinc-100'
                   : 'text-zinc-300 hover:bg-zinc-800/50'
               }`}
-              onClick={() => {
-                if (suggestion.onSelect) {
-                  suggestion.onSelect()
-                } else if (suggestion.href) {
-                  router.push(suggestion.href)
-                }
-                setIsOpen(false)
-              }}
-              onMouseEnter={() => setSelectedIndex(i)}
             >
               <span className="shrink-0">
                 {suggestion.type === 'tag' && (
@@ -155,7 +134,7 @@ export function SearchAutocomplete({
               {suggestion.type === 'tag' && (
                 <span className="text-xs text-zinc-600 shrink-0">tag</span>
               )}
-            </button>
+            </div>
           ))}
         </div>
       )}

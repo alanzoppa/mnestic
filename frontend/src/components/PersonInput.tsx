@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
+import { useCombobox } from 'downshift'
 import { User, X } from 'lucide-react'
 
 const MAX_PARTICIPANTS = 10
@@ -19,9 +20,6 @@ interface PersonInputProps {
 
 export function PersonInput({ participants, people, onChange }: PersonInputProps) {
   const [input, setInput] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [selectedIdx, setSelectedIdx] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const canAdd = participants.length < MAX_PARTICIPANTS
@@ -40,52 +38,58 @@ export function PersonInput({ participants, people, onChange }: PersonInputProps
 
   const suggestions = matchPerson(input)
 
-  useEffect(() => {
-    setSelectedIdx(0)
-  }, [input])
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const addPerson = (name: string) => {
     if (participants.includes(name) || participants.length >= MAX_PARTICIPANTS) return
     onChange([...participants, name])
     setInput('')
-    setShowSuggestions(false)
-    inputRef.current?.focus()
   }
 
   const removePerson = (name: string) => {
     onChange(participants.filter(p => p !== name))
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (suggestions.length > 0 && showSuggestions) {
-        addPerson(suggestions[selectedIdx].name)
-      } else if (input.trim()) {
-        addPerson(input.trim())
+  const {
+    isOpen,
+    getInputProps,
+    getMenuProps,
+    getItemProps,
+    highlightedIndex,
+    closeMenu,
+  } = useCombobox({
+    items: suggestions.map(s => s.name),
+    inputValue: input,
+    onInputValueChange: (changes) => {
+      setInput(changes.inputValue || '')
+    },
+    onSelectedItemChange: (changes) => {
+      const item = changes.selectedItem
+      if (item) {
+        addPerson(item)
+        closeMenu()
       }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIdx(i => Math.min(i + 1, suggestions.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIdx(i => Math.max(i - 1, 0))
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-    } else if (e.key === 'Backspace' && !input && participants.length > 0) {
-      removePerson(participants[participants.length - 1])
-    }
-  }
+    },
+    itemToString: (item) => (item || ''),
+  })
+
+  const inputProps = getInputProps({
+    placeholder: participants.length === 0 ? 'Add person...' : '+',
+    className: 'w-28 px-2 py-0.5 text-xs bg-transparent border border-zinc-700 rounded-full text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50',
+    'data-testid': 'person-add-input',
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && input.trim()) {
+        e.preventDefault()
+        if (suggestions.length > 0 && highlightedIndex >= 0) {
+          addPerson(suggestions[highlightedIndex].name)
+        } else {
+          addPerson(input.trim())
+        }
+      } else if (e.key === 'Escape') {
+        closeMenu()
+      } else if (e.key === 'Backspace' && !input && participants.length > 0) {
+        removePerson(participants[participants.length - 1])
+      }
+    },
+  })
 
   return (
     <div ref={containerRef} className="flex flex-wrap gap-2 mt-4 items-center">
@@ -107,32 +111,23 @@ export function PersonInput({ participants, people, onChange }: PersonInputProps
       ))}
       {canAdd && (
         <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={e => {
-              setInput(e.target.value)
-              setShowSuggestions(true)
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            onKeyDown={handleKeyDown}
-            placeholder={participants.length === 0 ? 'Add person...' : '+'}
-            className="w-28 px-2 py-0.5 text-xs bg-transparent border border-zinc-700 rounded-full text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50"
-            data-testid="person-add-input"
-          />
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 py-1 w-56 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+          <input {...inputProps} />
+          {isOpen && suggestions.length > 0 && (
+            <div
+              {...getMenuProps()}
+              className="absolute z-20 mt-1 py-1 w-56 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto"
+            >
               {suggestions.map((person, i) => {
                 const aliasMatch = person.aliases.find(a => a.toLowerCase().includes(input.toLowerCase()))
                 return (
                   <button
                     key={person.name}
-                    onMouseDown={e => {
-                      e.preventDefault()
-                      addPerson(person.name)
-                    }}
-                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${i === selectedIdx ? 'bg-blue-500/20 text-blue-300' : 'text-zinc-400 hover:bg-zinc-700'}`}
+                    {...getItemProps({ item: person.name, index: i })}
+                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                      i === highlightedIndex
+                        ? 'bg-blue-500/20 text-blue-300'
+                        : 'text-zinc-400 hover:bg-zinc-700'
+                    }`}
                   >
                     <span className="font-medium">{person.name}</span>
                     {aliasMatch && (
