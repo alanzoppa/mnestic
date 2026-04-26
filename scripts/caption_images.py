@@ -6,25 +6,12 @@ This script scans markdown notes that contain only image references (no text con
 sends each image to Ollama Cloud's kimi-k2.5:cloud model for description generation,
 and prepends the generated caption to the note body.
 
-Usage:
-    python caption_images.py                    # Caption all image-only notes
-    python caption_images.py --dry-run          # Preview what would be captioned
-    python caption_images.py --force            # Re-caption notes with existing captions
-    python caption_images.py --limit 10         # Process only 10 notes
-    python caption_images.py --delay 2.0        # 2 second delay between API calls
-
-Requirements:
-    - Ollama running with access to kimi-k2.5:cloud model
-    - Pillow (pip install Pillow) for image resizing
-    - httpx (pip install httpx)
-
 The script handles:
     - PDF filtering (vision models don't support PDFs)
     - Image resizing for large files (>5MB)
     - Timeout retries (up to 5 minutes per image)
     - Multi-image notes (per-image captions)
 """
-import argparse
 import base64
 import os
 import re
@@ -40,6 +27,10 @@ from tenacity import (
     wait_exponential,
 )
 
+import typer
+
+app = typer.Typer(help="Caption image-only notes using Kimi k2.5:cloud vision model")
+
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 IMAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "images")
 CAPTION_MARKER = "[AI caption]"
@@ -52,8 +43,8 @@ PROMPT = (
     "If it's a screenshot, describe the UI and content."
 )
 
-
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
+
 
 def find_image_only_notes() -> list[tuple[str, list[str]]]:
     results = []
@@ -75,8 +66,7 @@ def find_image_only_notes() -> list[tuple[str, list[str]]]:
         if not text_without_links and ("![image]" in body or "![" in body):
             if not text_without_images:
                 image_refs = re.findall(r"!\[.*?\]\((.*?)\)", body)
-                # Filter out PDFs - only process actual image files
-                image_refs = [ref for ref in image_refs 
+                image_refs = [ref for ref in image_refs
                              if os.path.splitext(ref)[1].lower() in IMAGE_EXTENSIONS]
                 if image_refs:
                     results.append((fname, image_refs))
@@ -93,35 +83,29 @@ def resolve_image_path(ref: str) -> str | None:
 
 
 def resize_image_if_needed(image_path: str, max_size_mb: float = 5.0) -> bytes:
-    """Resize image if it's too large for API."""
     import io
     from PIL import Image
-    
+
     file_size = os.path.getsize(image_path)
     max_bytes = max_size_mb * 1024 * 1024
-    
+
     if file_size <= max_bytes:
         with open(image_path, "rb") as f:
             return f.read()
-    
-    # Resize needed
+
     img = Image.open(image_path)
-    
-    # Calculate new dimensions to get under max size
-    # Rough heuristic: halve dimensions until size should fit
     scale = 0.7
     while True:
         new_width = int(img.width * scale)
         new_height = int(img.height * scale)
         img_resized = img.resize((new_width, new_height), Image.LANCZOS)
-        
-        # Convert to bytes
+
         buf = io.BytesIO()
         if img.mode in ('RGBA', 'LA', 'P'):
             img_resized = img_resized.convert('RGB')
         img_resized.save(buf, format='JPEG', quality=85)
         img_bytes = buf.getvalue()
-        
+
         if len(img_bytes) <= max_bytes or scale < 0.3:
             return img_bytes
         scale *= 0.7
@@ -166,7 +150,7 @@ def process_note(fname: str, image_refs: list[str], dry_run: bool = False) -> bo
         print(f"  skipping {fname}: no frontmatter end found")
         return False
 
-    frontmatter = content[: fm_end + 3]
+    frontmatter_text = content[: fm_end + 3]
     body = content[fm_end + 3 :].strip()
 
     if dry_run:
@@ -177,7 +161,6 @@ def process_note(fname: str, image_refs: list[str], dry_run: bool = False) -> bo
 
     new_parts = []
     for part in image_blocks:
-        # Skip PDF files - vision models don't support them
         if part.lower().endswith('.pdf)'):
             continue
         match = re.match(r"!\[([^\]]*)\]\(([^)]+)\)", part)
@@ -203,7 +186,7 @@ def process_note(fname: str, image_refs: list[str], dry_run: bool = False) -> bo
                 new_parts.append("\n\n")
 
     new_body = "".join(new_parts).strip()
-    new_content = frontmatter + "\n\n" + new_body + "\n"
+    new_content = frontmatter_text + "\n\n" + new_body + "\n"
 
     with open(path, "w") as f:
         f.write(new_content)
@@ -211,16 +194,15 @@ def process_note(fname: str, image_refs: list[str], dry_run: bool = False) -> bo
     return True
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Caption image-only notes using Kimi k2.5")
-    parser.add_argument("--force", action="store_true", help="Re-caption notes that already have AI captions")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be captioned without modifying files")
-    parser.add_argument("--limit", type=int, default=0, help="Limit number of notes to process")
-    parser.add_argument("--delay", type=float, default=1.0, help="Delay between API calls in seconds")
-    args = parser.parse_args()
-
+@app.command()
+def main(
+    force: bool = typer.Option(False, "--force", help="Re-caption notes that already have AI captions"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be captioned without modifying files"),
+    limit: int = typer.Option(0, "--limit", help="Limit number of notes to process"),
+    delay: float = typer.Option(1.0, "--delay", help="Delay between API calls in seconds"),
+):
     notes = find_image_only_notes()
-    if not args.force and not args.dry_run:
+    if not force and not dry_run:
         already = []
         for fname, refs in notes:
             path = os.path.join(NOTES_DIR, fname)
@@ -233,26 +215,26 @@ def main():
 
     print(f"Found {len(notes)} image-only notes to caption")
 
-    if args.limit:
-        notes = notes[: args.limit]
+    if limit:
+        notes = notes[:limit]
 
     success = 0
     failed = 0
     for i, (fname, image_refs) in enumerate(notes):
         print(f"[{i+1}/{len(notes)}] {fname} ({len(image_refs)} images)")
         try:
-            if process_note(fname, image_refs, dry_run=args.dry_run):
+            if process_note(fname, image_refs, dry_run=dry_run):
                 success += 1
-            if not args.dry_run and args.delay and i < len(notes) - 1:
-                time.sleep(args.delay)
+            if not dry_run and delay and i < len(notes) - 1:
+                time.sleep(delay)
         except Exception as e:
             print(f"  ERROR: {e}")
             failed += 1
-            if args.delay:
-                time.sleep(args.delay)
+            if delay:
+                time.sleep(delay)
 
     print(f"\nDone: {success} captioned, {failed} failed")
 
 
 if __name__ == "__main__":
-    main()
+    app()

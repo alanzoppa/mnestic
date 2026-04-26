@@ -14,3 +14,4 @@ langchain-text-splitters
 scikit-learn
 cachetools
 filelock
+typer

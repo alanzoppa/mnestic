@@ -325,12 +325,12 @@ def main(
 - Same pattern for `sync_notes.py` and `caption_images.py`.
 
 **Checklist**
-- [ ] Add `typer` to `requirements.txt`.
-- [ ] Convert each CLI entry point to `typer` command.
-- [ ] Update `AGENTS.md` CLI examples.
-- [ ] Run each script with `--help` to verify output.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Add `typer` to `requirements.txt`.
+- [x] Convert each CLI entry point to `typer` command.
+- [x] Update `AGENTS.md` CLI examples.
+- [x] Run each script with `--help` to verify output.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
@@ -528,7 +528,7 @@ Replaced ~100 inline SVG blocks across 12 components. `Nav.tsx`, `DateRangePicke
 | **Phase 1** (Foundation) | 1. `pydantic-settings`, 2. `langchain-text-splitters`, 3. `tenacity`, 4. `pydantic` models | ✅ **Complete** | Medium |
 | **Phase 2** (Frontend Core) | 8. `@tanstack/react-query`, 9. `date-fns` + `react-day-picker` | ✅ **Complete** | High |
 | **Phase 3** (Polish) | 11. `lucide-react`, 12. `use-debounce`, 13. `tailwind-variants` | ✅ **Complete** | Medium |
-| **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 **5 done, 6 & 7 remaining** | Low |
+| **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | ✅ **Complete** | Low |
 | **Phase 5** (Frontend Advanced) | 10. `downshift` comboboxes | 🔴 **Remaining** | High |
 
 ---

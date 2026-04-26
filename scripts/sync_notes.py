@@ -1,11 +1,14 @@
-import argparse
 import os
 import re
 import shutil
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Optional
 
 import frontmatter
+import typer
 
+app = typer.Typer()
 
 APPLE_NOTES_FORMAT = "%A, %B %d, %Y at %I:%M:%S %p"
 EVERNOTE_FORMAT = "%Y%m%dT%H%M%SZ"
@@ -154,27 +157,25 @@ def sync_notes(source, dest, force):
     print(f"Results: {copied} copied, {skipped} skipped, {errored} errored")
 
 
-def main():
-    import argparse
+def _resolve_source(source: Optional[str]) -> str:
+    if source:
+        return source
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+    from config import NOTES_SOURCE
+    if NOTES_SOURCE and os.path.exists(NOTES_SOURCE):
+        return NOTES_SOURCE
+    raise typer.BadParameter("Source directory required (or set NOTES_SOURCE in .env)")
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source", nargs="?", help="Source directory (default: first arg or $NOTES_SOURCE)")
-    parser.add_argument("--dest", default="./notes", help="Destination directory (default: ./notes)")
-    parser.add_argument("--force", action="store_true")
-    args = parser.parse_args()
 
-    if not args.source:
-        # Import config here to avoid circular imports or unnecessary overhead
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
-        from config import NOTES_SOURCE
-
-        if NOTES_SOURCE and os.path.exists(NOTES_SOURCE):
-            args.source = NOTES_SOURCE
-        else:
-            parser.error("Source directory required (or set NOTES_SOURCE in .env)")
-
-    sync_notes(args.source, args.dest, args.force)
+@app.command()
+def main(
+    source: Optional[str] = typer.Argument(None, help="Source directory (default: $NOTES_SOURCE)"),
+    dest: str = typer.Option("./notes", "--dest", help="Destination directory"),
+    force: bool = typer.Option(False, "--force", help="Force re-sync"),
+):
+    resolved = _resolve_source(source)
+    sync_notes(resolved, dest, force)
 
 
 if __name__ == "__main__":
-    main()
+    app()

@@ -331,19 +331,28 @@ def ingest_calendar(
     }
 
 
-if __name__ == "__main__":
-    import argparse
+import typer
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--notes-dir", default=os.path.join(os.path.dirname(__file__), "..", "notes"))
-    parser.add_argument("--force", action="store_true")
-    parser.add_argument("--calendar-only", action="store_true")
-    args = parser.parse_args()
+app = typer.Typer()
 
+@app.command()
+def ingest(
+    notes_dir: str = typer.Option(
+        os.path.join(os.path.dirname(__file__), "..", "notes"),
+        "--notes-dir",
+        help="Directory containing markdown notes",
+    ),
+    force: bool = typer.Option(False, "--force", help="Force re-ingest all notes"),
+    calendar_only: bool = typer.Option(False, "--calendar-only", help="Only ingest calendar events"),
+):
     store = NoteStore()
 
-    if args.calendar_only:
+    if calendar_only:
         result = ingest_calendar(store)
     else:
-        result = ingest_notes(args.notes_dir, store, force=args.force)
-    print(json.dumps(result, indent=2))
+        result = ingest_notes(notes_dir, store, force=force)
+    typer.echo(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    app()
