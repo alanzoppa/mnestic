@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-
-def _normalize_meta(meta: dict) -> None:
-    """Convert comma-separated tags and participants strings to lists in-place."""
-    if "tags" in meta and isinstance(meta["tags"], str):
-        meta["tags"] = [t.strip() for t in meta["tags"].split(",") if t.strip()]
-    if "participants" in meta and isinstance(meta["participants"], str):
-        meta["participants"] = [p.strip() for p in meta["participants"].split(",") if p.strip()]
+from models import NoteMetadata
 
 
 def normalize_and_dedup_results(raw_results: list[dict], threshold: float | None = None) -> list[dict]:
@@ -22,8 +16,8 @@ def normalize_and_dedup_results(raw_results: list[dict], threshold: float | None
     for r in raw_results:
         meta = r.get("metadata", {})
         if meta:
-            _normalize_meta(meta)
-        nid = meta.get("note_id", r.get("id", ""))
+            meta = NoteMetadata(**meta).model_dump()
+        nid = meta.get("note_id") or r.get("id", "")
         if not nid:
             continue
 

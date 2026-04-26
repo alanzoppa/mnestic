@@ -10,7 +10,8 @@ from fastmcp import FastMCP
 if TYPE_CHECKING:
     from store import NoteStore
 
-from utils import _normalize_meta, normalize_and_dedup_results
+from utils import normalize_and_dedup_results
+from models import NoteMetadata
 
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
 
@@ -96,7 +97,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             return None
 
         meta = note.get("metadata", {})
-        _normalize_meta(meta)
+        meta = NoteMetadata(**meta).model_dump() if meta else meta
         source_id = meta.get("source_id", "")
 
         content = ""

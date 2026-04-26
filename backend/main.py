@@ -22,7 +22,8 @@ from store import NoteStore
 from rerank import Reranker
 from schema import discover_schema
 from ingest import make_note_id, make_doc_id, build_note_chunks
-from utils import _normalize_meta, normalize_and_dedup_results
+from utils import normalize_and_dedup_results
+from models import NoteMetadata
 
 from watcher import NoteWatcher
 
@@ -219,7 +220,7 @@ async def search(body: SearchRequest) -> dict:
     note_candidates: list[dict] = []
     for r in note_results:
         meta = r["metadata"]
-        _normalize_meta(meta)
+        meta = NoteMetadata(**meta).model_dump()
         note_candidates.append(
             {
                 "id": r["id"],
@@ -258,7 +259,7 @@ async def search(body: SearchRequest) -> dict:
     for r in all_results:
         rid = r["id"]
         rmeta = r.get("metadata", {})
-        note_id = rmeta.get("note_id", rid)
+        note_id = rmeta.get("note_id") or rid
         r["note_id"] = note_id
         if note_id in seen_note_ids:
             if r["score"] > seen_note_ids[note_id]["score"]:
@@ -277,10 +278,9 @@ async def get_note(note_id: str) -> dict:
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
-    metadata = note["metadata"]
-    _normalize_meta(metadata)
+    metadata = NoteMetadata(**note["metadata"]).model_dump()
     source_id = metadata.get("source_id", "")
-    logical_note_id = metadata.get("note_id", note["id"])
+    logical_note_id = metadata.get("note_id") or note["id"]
 
     content = ""
     note_file = find_note_file(source_id)
@@ -343,8 +343,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
-    metadata = note["metadata"]
-    _normalize_meta(metadata)
+    metadata = NoteMetadata(**note["metadata"]).model_dump()
     source_id = metadata.get("source_id", "")
 
     md_path = find_note_file(source_id)
@@ -377,7 +376,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
 
     post.metadata["modified"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    logical_note_id = metadata.get("note_id", note_id)
+    logical_note_id = metadata.get("note_id") or note_id
 
     try:
         if renamed:
@@ -394,8 +393,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to save note: {e}")
 
     updated_note = store.get_note_by_note_id(logical_note_id)
-    updated_meta = updated_note["metadata"] if updated_note else {}
-    _normalize_meta(updated_meta)
+    updated_meta = NoteMetadata(**updated_note["metadata"]).model_dump() if updated_note else {}
     updated_source_id = updated_meta.get("source_id", "")
     updated_md_path = find_note_file(updated_source_id)
     updated_content = ""
@@ -449,7 +447,7 @@ async def get_timeline(group_by: str = "month", tag: Optional[str] = None) -> di
 async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) -> dict:
     similar = store.get_similar(note_id, n=n)
     query_note = store.get_note(note_id) or store.get_note_by_note_id(note_id)
-    query_note_id = query_note["metadata"].get("note_id", note_id) if query_note else note_id
+    query_note_id = query_note["metadata"].get("note_id") or note_id if query_note else note_id
     deduped = normalize_and_dedup_results(similar, threshold=threshold)
     notes = []
     for entry in deduped:
@@ -524,8 +522,8 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
         seen_note_ids = set()
         for i, mid in enumerate(batch["ids"]):
             meta = batch["metadatas"][i] if batch["metadatas"] else {}
-            _normalize_meta(meta)
-            nid = meta.get("note_id", mid)
+            meta = NoteMetadata(**meta).model_dump()
+            nid = meta.get("note_id") or mid
             if nid in seen_note_ids:
                 continue
             seen_note_ids.add(nid)
@@ -543,8 +541,8 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
                     continue
             if folder and meta.get("folder", "") != folder:
                 continue
-            _normalize_meta(meta)
-            nid = meta.get("note_id", mid)
+            meta = NoteMetadata(**meta).model_dump()
+            nid = meta.get("note_id") or mid
             if nid in seen_note_ids:
                 continue
             seen_note_ids.add(nid)
@@ -573,7 +571,7 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
 
     id_to_note_id = {}
     for mid, meta in all_meta.items():
-        id_to_note_id[mid] = meta.get("note_id", mid)
+        id_to_note_id[mid] = meta.get("note_id") or mid
 
     edge_set = set()
     edges = []
@@ -596,11 +594,11 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
         connected.add(e["target"])
 
     nodes = []
-    nid_to_meta = {meta.get("note_id", mid): meta for mid, meta in all_meta.items()}
+    nid_to_meta = {meta.get("note_id") or mid: meta for mid, meta in all_meta.items()}
     for nid in connected:
         meta = nid_to_meta.get(nid, {})
         nodes.append({
-            "id": meta.get("note_id", nid),
+            "id": meta.get("note_id") or nid,
             "title": meta.get("title", ""),
             "folder": meta.get("folder", ""),
             "tags": meta.get("tags", []) if isinstance(meta.get("tags"), list) else [],
@@ -689,7 +687,7 @@ async def get_calendar_by_date(date: str) -> dict:
     notes = []
     for note in store.get_notes_by_date(date):
         meta = note["metadata"]
-        _normalize_meta(meta)
+        meta = NoteMetadata(**meta).model_dump()
         notes.append({
             "id": note["id"],
             "title": note["title"],
