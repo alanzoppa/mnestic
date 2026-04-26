@@ -244,7 +244,7 @@ export default function NotePage() {
         {/* Main content */}
         <div className="note-main space-y-6">
           {/* Header Card */}
-          <Card>
+          <Card className="relative z-10">
             <CardContent className="p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
