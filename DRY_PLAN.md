@@ -245,12 +245,12 @@ sim_matrix = cosine_similarity(emb_array)
 ```
 
 **Checklist**
-- [ ] Add `scikit-learn` to `backend/requirements.txt` (it pulls in `numpy` already).
-- [ ] Replace manual L2 normalization + dot product with `cosine_similarity`.
-- [ ] Verify graph output is unchanged on a known dataset.
-- [ ] Run backend tests.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Add `scikit-learn` to `backend/requirements.txt`.
+- [x] Replace manual L2 normalization + dot product with `cosine_similarity`.
+- [x] Verify graph output is unchanged on a known dataset.
+- [x] Run backend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
@@ -528,7 +528,7 @@ Replaced ~100 inline SVG blocks across 12 components. `Nav.tsx`, `DateRangePicke
 | **Phase 1** (Foundation) | 1. `pydantic-settings`, 2. `langchain-text-splitters`, 3. `tenacity`, 4. `pydantic` models | ✅ **Complete** | Medium |
 | **Phase 2** (Frontend Core) | 8. `@tanstack/react-query`, 9. `date-fns` + `react-day-picker` | ✅ **Complete** | High |
 | **Phase 3** (Polish) | 11. `lucide-react`, 12. `use-debounce`, 13. `tailwind-variants` | ✅ **Complete** | Medium |
-| **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 **Remaining** | Low |
+| **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 **5 done, 6 & 7 remaining** | Low |
 | **Phase 5** (Frontend Advanced) | 10. `downshift` comboboxes | 🔴 **Remaining** | High |
 
 ---

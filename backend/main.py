@@ -576,15 +576,13 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
     if len(embeddings) == 0 or embeddings[0] is None:
         return {"nodes": [], "edges": []}
 
-    import numpy as np
-    emb_array = np.array([e for e in embeddings if e is not None])
-    if len(emb_array) == 0:
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    clean_embeddings = [e for e in embeddings if e is not None]
+    if not clean_embeddings:
         return {"nodes": [], "edges": []}
 
-    norms = np.linalg.norm(emb_array, axis=1, keepdims=True)
-    norms[norms == 0] = 1
-    emb_normed = emb_array / norms
-    sim_matrix = emb_normed @ emb_normed.T
+    sim_matrix = cosine_similarity(clean_embeddings)
 
     id_to_note_id = {}
     for mid, meta in all_meta.items():

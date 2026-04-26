@@ -11,3 +11,4 @@ fastmcp
 watchdog
 sentence-transformers
 langchain-text-splitters
+scikit-learn
