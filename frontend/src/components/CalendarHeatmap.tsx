@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { timelineKeys, timelineApi } from '@/lib/queries'
 import type { TimelinePeriod } from '@/lib/api'
+import { format, parseISO, getYear, startOfYear, endOfYear, eachDayOfInterval, getDay, differenceInCalendarWeeks, setYear as fnSetYear } from 'date-fns'
+import { toISODate } from '@/lib/dates'
 
 const COLORS = [
   'bg-zinc-800',
@@ -23,7 +25,7 @@ interface DayData {
 }
 
 export function CalendarHeatmap() {
-  const [year, setYear] = useState(() => new Date().getFullYear())
+  const [year, setYear] = useState(() => getYear(new Date()))
   const [tooltip, setTooltip] = useState<{ date: string; count: number; x: number; y: number } | null>(null)
 
   const { data: periods } = useQuery({
@@ -39,21 +41,20 @@ export function CalendarHeatmap() {
       dayMap.set(p.period.slice(0, 10), p.count)
     }
 
-    const start = new Date(year, 0, 1)
-    const end = new Date(year, 11, 31)
-    const days: DayData[] = []
+    const yearStart = startOfYear(fnSetYear(new Date(), year))
+    const yearEnd = endOfYear(fnSetYear(new Date(), year))
+    const days = eachDayOfInterval({ start: yearStart, end: yearEnd })
+    const mapped: DayData[] = []
 
-    const current = new Date(start)
-    while (current <= end) {
-      const dateStr = current.toISOString().slice(0, 10)
+    for (const d of days) {
+      const dateStr = toISODate(d)
       const count = dayMap.get(dateStr) || 0
-      const dayOfWeek = current.getDay()
-      const weekNum = Math.floor((current.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000))
-      days.push({ date: dateStr, count, dayOfWeek, week: weekNum })
-      current.setDate(current.getDate() + 1)
+      const dayOfWeek = getDay(d)
+      const weekNum = differenceInCalendarWeeks(d, yearStart, { weekStartsOn: 0 })
+      mapped.push({ date: dateStr, count, dayOfWeek, week: weekNum })
     }
 
-    return { days, maxCount: Math.max(...days.map(d => d.count), 1) }
+    return { days: mapped, maxCount: Math.max(...mapped.map(d => d.count), 1) }
   }, [data, year])
 
   const totalNotes = data.reduce((sum, p) => sum + p.count, 0)
@@ -70,7 +71,7 @@ export function CalendarHeatmap() {
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const availableYears = useMemo(() => {
-    if (data.length === 0) return [new Date().getFullYear()]
+    if (data.length === 0) return [getYear(new Date())]
     const years = new Set(
       data
         .map(p => parseInt(p.period.slice(0, 4)))
@@ -159,11 +160,7 @@ export function CalendarHeatmap() {
           style={{ left: tooltip.x + 10, top: tooltip.y - 30 }}
         >
           <div className="font-medium text-zinc-200">
-            {new Date(tooltip.date + 'T12:00:00').toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            })}
+            {format(parseISO(tooltip.date), 'EEE, MMM d')}
           </div>
           <div className="text-zinc-400">
             {tooltip.count} {tooltip.count === 1 ? 'note' : 'notes'}

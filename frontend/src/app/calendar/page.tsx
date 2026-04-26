@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { type CalendarEvent } from "@/lib/api";
 import { useQuery } from '@tanstack/react-query';
 import { calendarEventKeys, calendarApi } from '@/lib/queries';
+import { getMonthDays, toISODate, format } from '@/lib/dates';
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -19,9 +16,9 @@ export default function CalendarPage() {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const startStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const endStr = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
+  const startStr = toISODate(new Date(year, month, 1));
+  const endStr = toISODate(new Date(year, month + 1, 0));
+
   const { data: events, isLoading: loading } = useQuery({
     queryKey: calendarEventKeys.range(startStr, endStr),
     queryFn: () => calendarApi.events(startStr, endStr),
@@ -31,25 +28,6 @@ export default function CalendarPage() {
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-
-  const getDaysInMonth = () => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startDayOfWeek = (firstDay.getDay() + 6) % 7;
-
-    const days: (number | null)[] = [];
-    for (let i = 0; i < startDayOfWeek; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
-    while (days.length % 7 !== 0) {
-      days.push(null);
-    }
-    return days;
-  };
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -67,12 +45,12 @@ export default function CalendarPage() {
     return map;
   }, [rawEvents, attendeeFilter]);
 
-  const getEventsForDay = (day: number) => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const getEventsForDay = (day: Date) => {
+    const dateStr = toISODate(day);
     return eventsByDate.get(dateStr) || [];
   };
 
-  const days = getDaysInMonth();
+  const days = getMonthDays(year, month, 0); // weekStartsOn=0 (Sunday) to match DAYS array
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
@@ -95,7 +73,7 @@ export default function CalendarPage() {
               ←
             </button>
             <span className="text-lg font-semibold w-40 text-center" data-testid="current-month">
-              {MONTHS[month]} {year}
+              {format(currentDate, "MMMM yyyy")}
             </span>
             <button
               onClick={nextMonth}
@@ -125,7 +103,7 @@ export default function CalendarPage() {
                 );
               }
               const dayEvents = getEventsForDay(day);
-              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const dateStr = toISODate(day);
               return (
                 <div
                   key={idx}
@@ -133,7 +111,7 @@ export default function CalendarPage() {
                   className="bg-zinc-900 min-h-24 p-2 cursor-pointer hover:bg-zinc-800"
                   data-testid={`calendar-day-${dateStr}`}
                 >
-                  <div className="font-medium text-sm mb-1">{day}</div>
+                  <div className="font-medium text-sm mb-1">{day.getDate()}</div>
                   <div className="space-y-1" data-testid={`calendar-events-${dateStr}`}>
                     {dayEvents.slice(0, 3).map((event) => (
                       <div

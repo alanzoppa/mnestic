@@ -3,6 +3,13 @@ import { Badge } from '@/components/ui/Badge';
 import { HighlightText } from '@/components/HighlightText';
 import { STRUCTURAL_TAGS } from '@/lib/constants';
 
+import { format, parseISO, isValid } from 'date-fns';
+
+function formatCreatedDate(created: string) {
+  const d = parseISO(created);
+  return isValid(d) ? format(d, 'MMMM d, yyyy') : created;
+}
+
 interface NoteResultProps {
   title: string;
   source?: string;
@@ -73,11 +80,7 @@ export function NoteResult({
       {/* Date */}
       {created && (
         <p className="text-sm text-zinc-500 mt-1">
-          {new Date(created).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+          {formatCreatedDate(created)}
         </p>
       )}
 

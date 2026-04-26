@@ -18,9 +18,11 @@
   "dependencies": {
     "@tanstack/react-query": "^5.100.5",
     "@tanstack/react-query-devtools": "^5.100.5",
+    "date-fns": "^4.1.0",
     "force-graph": "^1.51.4",
     "next": "16.2.4",
     "react": "19.2.4",
+    "react-day-picker": "^9.14.0",
     "react-dom": "19.2.4",
     "react-force-graph-3d": "^1.29.1",
     "react-markdown": "^10.1.0",

@@ -3,7 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
 import { calendarEventKeys, calendarApi } from '@/lib/queries';
-import { type CalendarEvent } from "@/lib/api";
+import { parseISO, format, isValid } from 'date-fns';
 
 interface Note {
   id: string;
@@ -20,31 +20,25 @@ interface Note {
 export default function CalendarDatePage() {
   const router = useRouter();
   const params = useParams();
-  const date = params.date as string;
+  const dateStr = params.date as string;
 
   const { data, isLoading: loading } = useQuery({
-    queryKey: calendarEventKeys.date(date),
-    queryFn: () => calendarApi.date(date),
-    enabled: !!date,
+    queryKey: calendarEventKeys.date(dateStr),
+    queryFn: () => calendarApi.date(dateStr),
+    enabled: !!dateStr,
   });
   const events = data?.events ?? [];
   const notes = (data?.notes ?? []) as Note[];
 
-  const formatDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const d = new Date(year, month - 1, day);
-    return d.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
+  const formattedDate = isValid(parseISO(dateStr))
+    ? format(parseISO(dateStr), "EEEE, MMMM d, yyyy")
+    : dateStr;
 
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
-    const d = new Date(isoString);
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const d = parseISO(isoString);
+    if (!isValid(d)) return "";
+    return format(d, "h:mm a");
   };
 
   return (
@@ -58,7 +52,7 @@ export default function CalendarDatePage() {
           ← Back to Calendar
         </button>
 
-        <h1 className="text-2xl font-bold mb-6" data-testid="date-title">{formatDate(date)}</h1>
+        <h1 className="text-2xl font-bold mb-6" data-testid="date-title">{formattedDate}</h1>
 
         {loading && <p className="text-zinc-400" data-testid="loading">Loading...</p>}
 

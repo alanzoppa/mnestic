@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { getDatePresets } from '@/lib/dates'
 
 interface DateRange {
   from: string
@@ -13,27 +14,10 @@ interface DateRangePickerProps {
   className?: string
 }
 
-const PRESETS: { label: string; from: string; to: string }[] = (() => {
-  const now = new Date()
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
-  const y = now.getFullYear()
-  const m = now.getMonth()
-  const d = now.getDate()
-
-  return [
-    { label: 'Last 30 days', from: fmt(new Date(y, m, d - 30)), to: fmt(now) },
-    { label: 'Last 90 days', from: fmt(new Date(y, m, d - 90)), to: fmt(now) },
-    { label: 'Last 6 months', from: fmt(new Date(y, m - 6, d)), to: fmt(now) },
-    { label: 'Last year', from: fmt(new Date(y - 1, m, d)), to: fmt(now) },
-    { label: 'This year', from: fmt(new Date(y, 0, 1)), to: fmt(now) },
-    { label: 'Last year (full)', from: fmt(new Date(y - 1, 0, 1)), to: fmt(new Date(y - 1, 11, 31)) },
-    { label: 'All time', from: '', to: '' },
-  ]
-})()
-
 export function DateRangePicker({ value, onChange, className = '' }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const presets = getDatePresets()
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -45,7 +29,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const activePreset = PRESETS.find(p => p.from === value.from && p.to === value.to)
+  const activePreset = presets.find(p => p.from === value.from && p.to === value.to)
   const hasRange = value.from || value.to
 
   return (
@@ -85,7 +69,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
           <div>
             <p className="text-sm font-medium text-zinc-300 mb-2">Quick select</p>
             <div className="space-y-1">
-              {PRESETS.map((preset) => (
+              {presets.map((preset) => (
                 <button
                   key={preset.label}
                   type="button"

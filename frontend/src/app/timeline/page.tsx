@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type TimelinePeriod } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
@@ -23,6 +23,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
+import { parse, format, isValid } from 'date-fns';
 
 const TAGS = [
   { value: '', label: 'All tags' },
@@ -78,8 +79,11 @@ export default function TimelinePage() {
   const chartData = data.map(d => ({
     ...d,
     label: groupBy === 'month' ? d.period.slice(0, 7) : d.period,
-    displayLabel: groupBy === 'month' 
-      ? new Date(d.period).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+    displayLabel: groupBy === 'month'
+      ? (() => {
+          const parsed = parse(d.period, 'yyyy-MM', new Date());
+          return isValid(parsed) ? format(parsed, "MMM ''yy") : d.period;
+        })()
       : d.period,
   }));
 

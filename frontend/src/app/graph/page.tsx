@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
+import { format, parseISO, isValid } from 'date-fns'
 import { type GraphNode } from '@/lib/api'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import Link from 'next/link'
@@ -317,7 +318,10 @@ export default function GraphPage() {
                 {viewingNode.title}
               </Link>
               {viewingNode.created && (
-                <div className="text-xs text-zinc-500 mb-1">{new Date(viewingNode.created).toLocaleDateString()}</div>
+                <div className="text-xs text-zinc-500 mb-1">{(() => {
+                  const d = parseISO(viewingNode.created);
+                  return isValid(d) ? format(d, 'MMM d, yyyy') : viewingNode.created;
+                })()}</div>
               )}
               <div className="text-xs text-zinc-400">{viewingNode.folder} · {viewingNode.source}</div>
               {viewingNode.tags.length > 0 && (

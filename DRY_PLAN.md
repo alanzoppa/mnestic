@@ -524,48 +524,33 @@ def main(
 
 ---
 
-### 9. Date Math & Calendar Grid → `date-fns` + `react-day-picker`
+### 9. Date Math & Calendar Grid → `date-fns`
 
-**Current:** `frontend/src/app/calendar/page.tsx` (custom `getDaysInMonth`, 55 lines), `components/DateRangePicker.tsx` (preset calculations), `components/CalendarHeatmap.tsx` (week/day math), all inline `toLocaleDateString`  
-**Libraries:** `date-fns`, `react-day-picker`  
-**Files:** `app/calendar/page.tsx`, `components/DateRangePicker.tsx`, `components/CalendarHeatmap.tsx`, `app/browse/page.tsx`, etc.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- Custom `getDaysInMonth` with manual day-of-week alignment math.
-- Date presets: `new Date(y, m, d - 30)` which is wrong for month boundaries.
-- `new Date().toISOString().slice(0, 10)` repeated everywhere.
-- `new Date(meta.created).toLocaleDateString(...)` inline with no centralized format.
+**Libraries:** `date-fns` + `react-day-picker` installed.  
+**Note:** Kept custom calendar grid instead of migrating to `react-day-picker` — the custom grid is fine, and `react-day-picker` would require a custom day renderer to preserve our event badges and `data-testid` attributes. May revisit later if we need keyboard nav/accessibility on the calendar grid.
 
-**Why replace**
-- `date-fns` is the standard for immutable, locale-aware date manipulation.
-- `react-day-picker` replaces the entire custom calendar grid with accessibility, keyboard nav, and range selection built in.
-
-**Planned refactor**
-```bash
-npm install date-fns react-day-picker
-```
-- **Calendar page**: Replace custom grid with `<DayPicker>` from `react-day-picker`.
-- **DateRangePicker**: Use `date-fns` for correct preset math:
-```ts
-import { subDays, subMonths, startOfYear, subYears, formatISO } from 'date-fns'
-const presets = [
-  { label: 'Last 30 days', from: subDays(new Date(), 30), to: new Date() },
-  // ...
-]
-```
-- **Browse / Note detail**: Replace inline `toLocaleDateString` with `date-fns/format`.
-- **CalendarHeatmap**: Use `date-fns` for week/day math.
+**What was done**
+- ✅ Created `frontend/src/lib/dates.ts` — centralized date utilities (not re-exporting any named exports that conflict with React hooks).
+- ✅ `DateRangePicker.tsx`: All presets (`Last 30 days`, `Last 90 days`, etc.) now use correct `date-fns` math (e.g., `subDays(now, 30)`, `subMonths(now, 6)`), fixing month-boundary bugs.
+- ✅ `calendar/page.tsx`: Replaced custom `getDaysInMonth` with `getMonthDays` from `lib/dates.ts`, using `date-fns` `eachDayOfInterval`, `startOfMonth`, `endOfMonth`, `getDay`.
+- ✅ `CalendarHeatmap.tsx`: Replaced all `toISOString().slice(0, 10)` string-slicing with `toISODate()` utility, replaced manual week math with `date-fns` `differenceInCalendarWeeks`, used `setYear` (aliased to avoid hook name conflict), `startOfYear`, `endOfYear`, `eachDayOfInterval`, `getDay`. Tooltip `toLocaleDateString` replaced with `format(parseISO(date), 'EEE, MMM d')`.
+- ✅ `calendar/[date]/page.tsx`: Replaced manual `new Date(year, month - 1, day)` parsing with `parseISO` + `format`. Time formatting with `toLocaleTimeString` replaced with `format(d, 'h:mm a')`.
+- ✅ `timeline/page.tsx`: Replaced `toLocaleDateString('en-US', { month: 'short', year: '2-digit' })` with `format(parseISO(period), "MMM ''yy")`.
+- ✅ `NoteResult.tsx`: Replaced `toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })` with `format(parseISO(created), 'MMMM d, yyyy')`.
+- ✅ `graph/page.tsx`: Replaced `toLocaleDateString()` with `format(parseISO(created), 'MMM d, yyyy')`.
 
 **Checklist**
-- [ ] Install `date-fns` + `react-day-picker`.
-- [ ] Replace `calendar/page.tsx` grid with `react-day-picker`.
-- [ ] Refactor `DateRangePicker.tsx` presets with `date-fns`.
-- [ ] Replace inline `toLocaleDateString` calls with `date-fns`.
-- [ ] Refactor `CalendarHeatmap.tsx` with `date-fns`.
-- [ ] Run frontend tests.
-- [ ] Run E2E mock suite.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Install `date-fns` + `react-day-picker`.
+- [x] Refactor `DateRangePicker.tsx` presets with `date-fns`.
+- [x] Replace inline `toLocaleDateString` calls with `date-fns`.
+- [x] Refactor `CalendarHeatmap.tsx` with `date-fns`.
+- [x] Migrate `calendar/page.tsx` grid math to `date-fns`.
+- [x] Run frontend tests. (21 passed)
+- [x] Run E2E mock suite. (105 passed)
+- [x] Run full test suite. (backend: 173 passed)
+- [x] Commit.
 
 ---
 
@@ -782,11 +767,11 @@ const button = tv({
 | Phase | Items | Est. Impact | Est. Effort |
 |-------|-------|-------------|-------------|
 | **Phase 1** (Foundation) | 1. `pydantic-settings`, 2. `langchain-text-splitters`, 3. `tenacity`, 4. `pydantic` models | 🔴 High | Medium |
-| **Phase 2** (Frontend Core) | 8. Finish `@tanstack/react-query` migration (graph, notes/[id], timeline), 9. `date-fns` + `react-day-picker` | 🔴 High | High |
+| **Phase 2** (Frontend Core) | 8. Finish `@tanstack/react-query` migration (graph, notes/[id], timeline), 9. `date-fns` + `react-day-picker` | ✅ **Complete** | High |
 | **Phase 3** (Polish) | 10. `downshift`, 11. `lucide-react`, 12. `use-debounce`, 13. `tailwind-variants` | 🟡 Medium | Medium |
 | **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 Quick | Low |
 
-**Current recommendation:** Phase 2A — finish migrating remaining pages to `@tanstack/react-query`, then move to `date-fns` + `react-day-picker`.
+**Current recommendation:** Phase 3 — migrate comboboxes to `downshift`, consolidate icons to `lucide-react`, and evaluate `tailwind-variants` for component variants.
 
 ---
 
