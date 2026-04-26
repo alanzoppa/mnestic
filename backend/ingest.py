@@ -7,20 +7,24 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from langchain_text_splitters import MarkdownTextSplitter
+
 from embed import embed_texts_sync, BATCH_SIZE
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
 
 
-def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 400) -> list[str]:
+def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[str]:
+    if not text or text == "":
+        return []
     if len(text) <= chunk_size:
-        return [text] if text else []
-    chunks = []
-    start = 0
-    while start < len(text):
-        chunks.append(text[start:start + chunk_size])
-        start += chunk_size - overlap
-    return chunks
+        return [text]
+    splitter = MarkdownTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=overlap,
+        length_function=len,
+    )
+    return splitter.split_text(text)
 
 
 def make_note_id(source_id: str) -> str:
@@ -53,7 +57,7 @@ def build_note_chunks(
     """Return (chunks, metadatas, ids) for a note ready to embed.
 
     Tier 1: title + folder + tags + participants + first ~2k chars + optional calendar context.
-    Tier 2: body chunks at ~2k chars with 400 char overlap.
+    Tier 2: body chunks at ~2k chars with 200 char overlap, respecting markdown boundaries.
     """
     title = fm.get("title", note_id)
     folder = fm.get("folder", "")
@@ -93,7 +97,7 @@ def build_note_chunks(
 
     if len(body) > 2000:
         remainder = body[1600:]
-        body_chunks = chunk_text(remainder, 2000, 400)
+        body_chunks = chunk_text(remainder, 2000, 200)
         for i, chunk in enumerate(body_chunks):
             if chunk.strip():
                 chunk_index = i + 1

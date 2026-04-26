@@ -21,7 +21,7 @@ from embed import embed_query_sync
 from store import NoteStore
 from rerank import Reranker
 from schema import discover_schema
-from ingest import make_note_id, make_doc_id, chunk_text, build_note_chunks
+from ingest import make_note_id, make_doc_id, build_note_chunks
 from utils import _normalize_meta, normalize_and_dedup_results
 
 from watcher import NoteWatcher

@@ -17,19 +17,38 @@ def test_chunk_text_empty():
     assert result == []
 
 
-def test_chunk_text_overlaps():
-    text = "a" * 3000
+def test_chunk_text_respects_markdown():
+    text = "\n\n".join([f"## Section {i}\n\n" + "This is a paragraph with many words to fill space. " * 30 for i in range(5)])
     result = chunk_text(text)
     assert len(result) > 1
-    assert result[1].startswith(text[1600:1600 + 400])
+    # MarkdownTextSplitter should keep headers intact and respect paragraphs
+    for chunk in result:
+        # Headers should not be split mid-line
+        lines = chunk.splitlines()
+        for line in lines:
+            if line.startswith("##"):
+                assert "Section" in line, "Headers should be kept whole"
 
 
 def test_chunk_text_custom_size():
-    text = "".join(chr(65 + i % 26) for i in range(250))
+    text = "word " * 500
     result = chunk_text(text, chunk_size=100, overlap=20)
     assert len(result) > 1
-    assert result[0] == text[:100]
-    assert result[1] == text[80:180]
+    # Chunks should be approximately the requested size
+    for chunk in result:
+        assert len(chunk) <= 120  # allow some structural overhead
+
+
+def test_chunk_text_overlap():
+    text = "\n\nParagraph " + "word " * 100 + "\n\nParagraph " + "word " * 100
+    chunks = chunk_text(text, chunk_size=200, overlap=40)
+    assert len(chunks) > 1
+    # Adjacent chunks should have some shared content
+    for i in range(len(chunks) - 1):
+        words_current = set(chunks[i].split())
+        words_next = set(chunks[i+1].split())
+        shared = words_current & words_next
+        assert len(shared) > 0, "overlapping chunks should share some words"
 
 
 def test_make_note_id_colons():
