@@ -9,13 +9,13 @@ import type { SearchResult } from '@/lib/api'
 import { useDebouncedValue } from '@/lib/hooks'
 import { useFavorites } from '@/lib/favorites'
 import { STRUCTURAL_TAGS, asArray } from '@/lib/constants'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input, Select } from '@/components/ui/Input'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SkeletonNoteCard } from '@/components/ui/Skeleton'
-import { FavoriteButton } from '@/components/FavoriteButton'
+import { NoteResult } from '@/components/NoteResult'
 
 const PAGE_SIZE = 50
 
@@ -328,64 +328,24 @@ export default function BrowsePage() {
       <div className="grid gap-4">
         {pageResults.map((result) => {
           const meta = result.metadata || {}
-          const tags = asArray(meta.tags)
-          const isHandwritten = tags.includes('handwritten')
-          
+          const noteId = result.note_id || meta?.note_id || result.id
+
           return (
-            <Link 
-              key={result.id}
-              href={`/notes/${result.note_id || result.metadata?.note_id || result.id}`}
-              className="block no-underline"
-            >
+            <Link key={result.id} href={`/notes/${noteId}`} className="block no-underline group">
               <Card hover>
                 <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="blue">{meta.source || 'Unknown'}</Badge>
-                        <span className="text-zinc-600">·</span>
-                        <Badge variant="zinc">{meta.folder || 'Unknown'}</Badge>
-                        {isHandwritten && (
-                          <>
-                            <span className="text-zinc-600">·</span>
-                            <Badge variant="amber">Handwritten</Badge>
-                          </>
-                        )}
-                      </div>
-                      
-                      <h3 className="font-semibold text-zinc-100 text-lg group-hover:text-blue-400 transition-colors">
-                        {meta.title || 'Untitled'}
-                      </h3>
-                      
-                      <p className="text-sm text-zinc-500 mt-1">
-                        {meta.created ? new Date(meta.created).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        }) : ''}
-                      </p>
-                      
-                      <p className="text-sm text-zinc-400 mt-3 line-clamp-2">
-                        {result.snippet?.substring(0, 150) || ''}
-                      </p>
-                      
-                      {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-4">
-                          {tags.filter((t: string) => !STRUCTURAL_TAGS.includes(t)).slice(0, 6).map((tag: string) => (
-                            <Badge key={tag} variant="green" size="sm">{tag}</Badge>
-                          ))}
-                          {tags.filter((t: string) => !STRUCTURAL_TAGS.includes(t)).length > 6 && (
-                            <span className="text-zinc-500 text-xs">+{tags.length - 6}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="text-zinc-600 group-hover:text-blue-400 transition-colors">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
+                  <NoteResult
+                    title={meta.title || 'Untitled'}
+                    source={meta.source}
+                    folder={meta.folder}
+                    created={meta.created}
+                    tags={asArray(meta.tags)}
+                    snippet={result.snippet}
+                  />
+                  <div className="flex justify-end mt-2">
+                    <svg className="w-5 h-5 text-zinc-600 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </CardContent>
               </Card>

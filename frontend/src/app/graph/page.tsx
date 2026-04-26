@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
+import * as THREE from 'three'
 import { type GraphNode } from '@/lib/api'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import Link from 'next/link'
@@ -56,6 +57,19 @@ function getNodeColor(node: GraphNode, tagColors: Record<string, string>): strin
   return primaryTag ? tagColors[primaryTag] || '#6b7280' : '#6b7280'
 }
 
+function createNodeObject(node: GraphNode, tagColors: Record<string, string>): THREE.Object3D {
+  const color = getNodeColor(node, tagColors)
+  const geometry = new THREE.SphereGeometry(4.2, 32, 32)
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.4,
+    metalness: 0.2,
+    transparent: true,
+    opacity: 0.85,
+  })
+  return new THREE.Mesh(geometry, material)
+}
+
 export default function GraphPage() {
   const fgRef = useRef<any>(null)
   const graphContainerRef = useRef<HTMLDivElement>(null)
@@ -65,6 +79,7 @@ export default function GraphPage() {
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [sceneReady, setSceneReady] = useState(false)
 
   // ResizeObserver to get actual pixel dimensions for the Three.js canvas
   useEffect(() => {
@@ -189,6 +204,25 @@ export default function GraphPage() {
     }
   }, [viewingNode])
 
+  useEffect(() => {
+    if (!fgRef.current || sceneReady) return
+    const scene = fgRef.current.scene()
+    if (!scene) return
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
+    scene.add(ambientLight)
+
+    const pointLight1 = new THREE.PointLight(0xffffff, 1.5, 300)
+    pointLight1.position.set(50, 50, 50)
+    scene.add(pointLight1)
+
+    const pointLight2 = new THREE.PointLight(0xffffff, 1.0, 300)
+    pointLight2.position.set(-50, -50, -50)
+    scene.add(pointLight2)
+
+    setSceneReady(true)
+  }, [data, sceneReady])
+
   const showLoading = loading
 
   return (
@@ -255,7 +289,7 @@ export default function GraphPage() {
               graphData={graphData!}
               nodeId="id"
               nodeLabel="title"
-              nodeColor={(node: any) => getNodeColor(node as GraphNode, tagColors)}
+              nodeThreeObject={(node: any) => createNodeObject(node as GraphNode, tagColors)}
               backgroundColor="#09090b"
               onNodeClick={handleNodeClick}
               enableNodeDrag={false}
@@ -278,11 +312,14 @@ export default function GraphPage() {
             <>
               <Link
                 href={`/notes/${viewingNode.id}`}
-                className="font-medium text-zinc-100 truncate hover:text-blue-400 transition-colors block"
+                className="font-medium text-zinc-100 truncate hover:text-blue-400 transition-colors block mb-0.5"
               >
                 {viewingNode.title}
               </Link>
-              <div className="text-xs text-zinc-400 mt-1">{viewingNode.folder} · {viewingNode.source}</div>
+              {viewingNode.created && (
+                <div className="text-xs text-zinc-500 mb-1">{new Date(viewingNode.created).toLocaleDateString()}</div>
+              )}
+              <div className="text-xs text-zinc-400">{viewingNode.folder} · {viewingNode.source}</div>
               {viewingNode.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {viewingNode.tags.slice(0, 5).map(t => (

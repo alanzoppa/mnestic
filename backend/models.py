@@ -139,6 +139,7 @@ class GraphNode(BaseModel):
     folder: str = ""
     tags: list[str] = []
     source: str = ""
+    created: str = ""
 
 
 class GraphEdge(BaseModel):

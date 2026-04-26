@@ -18,8 +18,8 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { DonutChart } from '@/components/charts/PieCharts'
 import { SkeletonNoteCard } from '@/components/ui/Skeleton'
 import { SearchAutocomplete } from '@/components/SearchAutocomplete'
-import { HighlightText } from '@/components/HighlightText'
 import { DateRangePicker } from '@/components/DateRangePicker'
+import { NoteResult } from '@/components/NoteResult'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 interface SearchFilters {
@@ -386,38 +386,33 @@ export default function SearchPage() {
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge
-                          variant={result.type === 'calendar' ? 'purple' : 'blue'}
-                        >
-                          {result.type}
-                        </Badge>
-                        <span className="text-xs text-zinc-500">Score: {result.score.toFixed(2)}</span>
-                      </div>
-
-                      <h3 className="font-medium text-zinc-100 group-hover:text-blue-400 transition-colors">
-                        <HighlightText text={result.title} query={query} />
-                      </h3>
-
-                      <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
-                        <HighlightText text={result.snippet} query={query} />
-                      </p>
-
-                      {(result.metadata?.tags?.length > 0) && (
-                        <div className="flex flex-wrap gap-1 mt-3">
-                          {result.metadata.tags.slice(0, 5).map((tag: string) => (
-                            <Badge
-                              key={tag}
-                              variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'}
-                              size="sm"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
+                      {result.type === 'note' ? (
+                        <NoteResult
+                          title={result.metadata?.title || result.title}
+                          source={result.metadata?.source}
+                          folder={result.metadata?.folder}
+                          created={result.metadata?.created}
+                          tags={result.metadata?.tags || []}
+                          snippet={result.snippet}
+                          score={result.score}
+                          showScore={true}
+                          highlightQuery={query}
+                        />
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="purple">Calendar</Badge>
+                            <span className="text-xs text-zinc-500">Score: {result.score.toFixed(2)}</span>
+                          </div>
+                          <h3 className="font-medium text-zinc-100 group-hover:text-blue-400 transition-colors">
+                            {result.title}
+                          </h3>
+                          {result.snippet && (
+                            <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{result.snippet}</p>
+                          )}
+                        </>
                       )}
                     </div>
-
                     <div className="text-zinc-600 group-hover:text-blue-400 transition-colors">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

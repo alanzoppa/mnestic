@@ -135,6 +135,7 @@ export interface GraphNode {
   folder: string;
   tags: string[];
   source: string;
+  created?: string;
 }
 
 export interface GraphEdge {

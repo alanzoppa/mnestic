@@ -620,6 +620,7 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
             "folder": meta.get("folder", ""),
             "tags": meta.get("tags", []) if isinstance(meta.get("tags"), list) else [],
             "source": meta.get("source", ""),
+            "created": meta.get("created", ""),
         })
 
     return {"nodes": nodes, "edges": edges}
