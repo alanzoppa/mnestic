@@ -60,6 +60,11 @@ export const peopleKeys = {
   all: ['people'] as const,
 };
 
+export const searchKeys = {
+  results: (query: string, filters: Record<string, string>, includeCalendar: boolean) =>
+    ['search', query, JSON.stringify(filters), includeCalendar] as const,
+};
+
 // ============================================================================
 // Query Functions (thin wrappers so pages don't import api directly)
 // ============================================================================

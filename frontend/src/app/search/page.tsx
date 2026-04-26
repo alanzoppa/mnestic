@@ -2,20 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   tagKeys, tagsApi,
   schemaKeys, schemaApi,
   searchApi,
 } from '@/lib/queries'
-import type { SearchResult, TagInfo } from '@/lib/api'
+import type { SearchResult } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { DonutChart } from '@/components/charts/PieCharts'
 import { SkeletonNoteCard } from '@/components/ui/Skeleton'
 import { SearchAutocomplete } from '@/components/SearchAutocomplete'
 import { DateRangePicker } from '@/components/DateRangePicker'
@@ -33,8 +32,6 @@ interface SearchFilters {
 export default function SearchPage() {
   const router = useRouter()
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
@@ -66,32 +63,36 @@ export default function SearchPage() {
       note_id: r.note_id || r.metadata?.note_id,
     }));
 
-  const doSearch = async () => {
-    if (!query.trim() && !filters.tags.length && !filters.source && !filters.folder) return
+  // Build api filters for the mutation
+  const apiFilters: Record<string, string> = {}
+  if (filters.source) apiFilters.source = filters.source
+  if (filters.folder) apiFilters.folder = filters.folder
+  if (filters.tags.length) apiFilters.tags = filters.tags.join(',')
+  if (filters.dateFrom) apiFilters.date_gte = filters.dateFrom
+  if (filters.dateTo) apiFilters.date_lte = filters.dateTo
 
-    setLoading(true)
-    setSearched(true)
+  const canSearch = query.trim() || filters.tags.length || filters.source || filters.folder;
 
-    const apiFilters: Record<string, string> = {}
-    if (filters.source) apiFilters.source = filters.source
-    if (filters.folder) apiFilters.folder = filters.folder
-    if (filters.tags.length) apiFilters.tags = filters.tags.join(',')
-    if (filters.dateFrom) apiFilters.date_gte = filters.dateFrom
-    if (filters.dateTo) apiFilters.date_lte = filters.dateTo
-
-    try {
+  const searchMutation = useMutation({
+    mutationFn: async () => {
       const data = await searchApi.all({
         query: query || '*',
         filters: Object.keys(apiFilters).length ? apiFilters : undefined,
         n: 50,
         includeCalendar: true,
       });
-      setResults(data)
-    } catch {
-      setResults([])
-    }
-    setLoading(false)
-  }
+      return data;
+    },
+  });
+
+  const results = searchMutation.data ?? [];
+  const loading = searchMutation.isPending;
+
+  const doSearch = () => {
+    if (!canSearch) return;
+    setSearched(true);
+    searchMutation.mutate();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
