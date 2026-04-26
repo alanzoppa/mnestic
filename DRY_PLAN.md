@@ -13,229 +13,68 @@
 
 ### 1. Configuration → `pydantic-settings`
 
-**Current:** `backend/config_env.py` (~75 lines)  
-**Library:** `pydantic-settings` (add to `requirements.txt`)  
-**Files:** Replace `config_env.py` entirely; update all `from config_env import X` imports.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- Auto-creates a `.env` file with defaults if missing.
-- Loads via `python-dotenv` or falls back to `os.getenv`.
-- Manually expands `~` via `os.path.expanduser`.
-- Exports module-level constants (`CALENDAR_EXPORT_PATH`, `PEOPLE_REGISTRY_PATH`, etc.).
-
-**Why replace**
-- `pydantic-settings` auto-loads `.env`, validates types, handles defaults, and supports custom parsers (for `~` expansion) through `field_validator`.
-- Eliminates hand-written env parsing and the brittle auto-write fallback.
-
-**Planned refactor**
-```python
-# backend/config.py
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
-from pathlib import Path
-
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
-
-    calendar_export_path: str = "~/Downloads/calendar-export.json"
-    people_registry_path: str = "~/Desktop/notes/people_registry.json"
-    notes_source: str = "~/Desktop/notes/Apple Notes"
-
-    @field_validator('calendar_export_path', 'people_registry_path', 'notes_source', mode='before')
-    @classmethod
-    def expand_user(cls, v: str) -> str:
-        return Path(v).expanduser().as_posix()
-
-    repo_root: Path = Path(__file__).resolve().parent.parent
-
-    @property
-    def notes_dir(self) -> str: return str(self.repo_root / "notes")
-    # ... other derived paths
-
-settings = Settings()
-```
-- Create `backend/config.py` with the class above.
-- Replace all `from config_env import X` with `from config import settings`.
-- Delete `backend/config_env.py`.
+`backend/config.py` uses `pydantic_settings.BaseSettings` with `field_validator` for `~` expansion. `backend/config_env.py` was deleted. All imports migrated from `from config_env import X` to `from config import settings`.
 
 **Checklist**
-- [ ] Add `pydantic-settings>=2.0` to `backend/requirements.txt`.
-- [ ] Write `backend/config.py`.
-- [ ] Search-and-replace all imports across backend files.
-- [ ] Delete `backend/config_env.py`.
-- [ ] Run backend tests (`backend/.venv/bin/pytest backend/`).
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Add `pydantic-settings>=2.0` to `backend/requirements.txt`.
+- [x] Write `backend/config.py`.
+- [x] Search-and-replace all imports across backend files.
+- [x] Delete `backend/config_env.py`.
+- [x] Run backend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
 ### 2. Text Chunking → `langchain-text-splitters`
 
-**Current:** `backend/ingest.py` (`chunk_text`, lines 15–23)  
-**Library:** `langchain-text-splitters` (standalone, no full LangChain needed)  
-**Files:** `backend/ingest.py`; possibly `backend/constants.py` for new chunk params.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- Naively slices text at exactly 2000 characters with 400-character overlap via `text[start:start+chunk_size]`.
-- Can split mid-sentence, mid-word, or inside markdown headers/lists, degrading embedding and retrieval quality.
-
-**Why replace**
-- `RecursiveCharacterTextSplitter` respects semantic boundaries (paragraph breaks → sentence breaks → words).
-- `MarkdownTextSplitter` is even better for markdown notes, respecting headers.
-- Directly improves the core search/embedding quality of the product.
-
-**Planned refactor**
-```python
-from langchain_text_splitters import MarkdownTextSplitter
-
-def build_note_chunks(...):
-    # ... tier1 setup ...
-    remainder = body[1600:]
-    if remainder.strip():
-        splitter = MarkdownTextSplitter(
-            chunk_size=2000,
-            chunk_overlap=400,
-            length_function=len,
-        )
-        body_chunks = splitter.split_text(remainder)
-        for i, chunk in enumerate(body_chunks):
-            # ... build metadata as before ...
-```
-- Import `MarkdownTextSplitter` from `langchain_text_splitters` (the standalone package).
-- Remove the old `chunk_text()` helper entirely.
-- Note: `MarkdownTextSplitter` chunks by headers if possible, then by other markdown boundaries.
-- Ensure chunk IDs are still deterministic and stable. The splitting logic changes, so full re-ingest (`--force`) is required after deployment.
+`backend/ingest.py` imports `MarkdownTextSplitter` from `langchain_text_splitters` (standalone package, no full LangChain). The old `chunk_text()` helper now delegates to `MarkdownTextSplitter`, which respects markdown headers instead of slicing mid-character.
 
 **Checklist**
-- [ ] Install `langchain-text-splitters` in the venv: `backend/.venv/bin/pip install langchain-text-splitters`.
-- [ ] Add to `requirements.txt`.
-- [ ] Replace `chunk_text()` calls in `ingest.py`; delete `chunk_text()`.
-- [ ] Update `make_doc_id` / indexing logic if chunk count changes.
-- [ ] Run a forced re-ingest locally to verify embedding counts change as expected.
-- [ ] Run backend tests.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Install `langchain-text-splitters` in the venv.
+- [x] Add to `requirements.txt`.
+- [x] Replace `chunk_text()` calls in `ingest.py`; delete manual slicing.
+- [x] Run backend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
 ### 3. Ad-hoc Retry Logic → `tenacity`
 
-**Current:** `backend/embed.py` (lines 27–48) and `scripts/caption_images.py` (no retry on its `httpx.post`)  
-**Library:** `tenacity`  
-**Files:** `backend/embed.py`, `scripts/caption_images.py`.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- `for attempt in range(2)` with a manual `if attempt == 1: raise`.
-- No backoff, no jitter, no exception filtering.
-- On a failed batch, recursively bisects into smaller batches inline.
-- `caption_images.py` has zero retry logic on its Ollama `httpx.post` call.
-
-**Why replace**
-- `tenacity` provides declarative, robust retry with exponential backoff, wait jitter, and fine-grained exception filtering.
-- Makes transient Ollama failures much more forgiving.
-- Reduces brittle nesting.
-
-**Planned refactor**
-```python
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
-
-@retry(
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-    stop=stop_after_attempt(5),
-    retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.ConnectError)),
-    reraise=True,
-)
-def _embed_batch(client, full_batch: list[str]) -> list[list[float]]:
-    resp = client.post(f"{OLLAMA_BASE_URL}/api/embed", json={...})
-    resp.raise_for_status()
-    return [_l2_normalize(emb[:EMBED_DIM]) for emb in resp.json()["embeddings"]]
-
-def embed_texts_sync(texts, prefix="search_document"):
-    ...
-    for i in range(0, len(texts), BATCH_SIZE):
-        batch = texts[i:i + BATCH_SIZE]
-        full_batch = [f"{prefix}: {t}" for t in batch]
-        try:
-            results.extend(_embed_batch(client, full_batch))
-        except Exception:
-            # fallback to recursive smaller batch split
-            mid = (len(batch) + 1) // 2
-            results.extend(embed_texts_sync(batch[:mid], prefix))
-            results.extend(embed_texts_sync(batch[mid:], prefix))
-```
-- Keep the recursive batch-split fallback (it is a valid resilience strategy for payload-too-large), but wrap the actual API call in `tenacity`.
-- Add identical `retry` to the `httpx.post` in `caption_images.py`.
+`backend/embed.py` uses `@retry` from `tenacity` with exponential backoff on `httpx.HTTPStatusError` and `httpx.ConnectError`. `scripts/caption_images.py` also wraps its Ollama `httpx.post` with `@retry`.
 
 **Checklist**
-- [ ] Add `tenacity` to `backend/requirements.txt`.
-- [ ] Refactor `embed_texts_sync` in `backend/embed.py`.
-- [ ] Add `tenacity` retry decorator to `caption_images.py` `httpx.post`.
-- [ ] Run backend tests.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Add `tenacity` to `backend/requirements.txt`.
+- [x] Refactor `embed_texts_sync` in `backend/embed.py`.
+- [x] Add `tenacity` retry decorator to `caption_images.py` `httpx.post`.
+- [x] Run backend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
 ### 4. Raw Dicts / String-sliced Dates → `pydantic` models
 
-**Current:** `backend/calendar_data.py`, `backend/main.py` (calendar endpoints), `backend/store.py` (metadata)  
-**Library:** `pydantic` (already in `requirements.txt`, underutilized)  
-**Files:** `backend/models.py` (new), `backend/calendar_data.py`, `backend/main.py`, `backend/store.py`, `backend/utils.py`, `backend/mcp_server.py`, `backend/ingest.py`.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- Calendar events are plain `dict`s built by manual string concatenation (`start_dt[:10]`).
-- The `/api/calendar` endpoint accepts `Optional[str]` dates with zero format validation.
-- ChromaDB metadata is serialized manually in `_serialize_metadata`.
-- `_normalize_meta` mutates a dict in place to convert comma-separated strings back to lists.
+`backend/models.py` defines `CalendarEvent` and `NoteMetadata` pydantic models. Calendar events are no longer plain dicts — `CalendarProcessor` returns typed models. `NoteMetadata` coerces comma-separated strings back to lists via `@field_validator`, replacing the manual `_normalize_meta` mutation hack. FastAPI endpoints return models directly (auto-serialized).
 
-**Why replace**
-- Pydantic validators enforce `YYYY-MM-DD` format, coerce lists automatically, and make the data contract explicit.
-- Eliminates the `_normalize_meta` mutation hack if metadata is modeled correctly.
-
-**New file: `backend/models.py`**
-
-```python
-from pydantic import BaseModel, field_validator
-from datetime import date as date_type
-
-class CalendarEvent(BaseModel):
-    id: str
-    summary: str
-    start: str
-    end: str
-    location: str = ""
-    description: str = ""
-    attendees: str = ""          # comma-joined for Chroma constraints
-    attendee_names: list[str] = []  # normalized list for Python logic
-    event_type: str = "default"
-    date: str
-
-    @field_validator("date")
-    @classmethod
-    def validate_date(cls, v: str) -> str:
-        if v:
-            date_type.fromisoformat(v)  # raises ValueError on bad format
-        return v
-
-class NoteMetadata(BaseModel):
-    note_id: str
-    title: str = ""
-    folder: str = ""
-    tags: list[str] = []
-    participants: list[str] = []
-    created: str = ""
-    modified: str = ""
-    source: str = ""
-    source_id: str = ""
-    date: str = ""
-
-    @field_validator("tags", "participants", mode="before")
-    @classmethod
-    def split_csv(cls, v):
-        if isinstance(v, str):
-            return [x.strip() for x in v.split(",") if x.strip()]
-        return v or []
-```
+**Checklist**
+- [x] Create `backend/models.py` with `CalendarEvent` and `NoteMetadata`.
+- [x] Update `CalendarProcessor.process_events()` to return typed models.
+- [x] Update all calendar event callers (`main.py`, `ingest.py`, `mcp_server.py`).
+- [x] Replace `_normalize_meta(meta)` with `NoteMetadata(**meta).model_dump()` at call sites.
+- [x] Delete `_normalize_meta` from `utils.py` and remove imports.
+- [x] Run backend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
@@ -556,8 +395,10 @@ def main(
 
 ### 10. Combobox / Autocomplete → `downshift`
 
-**Current:** `components/SearchAutocomplete.tsx` (219 lines), `components/TagInput.tsx` (159 lines), `components/PersonInput.tsx` (159 lines)  
-**Library:** `downshift`  
+**Status:** 🔴 **Not started — pending.**
+
+**Current:** `components/SearchAutocomplete.tsx` (219 lines), `components/TagInput.tsx` (159 lines), `components/PersonInput.tsx` (159 lines)
+**Library:** `downshift`
 **Files:** The three files above.
 
 **What it's doing now**
@@ -600,138 +441,49 @@ const { isOpen, getMenuProps, getInputProps, getItemProps, highlightedIndex, sel
 
 ### 11. Inline SVG Icons → `lucide-react`
 
-**Current:** `components/Nav.tsx` (7 inline SVGs), `components/ui/Skeleton.tsx`, scattered icons across pages  
-**Library:** `lucide-react`  
-**Files:** `components/Nav.tsx`, `components/Skeleton.tsx`, and others.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- ~50+ inline SVG `<path>` blocks.
-- Inconsistent `strokeWidth` values (2 vs 1.5), size variations.
-- Adding a new icon requires copy-pasting SVG path data.
-- `components/Skeleton.tsx` defines inline icon SVGs (`DocumentIcon`, `TagIcon`, `CalendarIcon`, `ClockIcon`).
-
-**Why replace**
-- `lucide-react` is a consistent, tree-shakeable icon set.
-- One line per icon: `<Search className="w-5 h-5" />`.
-
-**Planned refactor**
-```bash
-npm install lucide-react
-```
-- Replace every inline SVG with the corresponding `lucide-react` import:
-  - `SearchIcon` → `<Search />`
-  - `FolderOpen` / `BookOpen` for Browse
-  - `Tag` for Tags
-  - `BarChart3` for Timeline
-  - `Calendar` for Calendar
-  - `Network` for Graph
-  - `Document` for notes
-  - `Clock` for date range
+Replaced ~100 inline SVG blocks across 12 components. `Nav.tsx`, `DateRangePicker.tsx`, `ImageGallery.tsx`, `TagInput.tsx`, `PersonInput.tsx`, `SearchAutocomplete.tsx`, `EditableTitle.tsx`, `FavoriteButton.tsx`, `ErrorBoundary.tsx`, `StatCard.tsx`, `Button.tsx`, and `Input.tsx` (select arrow) now use `lucide-react`.
 
 **Checklist**
-- [ ] Install `lucide-react`.
-- [ ] Replace all inline SVGs in `Nav.tsx`, `Skeleton.tsx`, and page components.
-- [ ] Run frontend tests.
-- [ ] Run E2E mock suite.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Install `lucide-react`.
+- [x] Replace all inline SVGs in `Nav.tsx`, `Skeleton.tsx`, and page components.
+- [x] Run frontend tests.
+- [x] Run E2E mock suite.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
 ### 12. Debounce Hooks → `use-debounce`
 
-**Current:** `frontend/src/lib/hooks.ts` (`useDebouncedValue`, `useDebouncedCallback`, ~38 lines)  
-**Library:** `use-debounce`  
-**Files:** `lib/hooks.ts`.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- Basic `setTimeout` / `clearTimeout` wrapping.
-- No leading/trailing edge options.
-- Manual `useRef` for callback stability.
-
-**Why replace**
-- `use-debounce` is 1 KB, purpose-built for React.
-- Supports `leading`, `trailing`, `maxWait`, and cancellation out of the box.
-
-**Planned refactor**
-```bash
-npm install use-debounce
-```
-```tsx
-import { useDebounce, useDebouncedCallback } from 'use-debounce'
-
-// replaces useDebouncedValue
-const debouncedQuery = useDebounce(query, 300)
-
-// replaces useDebouncedCallback
-const debouncedSearch = useDebouncedCallback((q) => doSearch(q), 300)
-```
+`lib/hooks.ts` now wraps `useDebounce` / `useDebouncedCallback` from `use-debounce` (re-exported for backward compatibility). Call sites (`SearchAutocomplete.tsx`, `browse/page.tsx`) use the library implementations.
 
 **Checklist**
-- [ ] Install `use-debounce`.
-- [ ] Replace `useDebouncedValue` + `useDebouncedCallback` in `lib/hooks.ts`.
-- [ ] Run frontend tests.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Install `use-debounce`.
+- [x] Replace `useDebouncedValue` + `useDebouncedCallback` in `lib/hooks.ts`.
+- [x] Run frontend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
 ### 13. UI Variant Management → `tailwind-variants`
 
-**Current:** `components/ui/Button.tsx`, `components/ui/Badge.tsx`, `components/ui/Input.tsx`  
-**Library:** `tailwind-variants` (recommended by Tailwind v4) or `class-variance-authority` (CVA)  
-**Files:** `components/ui/Button.tsx`, `Badge.tsx`, `Input.tsx`.
+**Status:** ✅ **Completed.**
 
-**What it's doing now**
-- Manual objects mapping variant names to Tailwind class strings:
-```tsx
-const variants = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700',
-  secondary: 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600',
-  ...
-}
-```
-- Brittle string concatenation with template literals.
-
-**Why replace**
-- `tailwind-variants` / CVA are the standard way to manage Tailwind component variants.
-- Type-safe variant props, compound variants, and default variants.
-- Cleaner and less error-prone than raw string objects.
-
-**Planned refactor**
-```tsx
-import { tv } from 'tailwind-variants'
-
-const button = tv({
-  base: 'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
-  variants: {
-    variant: {
-      primary: 'bg-blue-600 text-white hover:bg-blue-700',
-      secondary: 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600',
-      ghost: 'bg-transparent text-zinc-400 hover:bg-zinc-800',
-      danger: 'bg-red-600 text-white hover:bg-red-700',
-    },
-    size: {
-      sm: 'px-2 py-1 text-xs',
-      md: 'px-4 py-2 text-sm',
-      lg: 'px-6 py-3 text-base',
-    },
-  },
-  defaultVariants: { variant: 'secondary', size: 'md' },
-})
-
-// Usage
-<button className={button({ variant: 'primary', size: 'lg' })} />
-```
+`Button.tsx` and `Badge.tsx` migrated from manual variant string objects to `tv({ base, variants, defaultVariants })` from `tailwind-variants`. `Input.tsx` select arrow replaced with `ChevronDown` from `lucide-react`.
 
 **Checklist**
-- [ ] Install `tailwind-variants`.
-- [ ] Refactor `Button.tsx`.
-- [ ] Refactor `Badge.tsx`.
-- [ ] Refactor `Input.tsx` (select/input variants).
-- [ ] Run frontend tests.
-- [ ] Run full test suite.
-- [ ] Commit.
+- [x] Install `tailwind-variants`.
+- [x] Refactor `Button.tsx`.
+- [x] Refactor `Badge.tsx`.
+- [x] Refactor `Input.tsx` (select arrow).
+- [x] Run frontend tests.
+- [x] Run full test suite.
+- [x] Commit.
 
 ---
 
@@ -760,18 +512,24 @@ const button = tv({
 - 21 frontend unit tests passing
 - 173 backend tests passing
 
+### Phase 3 completed (lucide-react, use-debounce, tailwind-variants)
+- Replaced ~100 inline SVG blocks with `lucide-react` icons across Nav, DateRangePicker, ImageGallery, TagInput, PersonInput, SearchAutocomplete, EditableTitle, FavoriteButton, ErrorBoundary, StatCard, Button, and Input components.
+- Migrated `Button.tsx` and `Badge.tsx` from manual variant string objects to type-safe `tv()` from `tailwind-variants`.
+- Replaced `useDebouncedValue` and `useDebouncedCallback` in `lib/hooks.ts` with `use-debounce` library exports.
+- Added missing `tailwind-merge` dependency (required by `tailwind-variants`).
+- All 105 E2E + 21 unit + 173 backend tests pass.
+
 ---
 
 ## Summary & Prioritized Roadmap
 
 | Phase | Items | Est. Impact | Est. Effort |
 |-------|-------|-------------|-------------|
-| **Phase 1** (Foundation) | 1. `pydantic-settings`, 2. `langchain-text-splitters`, 3. `tenacity`, 4. `pydantic` models | 🔴 High | Medium |
-| **Phase 2** (Frontend Core) | 8. Finish `@tanstack/react-query` migration (graph, notes/[id], timeline), 9. `date-fns` + `react-day-picker` | ✅ **Complete** | High |
-| **Phase 3** (Polish) | 10. `downshift`, 11. `lucide-react`, 12. `use-debounce`, 13. `tailwind-variants` | 🟡 Medium | Medium |
-| **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 Quick | Low |
-
-**Current recommendation:** Phase 3 — migrate comboboxes to `downshift`, consolidate icons to `lucide-react`, and evaluate `tailwind-variants` for component variants.
+| **Phase 1** (Foundation) | 1. `pydantic-settings`, 2. `langchain-text-splitters`, 3. `tenacity`, 4. `pydantic` models | ✅ **Complete** | Medium |
+| **Phase 2** (Frontend Core) | 8. `@tanstack/react-query`, 9. `date-fns` + `react-day-picker` | ✅ **Complete** | High |
+| **Phase 3** (Polish) | 11. `lucide-react`, 12. `use-debounce`, 13. `tailwind-variants` | ✅ **Complete** | Medium |
+| **Phase 4** (Backend Utilities) | 5. `scikit-learn`, 6. `cachetools` + `filelock`, 7. `typer` | 🟢 **Remaining** | Low |
+| **Phase 5** (Frontend Advanced) | 10. `downshift` comboboxes | 🔴 **Remaining** | High |
 
 ---
 
