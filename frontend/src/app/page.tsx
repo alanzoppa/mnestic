@@ -63,11 +63,13 @@ export default function Dashboard() {
     queryFn: () => searchApi.all({ query: '', n: 500 }),
     staleTime: Infinity,
   });
-  const allNoteTitles = rawTitles.map(r => ({
-    id: r.id,
-    title: r.title,
-    note_id: r.note_id || r.metadata?.note_id,
-  }));
+  const allNoteTitles = rawTitles
+    .filter((r) => r.type === 'note')
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      note_id: r.note_id || r.metadata?.note_id,
+    }));
 
   // Mutations
   const ingestMutation = useMutation({
