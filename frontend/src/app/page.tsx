@@ -115,7 +115,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl space-y-8">
       {/* Header with Search */}
-      <div className="relative">
+      <div className="relative z-10">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
         <Card className="relative">
           <CardContent className="p-8">
@@ -137,9 +137,9 @@ export default function Dashboard() {
             {results.length > 0 && (
               <div className="mt-6 space-y-3">
                 <h3 className="text-sm font-medium text-zinc-400 mb-3">Quick Results</h3>
-                {results.map((r) => (
+                {results.map((r, i) => (
                   <Link
-                    key={r.id}
+                    key={`${r.id}-${r.type}-${i}`}
                     href={r.type === 'note' ? `/notes/${r.note_id || r.metadata?.note_id || r.id}` : `/calendar`}
                     className="block p-4 bg-zinc-950/50 border border-zinc-800/60 rounded-lg hover:border-zinc-700/60 transition-colors"
                   >
