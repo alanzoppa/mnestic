@@ -406,4 +406,26 @@ test.describe("Note Detail Page", () => {
     await page.locator("[data-testid='editable-title']").waitFor();
     await expect(page.locator("[data-testid='editable-title']").filter({ hasText: "Persisted Title" })).toBeVisible();
   });
+
+  test("should not raise downshift or javascript errors on page load", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" || msg.type() === "warning") {
+        errors.push(msg.text());
+      }
+    });
+    page.on("pageerror", (err) => {
+      errors.push(err.message);
+    });
+
+    await page.goto("/notes/note-001");
+    await expect(page.locator("[data-testid='tag-add-input']")).toBeVisible();
+    await expect(page.locator("[data-testid='person-add-input']")).toBeVisible();
+    await page.waitForTimeout(500);
+
+    const downshiftWarnings = errors.filter((e) =>
+      e.includes("downshift") || e.includes("getMenuProps") || e.includes("getInputProps")
+    );
+    expect(downshiftWarnings).toHaveLength(0);
+  });
 });

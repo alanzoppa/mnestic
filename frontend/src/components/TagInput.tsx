@@ -121,26 +121,26 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
       {canAdd && (
         <div className="relative">
           <input {...inputProps} />
-          {isOpen && suggestions.length > 0 && (
-            <div
-              {...getMenuProps()}
-              className="absolute z-20 mt-1 py-1 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto"
-            >
-              {suggestions.map((tag, i) => (
-                <button
-                  key={tag}
-                  {...getItemProps({ item: tag, index: i })}
-                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                    i === highlightedIndex
-                      ? 'bg-purple-500/20 text-purple-300'
-                      : 'text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          )}
+          <div
+            {...getMenuProps()}
+            className={`absolute z-20 mt-1 py-1 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto ${
+              (!isOpen || suggestions.length === 0) ? 'hidden' : ''
+            }`}
+          >
+            {isOpen && suggestions.length > 0 && suggestions.map((tag, i) => (
+              <button
+                key={tag}
+                {...getItemProps({ item: tag, index: i })}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                  i === highlightedIndex
+                    ? 'bg-purple-500/20 text-purple-300'
+                    : 'text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       {!canAdd && (

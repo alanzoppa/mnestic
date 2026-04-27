@@ -11,6 +11,20 @@ test.describe("Graph Page", () => {
     await expect(page.getByRole('heading', { name: 'Similarity Graph' })).toBeVisible();
   });
 
+  test("should not raise javascript errors on page load", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" || msg.type() === "warning") errors.push(msg.text());
+    });
+    page.on("pageerror", (err) => errors.push(err.message));
+    await page.waitForTimeout(500);
+    // Filter out browser-level WebGL performance warnings
+    const appErrors = errors.filter(
+      (e) => !e.includes("GL Driver Message") && !e.includes("GPU stall")
+    );
+    expect(appErrors).toHaveLength(0);
+  });
+
   test("should have tag filter dropdown", async ({ page }) => {
     await expect(page.locator("text=Tag:").first()).toBeVisible();
     await expect(page.locator("select")).toBeVisible();

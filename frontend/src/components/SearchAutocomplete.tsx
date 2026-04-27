@@ -99,45 +99,45 @@ export function SearchAutocomplete({
         </div>
       </div>
 
-      {isOpen && debouncedQuery.length > 0 && visibleSuggestions.length > 0 && (
-        <div
-          {...getMenuProps()}
-          className="absolute z-50 w-full mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
-        >
-          {visibleSuggestions.map((suggestion, i) => (
-            <div
-              key={`${suggestion.type}-${suggestion.text}`}
-              {...getItemProps({ item: suggestion, index: i })}
-              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
-                i === highlightedIndex
-                  ? 'bg-zinc-800 text-zinc-100'
-                  : 'text-zinc-300 hover:bg-zinc-800/50'
-              }`}
-            >
-              <span className="shrink-0">
-                {suggestion.type === 'tag' && (
-                  <Tag className="w-4 h-4 text-purple-400" strokeWidth={2} />
-                )}
-                {suggestion.type === 'note' && (
-                  <FileText className="w-4 h-4 text-blue-400" strokeWidth={2} />
-                )}
-                {suggestion.type === 'action' && (
-                  <Search className="w-4 h-4 text-emerald-400" strokeWidth={2} />
-                )}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="font-medium truncate block">{suggestion.text}</span>
-                {suggestion.subtext && (
-                  <span className="text-xs text-zinc-500 truncate block">{suggestion.subtext}</span>
-                )}
-              </span>
+      <div
+        {...getMenuProps()}
+        className={`absolute z-50 w-full mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl ${
+          (!isOpen || debouncedQuery.length === 0 || visibleSuggestions.length === 0) ? 'hidden' : ''
+        }`}
+      >
+        {isOpen && debouncedQuery.length > 0 && visibleSuggestions.length > 0 && visibleSuggestions.map((suggestion, i) => (
+          <div
+            key={`${suggestion.type}-${suggestion.text}`}
+            {...getItemProps({ item: suggestion, index: i })}
+            className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
+              i === highlightedIndex
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-300 hover:bg-zinc-800/50'
+            }`}
+          >
+            <span className="shrink-0">
               {suggestion.type === 'tag' && (
-                <span className="text-xs text-zinc-600 shrink-0">tag</span>
+                <Tag className="w-4 h-4 text-purple-400" strokeWidth={2} />
               )}
-            </div>
-          ))}
-        </div>
-      )}
+              {suggestion.type === 'note' && (
+                <FileText className="w-4 h-4 text-blue-400" strokeWidth={2} />
+              )}
+              {suggestion.type === 'action' && (
+                <Search className="w-4 h-4 text-emerald-400" strokeWidth={2} />
+              )}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="font-medium truncate block">{suggestion.text}</span>
+              {suggestion.subtext && (
+                <span className="text-xs text-zinc-500 truncate block">{suggestion.subtext}</span>
+              )}
+            </span>
+            {suggestion.type === 'tag' && (
+              <span className="text-xs text-zinc-600 shrink-0">tag</span>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

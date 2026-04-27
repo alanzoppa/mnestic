@@ -13,6 +13,16 @@ test.describe("Browse Page", () => {
     await expect(mainContent.getByRole('heading', { name: 'Browse Notes' })).toBeVisible();
   });
 
+  test("should not raise javascript errors on page load", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" || msg.type() === "warning") errors.push(msg.text());
+    });
+    page.on("pageerror", (err) => errors.push(err.message));
+    await page.waitForTimeout(500);
+    expect(errors).toHaveLength(0);
+  });
+
   test("should display filter controls", async ({ page }) => {
     // Browse uses buttons for filters, not select elements
     await expect(page.getByRole("button", { name: /Filters/ })).toBeVisible();

@@ -112,35 +112,35 @@ export function PersonInput({ participants, people, onChange }: PersonInputProps
       {canAdd && (
         <div className="relative">
           <input {...inputProps} />
-          {isOpen && suggestions.length > 0 && (
-            <div
-              {...getMenuProps()}
-              className="absolute z-20 mt-1 py-1 w-56 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto"
-            >
-              {suggestions.map((person, i) => {
-                const aliasMatch = person.aliases.find(a => a.toLowerCase().includes(input.toLowerCase()))
-                return (
-                  <button
-                    key={person.name}
-                    {...getItemProps({ item: person.name, index: i })}
-                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                      i === highlightedIndex
-                        ? 'bg-blue-500/20 text-blue-300'
-                        : 'text-zinc-400 hover:bg-zinc-700'
-                    }`}
-                  >
-                    <span className="font-medium">{person.name}</span>
-                    {aliasMatch && (
-                      <span className="text-zinc-500 ml-1">({aliasMatch})</span>
-                    )}
-                    {person.context && (
-                      <span className="text-zinc-600 ml-1">— {person.context}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <div
+            {...getMenuProps()}
+            className={`absolute z-20 mt-1 py-1 w-56 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto ${
+              (!isOpen || suggestions.length === 0) ? 'hidden' : ''
+            }`}
+          >
+            {isOpen && suggestions.length > 0 && suggestions.map((person, i) => {
+              const aliasMatch = person.aliases.find(a => a.toLowerCase().includes(input.toLowerCase()))
+              return (
+                <button
+                  key={person.name}
+                  {...getItemProps({ item: person.name, index: i })}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                    i === highlightedIndex
+                      ? 'bg-blue-500/20 text-blue-300'
+                      : 'text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  <span className="font-medium">{person.name}</span>
+                  {aliasMatch && (
+                    <span className="text-zinc-500 ml-1">({aliasMatch})</span>
+                  )}
+                  {person.context && (
+                    <span className="text-zinc-600 ml-1">— {person.context}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
       {!canAdd && (

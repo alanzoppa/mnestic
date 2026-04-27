@@ -7,6 +7,16 @@ test.describe("Dashboard", () => {
     await page.goto("/");
   });
 
+  test("should not raise javascript errors on page load", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" || msg.type() === "warning") errors.push(msg.text());
+    });
+    page.on("pageerror", (err) => errors.push(err.message));
+    await page.waitForTimeout(500);
+    expect(errors).toHaveLength(0);
+  });
+
   test("should display app title and stats", async ({ page }) => {
     // Main page heading should be Notes Browser
     const mainContent = page.locator("main");
