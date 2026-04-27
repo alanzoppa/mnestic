@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockApiRoutes } from "./fixtures/mock-router";
-import { mockNoteDetailWithImages, mockNoteDetailSingleImage } from "./fixtures/api-fixtures";
+import { mockNoteDetailWithImages, mockNoteDetailSingleImage, mockNoteDetailCanonialMismatch } from "./fixtures/api-fixtures";
 
 test.describe("Note Detail Page", () => {
   test.beforeEach(async ({ page }) => {
@@ -427,5 +427,20 @@ test.describe("Note Detail Page", () => {
       e.includes("downshift") || e.includes("getMenuProps") || e.includes("getInputProps")
     );
     expect(downshiftWarnings).toHaveLength(0);
+  });
+});
+
+test.describe("Note detail redirect", () => {
+  test("should redirect from chunk id to canonical note_id", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNoteDetailCanonialMismatch),
+      });
+    });
+    await page.goto("/notes/chunk-id-123");
+    await page.waitForURL(/\/notes\/evernote-note-b6a28d8227fc57dab5b9af89eb65beed/, { timeout: 5000 });
   });
 });

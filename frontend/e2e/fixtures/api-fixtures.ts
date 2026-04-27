@@ -194,6 +194,23 @@ Alice has made significant progress on all three fronts. She's been mentoring tw
   ],
 };
 
+export const mockNoteDetailCanonialMismatch = {
+  id: "chunk-id-123",
+  metadata: {
+    title: "Handwriting from Neha 1-on-1",
+    folder: "Journal",
+    created: "2017-02-08T20:05:50Z",
+    modified: "2017-02-08T21:02:38Z",
+    source: "Evernote",
+    tags: ["1-on-1", "evernote", "handwritten"],
+    participants: ["Neha"],
+    note_id: "evernote-note-b6a28d8227fc57dab5b9af89eb65beed",
+  },
+  content: "# Handwriting from Neha 1-on-1\n\nGoing to Women in SE offsite lunch.",
+  calendar_events: [],
+  similar_notes: [],
+};
+
 export const mockTags = {
   tags: [
     { name: "1:1", count: 45 },

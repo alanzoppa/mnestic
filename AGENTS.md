@@ -432,6 +432,9 @@ await page.locator('[data-testid^="calendar-day-"]').first().click();
 | Graph container | `graph-container` |
 | Graph legend | `graph-legend` |
 | Graph stats | `graph-stats` |
+| Tag autocomplete menu | `tag-autocomplete-menu` |
+| Tag autocomplete item | `tag-autocomplete-item` |
+| Clear tag filter button | `clear-tag-filter` |
 | Search filter toggle | `filter-toggle` |
 | Search filter panel | `filter-panel` |
 | Search popular tags label | `popular-tags-label` |

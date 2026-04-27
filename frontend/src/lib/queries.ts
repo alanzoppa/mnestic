@@ -88,7 +88,7 @@ export const graphApi = {
   get: async (tag?: string, threshold?: number): Promise<GraphData> => getGraph(tag, undefined, threshold),
   tags: async (): Promise<TagInfo[]> => {
     const res = await getTags();
-    return res.tags.slice(0, 30);
+    return res.tags;
   },
 };
 

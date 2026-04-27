@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { format, parseISO, isValid } from 'date-fns'
 import { type GraphNode } from '@/lib/api'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
+import { TagAutocomplete } from '@/components/TagAutocomplete'
 import Link from 'next/link'
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false, loading: () => null })
@@ -43,7 +44,7 @@ function getNodeColor(node: GraphNode, tagColors: Record<string, string>): strin
 
 function createNodeObject(node: GraphNode, tagColors: Record<string, string>): THREE.Object3D {
   const color = getNodeColor(node, tagColors)
-  const geometry = new THREE.SphereGeometry(4.2, 32, 32)
+  const geometry = new THREE.SphereGeometry(4.2, 24, 24)
   const material = new THREE.MeshStandardMaterial({
     color,
     emissive: new THREE.Color(0x000000),
@@ -192,16 +193,12 @@ export default function GraphPage() {
         <h1 className="text-2xl font-bold">Similarity Graph</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400">Tag:</span>
-          <select
-            value={selectedTag}
-            onChange={(e) => { setSelectedTag(e.target.value); setViewingNode(null) }}
-            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-100"
-          >
-            <option value="">All tags</option>
-            {(tagsData || []).map(t => (
-              <option key={t.name} value={t.name}>{t.name} ({t.count})</option>
-            ))}
-          </select>
+          <TagAutocomplete
+            tags={tagsData || []}
+            selectedTag={selectedTag}
+            onTagSelect={(tag) => { setSelectedTag(tag); setViewingNode(null) }}
+            data-testid="tag-autocomplete"
+          />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400">Similarity:</span>
@@ -255,7 +252,7 @@ export default function GraphPage() {
               backgroundColor="#09090b"
               onNodeClick={handleNodeClick}
               enableNodeDrag={false}
-              nodeResolution={32}
+              nodeResolution={12}
               showNavInfo={true}
               width={dimensions.width}
               height={dimensions.height}

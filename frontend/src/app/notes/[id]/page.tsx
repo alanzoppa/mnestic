@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
@@ -143,10 +143,12 @@ export default function NotePage() {
   });
 
   // Redirect chunk URLs → canonical note_id
-  const canonicalId = note?.metadata?.note_id;
-  if (canonicalId && canonicalId !== id) {
-    router.replace(`/notes/${encodeURIComponent(canonicalId)}`);
-  }
+  const canonicalId = note?.metadata?.note_id
+  useEffect(() => {
+    if (canonicalId && canonicalId !== id) {
+      router.replace(`/notes/${encodeURIComponent(canonicalId)}`)
+    }
+  }, [canonicalId, id, router])
 
   // Derived state from note
   const { content, attachments } = useMemo(() => {

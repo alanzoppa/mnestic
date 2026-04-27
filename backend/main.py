@@ -522,15 +522,15 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
             if tag.lower() in note_tags:
                 filtered_ids.append(all_notes["ids"][i])
         if filtered_ids:
-            where_clause_ids = filtered_ids[:100]
+            where_clause_ids = filtered_ids[:250]
         else:
             where_clause_ids = []
     else:
         where_clause_ids = None
 
     sample_ids = where_clause_ids if where_clause_ids else None
-    if sample_ids and len(sample_ids) > 500:
-        sample_ids = sample_ids[:500]
+    if sample_ids and len(sample_ids) > 1000:
+        sample_ids = sample_ids[:1000]
 
     all_meta = {}
     if sample_ids:
@@ -563,7 +563,7 @@ async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_n
                 continue
             seen_note_ids.add(nid)
             all_meta[mid] = meta
-            if len(all_meta) >= 500:
+            if len(all_meta) >= 1000:
                 break
 
     query_ids = list(all_meta.keys())
