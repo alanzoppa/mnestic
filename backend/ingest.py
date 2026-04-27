@@ -11,6 +11,7 @@ from filelock import FileLock
 from langchain_text_splitters import MarkdownTextSplitter
 
 from embed import embed_texts_sync, BATCH_SIZE
+from models import CalendarEvent
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
 
