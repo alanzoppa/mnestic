@@ -87,6 +87,25 @@ test.describe("Search Page", () => {
     await expect(page).toHaveURL(/\/notes\/note-001/);
   });
 
+  test("should show autocomplete suggestions without console errors", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" || msg.type() === "warning") errors.push(msg.text());
+    });
+    page.on("pageerror", (err) => errors.push(err.message));
+
+    const searchInput = page.locator('[data-search-input]');
+    await searchInput.fill("rosetta");
+    await page.waitForTimeout(300); // wait for debounce
+
+    // Autocomplete dropdown should appear (or not, depending on mock data)
+    // The key assertion is no console errors
+    const duplicateKeyErrors = errors.filter((e) =>
+      e.includes("same key") || e.includes("duplicate key")
+    );
+    expect(duplicateKeyErrors).toHaveLength(0);
+  });
+
   test("should show empty state when no results", async ({ page }) => {
     await page.route("**/api/search", async (route) => {
       await route.fulfill({

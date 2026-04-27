@@ -107,7 +107,7 @@ export function SearchAutocomplete({
       >
         {isOpen && debouncedQuery.length > 0 && visibleSuggestions.length > 0 && visibleSuggestions.map((suggestion, i) => (
           <div
-            key={`${suggestion.type}-${suggestion.text}`}
+            key={`${suggestion.type}-${suggestion.type === 'note' ? suggestion.subtext : suggestion.text}`}
             {...getItemProps({ item: suggestion, index: i })}
             className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
               i === highlightedIndex

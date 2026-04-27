@@ -36,23 +36,6 @@ function assignTagColors(tags: string[]): Record<string, string> {
   return colors
 }
 
-function createGlowTexture(): THREE.CanvasTexture {
-  const size = 256
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')!
-  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)')
-  gradient.addColorStop(0.08, 'rgba(255, 255, 255, 0.85)')
-  gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.4)')
-  gradient.addColorStop(0.45, 'rgba(255, 255, 255, 0.1)')
-  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, size, size)
-  return new THREE.CanvasTexture(canvas)
-}
-
 function getNodeColor(node: GraphNode, tagColors: Record<string, string>): string {
   const primaryTag = node.tags?.[0]
   return primaryTag ? tagColors[primaryTag] || '#6b7280' : '#6b7280'
@@ -63,6 +46,7 @@ function createNodeObject(node: GraphNode, tagColors: Record<string, string>): T
   const geometry = new THREE.SphereGeometry(4.2, 32, 32)
   const material = new THREE.MeshStandardMaterial({
     color,
+    emissive: new THREE.Color(0x000000),
     roughness: 0.4,
     metalness: 0.2,
     transparent: true,
@@ -74,8 +58,7 @@ function createNodeObject(node: GraphNode, tagColors: Record<string, string>): T
 export default function GraphPage() {
   const fgRef = useRef<any>(null)
   const graphContainerRef = useRef<HTMLDivElement>(null)
-  const highlightSpriteRef = useRef<THREE.Sprite | null>(null)
-  const glowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const selectedNodeIdRef = useRef<string | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
@@ -141,67 +124,13 @@ export default function GraphPage() {
       : { x: 0, y: 0, z: distance }
 
     fgRef.current.cameraPosition(newPos, node, 3000)
-
-    const scene = fgRef.current.scene()
-    if (scene) {
-      if (highlightSpriteRef.current) {
-        scene.remove(highlightSpriteRef.current)
-        highlightSpriteRef.current = null
-      }
-      if (glowTimeoutRef.current) {
-        clearTimeout(glowTimeoutRef.current)
-        glowTimeoutRef.current = null
-      }
-      glowTimeoutRef.current = setTimeout(() => {
-        if (!fgRef.current) return
-        const s = fgRef.current.scene()
-        if (!s) return
-        if (highlightSpriteRef.current) {
-          s.remove(highlightSpriteRef.current)
-          highlightSpriteRef.current = null
-        }
-        const material = new THREE.SpriteMaterial({
-          map: createGlowTexture(),
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-        })
-        const sprite = new THREE.Sprite(material)
-        sprite.scale.set(22, 22, 1)
-        sprite.position.set(node.x, node.y, node.z)
-        s.add(sprite)
-        highlightSpriteRef.current = sprite
-        const fadeDuration = 800
-        const start = Date.now()
-        const fade = () => {
-          if (!highlightSpriteRef.current) return
-          const elapsed = Date.now() - start
-          const t = Math.min(elapsed / fadeDuration, 1)
-          highlightSpriteRef.current.position.set(node.x, node.y, node.z)
-          highlightSpriteRef.current.material.opacity = t
-          if (t < 1) requestAnimationFrame(fade)
-        }
-        requestAnimationFrame(fade)
-      }, 3000)
-    }
-
+    selectedNodeIdRef.current = node.id
     setViewingNode(node as GraphNode)
   }, [])
 
   useEffect(() => {
     if (!viewingNode) {
-      if (glowTimeoutRef.current) {
-        clearTimeout(glowTimeoutRef.current)
-        glowTimeoutRef.current = null
-      }
-      if (highlightSpriteRef.current) {
-        const fg = fgRef.current
-        if (fg) {
-          const scene = fg.scene()
-          if (scene) scene.remove(highlightSpriteRef.current)
-        }
-        highlightSpriteRef.current = null
-      }
+      selectedNodeIdRef.current = null
     }
   }, [viewingNode])
 
@@ -223,6 +152,37 @@ export default function GraphPage() {
 
     setSceneReady(true)
   }, [data, sceneReady])
+
+  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: any) => {
+    const mesh = obj as THREE.Mesh
+    const material = mesh.material as THREE.MeshStandardMaterial
+    if (!material) return
+
+    const NORMAL_OPACITY = 0.85
+    const DIMMED_OPACITY = 0.5
+    const SELECTED_INTENSITY = 0.8
+
+    const isSelected = selectedNodeIdRef.current === node.id
+    const hasSelection = !!selectedNodeIdRef.current
+
+    const targetIntensity = isSelected ? SELECTED_INTENSITY : 0
+    const targetOpacity = isSelected || !hasSelection ? NORMAL_OPACITY : DIMMED_OPACITY
+    const targetEmissive = isSelected ? new THREE.Color(getNodeColor(node as GraphNode, tagColors)) : new THREE.Color(0x000000)
+
+    if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.01) {
+      material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
+    } else {
+      material.emissiveIntensity = targetIntensity
+    }
+
+    if (Math.abs(material.opacity - targetOpacity) > 0.01) {
+      material.opacity += (targetOpacity - material.opacity) * 0.1
+    } else {
+      material.opacity = targetOpacity
+    }
+
+    material.emissive.lerp(targetEmissive, 0.1)
+  }, [tagColors])
 
   const showLoading = loading
 
@@ -291,6 +251,7 @@ export default function GraphPage() {
               nodeId="id"
               nodeLabel="title"
               nodeThreeObject={(node: any) => createNodeObject(node as GraphNode, tagColors)}
+              nodePositionUpdate={nodePositionUpdate}
               backgroundColor="#09090b"
               onNodeClick={handleNodeClick}
               enableNodeDrag={false}
