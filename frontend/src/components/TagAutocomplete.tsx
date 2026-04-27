@@ -60,16 +60,24 @@ export function TagAutocomplete({
     },
   })
 
+  const inputProps = getInputProps({
+    placeholder,
+    className:
+      'w-full h-9 pl-8 pr-8 text-sm bg-zinc-900 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500',
+    onFocus: () => openMenu(),
+  })
+
+  const { ref: dsInputRef, ...restInputProps } = inputProps as React.HTMLAttributes<HTMLInputElement> & { ref: React.Ref<HTMLInputElement> }
+
+  const menuProps = getMenuProps()
+  const { ref: dsMenuRef, ...restMenuProps } = menuProps as React.HTMLAttributes<HTMLDivElement> & { ref: React.Ref<HTMLDivElement> }
+
   return (
     <div className={`relative w-56 ${className}`}>
       <div className="relative">
         <input
-          {...getInputProps({
-            placeholder,
-            className:
-              'w-full h-9 pl-8 pr-8 text-sm bg-zinc-900 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500',
-            onFocus: () => openMenu(),
-          })}
+          {...restInputProps}
+          ref={dsInputRef}
         />
         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
           <Tag className="w-4 h-4" strokeWidth={2} />
@@ -92,7 +100,8 @@ export function TagAutocomplete({
 
       <div
         data-testid="tag-autocomplete-menu"
-        {...getMenuProps()}
+        {...restMenuProps}
+        ref={dsMenuRef}
         className={`absolute z-50 w-full mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl ${
           !isOpen || visibleItems.length === 0 ? 'hidden' : ''
         }`}

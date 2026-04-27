@@ -85,6 +85,11 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
     },
   })
 
+  const { ref: dsInputRef, ...restInputProps } = inputProps as React.HTMLAttributes<HTMLInputElement> & { ref: React.Ref<HTMLInputElement> }
+
+  const menuProps = getMenuProps()
+  const { ref: dsMenuRef, ...restMenuProps } = menuProps as React.HTMLAttributes<HTMLDivElement> & { ref: React.Ref<HTMLDivElement> }
+
   return (
     <div ref={containerRef} className="flex flex-wrap gap-2 mt-3 items-center">
       {structuralTags.map(tag => (
@@ -120,9 +125,10 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
       ))}
       {canAdd && (
         <div className="relative">
-          <input {...inputProps} />
+          <input {...restInputProps} ref={dsInputRef} />
           <div
-            {...getMenuProps()}
+            {...restMenuProps}
+            ref={dsMenuRef}
             className={`absolute z-20 mt-1 py-1 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto ${
               (!isOpen || suggestions.length === 0) ? 'hidden' : ''
             }`}
