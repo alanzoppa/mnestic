@@ -83,12 +83,9 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
         removeTag(editableTags[editableTags.length - 1])
       }
     },
-  })
+  }, { suppressRefError: true })
 
-  const { ref: dsInputRef, ...restInputProps } = inputProps as React.HTMLAttributes<HTMLInputElement> & { ref: React.Ref<HTMLInputElement> }
-
-  const menuProps = getMenuProps()
-  const { ref: dsMenuRef, ...restMenuProps } = menuProps as React.HTMLAttributes<HTMLDivElement> & { ref: React.Ref<HTMLDivElement> }
+  const menuProps = getMenuProps({}, { suppressRefError: true })
 
   return (
     <div ref={containerRef} className="flex flex-wrap gap-2 mt-3 items-center">
@@ -123,12 +120,11 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
           </button>
         </span>
       ))}
-      {canAdd && (
+      {canAdd ? (
         <div className="relative">
-          <input {...restInputProps} ref={dsInputRef} />
+          <input {...inputProps} />
           <div
-            {...restMenuProps}
-            ref={dsMenuRef}
+            {...menuProps}
             className={`absolute z-20 mt-1 py-1 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto ${
               (!isOpen || suggestions.length === 0) ? 'hidden' : ''
             }`}
@@ -148,8 +144,7 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
             ))}
           </div>
         </div>
-      )}
-      {!canAdd && (
+      ) : (
         <span className="text-xs text-zinc-600">Max {MAX_TAGS} tags</span>
       )}
     </div>

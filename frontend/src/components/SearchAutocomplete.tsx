@@ -82,20 +82,14 @@ export function SearchAutocomplete({
         onSubmit()
       }
     },
-  })
-
-  const { ref: dsInputRef, ...restInputProps } = inputProps as React.HTMLAttributes<HTMLInputElement> & { ref: React.Ref<HTMLInputElement> }
-
-  const menuProps = getMenuProps()
-  const { ref: dsMenuRef, ...restMenuProps } = menuProps as React.HTMLAttributes<HTMLDivElement> & { ref: React.Ref<HTMLDivElement> }
+  }, { suppressRefError: true })
 
   return (
     <div className={`relative ${className}`}>
       <div className="relative">
         <input
           type="text"
-          {...restInputProps}
-          ref={dsInputRef}
+          {...inputProps}
         />
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
           <Search className="w-5 h-5" strokeWidth={2} />
@@ -106,8 +100,7 @@ export function SearchAutocomplete({
       </div>
 
       <div
-        {...restMenuProps}
-        ref={dsMenuRef}
+        {...getMenuProps({}, { suppressRefError: true })}
         className={`absolute z-50 w-full mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl ${
           (!isOpen || debouncedQuery.length === 0 || visibleSuggestions.length === 0) ? 'hidden' : ''
         }`}

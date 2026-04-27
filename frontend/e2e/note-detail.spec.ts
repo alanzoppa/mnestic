@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockApiRoutes } from "./fixtures/mock-router";
-import { mockNoteDetailWithImages, mockNoteDetailSingleImage, mockNoteDetailCanonialMismatch } from "./fixtures/api-fixtures";
+import { mockNoteDetailWithImages, mockNoteDetailSingleImage, mockNoteDetailCanonialMismatch, mockNoteDetail } from "./fixtures/api-fixtures";
 
 test.describe("Note Detail Page", () => {
   test.beforeEach(async ({ page }) => {
@@ -425,6 +425,48 @@ test.describe("Note Detail Page", () => {
 
     const downshiftWarnings = errors.filter((e) =>
       e.includes("downshift") || e.includes("getMenuProps") || e.includes("getInputProps")
+    );
+    expect(downshiftWarnings).toHaveLength(0);
+  });
+
+  test("should not raise downshift errors when tag/person inputs are conditionally hidden", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" || msg.type() === "warning") {
+        errors.push(msg.text());
+      }
+    });
+    page.on("pageerror", (err) => {
+      errors.push(err.message);
+    });
+
+    const maxTagsNote = {
+      ...mockNoteDetail,
+      metadata: {
+        ...mockNoteDetail.metadata,
+        tags: ["1:1", "management", "1-on-1", "team-lead", "promotion", "work", "career", "weekly"],
+        participants: [
+          "Alice Smith", "Bob Jones", "Carol White", "Dave Brown",
+          "Eve Davis", "Frank Miller", "Grace Lee", "Hank Wilson", "Iris Taylor", "Jack Moore",
+        ],
+      },
+    };
+
+    await mockApiRoutes(page);
+    await page.route("**/api/notes/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(maxTagsNote),
+      });
+    });
+
+    await page.goto("/notes/note-001");
+    await expect(page.locator("[data-testid='editable-title']")).toBeVisible();
+    await page.waitForTimeout(500);
+
+    const downshiftWarnings = errors.filter((e) =>
+      e.includes("downshift") || e.includes("getMenuProps") || e.includes("getInputProps") || e.includes("ref prop")
     );
     expect(downshiftWarnings).toHaveLength(0);
   });
