@@ -28,6 +28,7 @@ interface BadgeProps {
   variant?: 'blue' | 'green' | 'purple' | 'amber' | 'pink' | 'zinc' | 'red';
   size?: 'sm' | 'md';
   className?: string;
+  'data-testid'?: string;
 }
 
 export function Badge({
@@ -35,9 +36,10 @@ export function Badge({
   variant = 'zinc',
   size = 'md',
   className = '',
+  'data-testid': dataTestId = 'badge',
 }: BadgeProps) {
   return (
-    <span className={badgeStyles({ variant, size, className })} data-testid="badge">
+    <span className={badgeStyles({ variant, size, className })} data-testid={dataTestId}>
       {children}
     </span>
   );

@@ -4,6 +4,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
+import { Card, CardContent } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { SectionHeader } from '@/components/ui/SectionHeader'
+import { SkeletonNoteCard } from '@/components/ui/Skeleton'
+import { ArrowLeft } from 'lucide-react'
 
 export default function TagPage() {
   const params = useParams()
@@ -17,52 +23,46 @@ export default function TagPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="max-w-7xl space-y-6">
+        <SectionHeader title={`#${tag}`} description="Loading..." />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }, (_, i) => (
+            <SkeletonNoteCard key={i} />
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => router.push('/tags')}
-          className="mb-6 text-zinc-400 hover:text-zinc-200 transition-colors"
-        >
-          ← Back to Tags
-        </button>
+    <div className="max-w-7xl space-y-6">
+      <Button variant="ghost" size="sm" onClick={() => router.push('/tags')}>
+        <ArrowLeft className="w-4 h-4 mr-1" /> Back to Tags
+      </Button>
 
-        <h1 className="text-3xl font-bold mb-2">
-          <span className="text-zinc-300">#</span>{tag}
-        </h1>
-        <p className="text-zinc-400 mb-8">{results.length} notes</p>
+      <SectionHeader title={`#${tag}`} description={`${results.length} notes`} />
 
-        <div className="space-y-3">
-          {results.map((result) => {
-            const meta = result.metadata || {}
-            return (
-              <button
-                key={result.id}
-                onClick={() => router.push(`/notes/${result.note_id || result.metadata?.note_id || result.id}`)}
-                className="w-full text-left bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-colors"
-              >
-                <h3 className="font-medium text-zinc-100">{meta.title || 'Untitled'}</h3>
+      <div className="space-y-3">
+        {results.map((result) => {
+          const meta = result.metadata || {}
+          return (
+            <Card
+              key={result.id}
+              hover
+              className="cursor-pointer"
+              onClick={() => router.push(`/notes/${result.note_id || result.metadata?.note_id || result.id}`)}
+            >
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-zinc-100">{meta.title || 'Untitled'}</h3>
                 <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{result.snippet}</p>
-                <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
-                  <span className="px-2 py-0.5 bg-zinc-800 rounded">{meta.folder || 'Unknown'}</span>
-                  <span>{meta.source || ''}</span>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="zinc" size="sm">{meta.folder || 'Unknown'}</Badge>
+                  {meta.source && <Badge variant="zinc" size="sm">{meta.source}</Badge>}
                 </div>
-              </button>
-            )
-          })}
-        </div>
-
-        {results.length === 0 && (
-          <div className="text-center py-12 text-zinc-400">
-            No notes with this tag
-          </div>
-        )}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )

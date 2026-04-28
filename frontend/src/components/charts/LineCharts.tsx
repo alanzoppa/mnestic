@@ -12,6 +12,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
+import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles';
 
 interface LineChartData {
   label: string;
@@ -42,24 +43,10 @@ export function LineChartComponent({
       )}
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
-          <XAxis
-            dataKey={xAxisKey}
-            stroke="#71717a"
-            tick={{ fill: '#9ca3af', fontSize: 12 }}
-          />
-          <YAxis
-            stroke="#71717a"
-            tick={{ fill: '#9ca3af', fontSize: 12 }}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#18181b',
-              border: '1px solid #27272a',
-              borderRadius: '0.5rem',
-              color: '#fafafa',
-            }}
-          />
+          <CartesianGrid {...CARTESIAN_GRID} />
+          <XAxis dataKey={xAxisKey} {...X_AXIS_DARK} />
+          <YAxis {...Y_AXIS_DARK} />
+          <Tooltip {...TOOLTIP_STYLE} />
           <Legend
             wrapperStyle={{
               color: '#9ca3af',
@@ -119,24 +106,10 @@ export function AreaChartComponent({
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
-          <XAxis
-            dataKey={xAxisKey}
-            stroke="#71717a"
-            tick={{ fill: '#9ca3af', fontSize: 12 }}
-          />
-          <YAxis
-            stroke="#71717a"
-            tick={{ fill: '#9ca3af', fontSize: 12 }}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#18181b',
-              border: '1px solid #27272a',
-              borderRadius: '0.5rem',
-              color: '#fafafa',
-            }}
-          />
+          <CartesianGrid {...CARTESIAN_GRID} />
+          <XAxis dataKey={xAxisKey} {...X_AXIS_DARK} />
+          <YAxis {...Y_AXIS_DARK} />
+          <Tooltip {...TOOLTIP_STYLE} />
           <Legend
             wrapperStyle={{
               color: '#9ca3af',

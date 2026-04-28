@@ -63,10 +63,11 @@ export function CalendarHeatmap() {
   const getColor = (count: number) => {
     if (count === 0) return COLORS[0]
     const ratio = count / yearData.maxCount
-    if (ratio <= 0.25) return COLORS[1]
-    if (ratio <= 0.5) return COLORS[2]
-    if (ratio <= 0.75) return COLORS[3]
-    return COLORS[4]
+    if (ratio <= 0.2) return COLORS[1]
+    if (ratio <= 0.4) return COLORS[2]
+    if (ratio <= 0.6) return COLORS[3]
+    if (ratio <= 0.8) return COLORS[4]
+    return COLORS[5]
   }
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

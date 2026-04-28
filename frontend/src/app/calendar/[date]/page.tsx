@@ -4,6 +4,12 @@ import { useRouter, useParams } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
 import { calendarEventKeys, calendarApi } from '@/lib/queries';
 import { parseISO, format, isValid } from 'date-fns';
+import { ArrowLeft, MapPin, Users } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonNoteCard } from '@/components/ui/Skeleton';
 
 interface Note {
   id: string;
@@ -42,84 +48,117 @@ export default function CalendarDatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => router.push("/calendar")}
-          className="mb-6 text-blue-400 hover:text-blue-300 text-sm"
-          data-testid="back-to-calendar"
-        >
-          ← Back to Calendar
-        </button>
+    <div className="max-w-4xl space-y-6">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push("/calendar")}
+        data-testid="back-to-calendar"
+      >
+        <ArrowLeft className="w-4 h-4 mr-1" />
+        Back to Calendar
+      </Button>
 
-        <h1 className="text-2xl font-bold mb-6" data-testid="date-title">{formattedDate}</h1>
+      <h1
+        className="text-2xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
+        data-testid="date-title"
+      >
+        {formattedDate}
+      </h1>
 
-        {loading && <p className="text-zinc-400" data-testid="loading">Loading...</p>}
+      {loading && (
+        <div className="space-y-3">
+          <SkeletonNoteCard />
+          <SkeletonNoteCard />
+          <SkeletonNoteCard />
+        </div>
+      )}
 
+      {!loading && (
         <div className="space-y-6">
           <section>
-            <h2 className="text-lg font-semibold mb-3">Events</h2>
+            <h2 className="text-lg font-semibold mb-3">Events <span className="text-zinc-500 font-normal text-sm">({events.length})</span></h2>
             {events.length === 0 ? (
-              <p className="text-zinc-400 text-sm">No events</p>
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <EmptyState title="No events on this day" />
+                </CardContent>
+              </Card>
             ) : (
               <div className="space-y-3">
                 {events.map((event) => (
-                  <div key={event.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-medium">{event.summary}</h3>
-                        <p className="text-sm text-zinc-400 mt-1">
-                          {formatTime(event.start)} - {formatTime(event.end)}
-                        </p>
+                  <Card key={event.id} hover className="mb-3">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-medium">{event.summary}</h3>
+                          <p className="text-sm text-zinc-400 mt-1">
+                            {formatTime(event.start)} - {formatTime(event.end)}
+                          </p>
+                        </div>
+                        {event.event_type && (
+                          <Badge variant="purple" size="sm">
+                            {event.event_type}
+                          </Badge>
+                        )}
                       </div>
-                      {event.event_type && (
-                        <span className="text-xs bg-zinc-700 rounded px-2 py-1">
-                          {event.event_type}
-                        </span>
+                      {event.location && (
+                        <p className="text-sm text-zinc-400 mt-2">
+                          <MapPin className="w-3.5 h-3.5 inline mr-1" />
+                          {event.location}
+                        </p>
                       )}
-                    </div>
-                    {event.location && (
-                      <p className="text-sm text-zinc-400 mt-2">📍 {event.location}</p>
-                    )}
-                    {event.attendees && (
-                      <p className="text-sm text-zinc-400 mt-1">👥 {event.attendees}</p>
-                    )}
-                    {event.description && (
-                      <p className="text-sm text-zinc-300 mt-3 border-t border-zinc-800 pt-3">
-                        {event.description}
-                      </p>
-                    )}
-                  </div>
+                      {event.attendees && (
+                        <p className="text-sm text-zinc-400 mt-1">
+                          <Users className="w-3.5 h-3.5 inline mr-1" />
+                          {event.attendees}
+                        </p>
+                      )}
+                      {event.description && (
+                        <p className="text-sm text-zinc-300 mt-3 border-t border-zinc-800 pt-3">
+                          {event.description}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-3">Notes</h2>
+            <h2 className="text-lg font-semibold mb-3">Notes <span className="text-zinc-500 font-normal text-sm">({notes.length})</span></h2>
             {notes.length === 0 ? (
-              <p className="text-zinc-400 text-sm">No notes</p>
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <EmptyState title="No notes on this day" />
+                </CardContent>
+              </Card>
             ) : (
               <div className="grid gap-3">
                 {notes.map((note) => (
-                  <div
+                  <Card
                     key={note.id}
+                    hover
                     onClick={() => router.push(`/notes/${note.id}`)}
-                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 cursor-pointer hover:bg-zinc-800"
+                    className="cursor-pointer group"
                   >
-                    <h3 className="font-medium">{note.title}</h3>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-zinc-400">
-                      <span>{note.folder}</span>
-                      <span>•</span>
-                      <span>{note.source}</span>
-                    </div>
-                  </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-medium">{note.title}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="zinc" size="sm">
+                          {note.folder}
+                        </Badge>
+                        <span className="text-xs text-zinc-400">{note.source}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
           </section>
         </div>
-      </div>
+      )}
     </div>
   );
 }

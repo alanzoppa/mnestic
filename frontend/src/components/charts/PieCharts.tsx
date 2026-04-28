@@ -1,6 +1,7 @@
 'use client';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { TOOLTIP_STYLE } from '@/lib/chart-styles';
 
 interface PieChartData {
   name: string;
@@ -62,12 +63,7 @@ export function DonutChart({
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{
-              backgroundColor: '#18181b',
-              border: '1px solid #27272a',
-              borderRadius: '0.5rem',
-              color: '#fafafa',
-            }}
+            {...TOOLTIP_STYLE}
             formatter={(value: unknown, name: unknown) => [
               `${value} (${((Number(value) / total) * 100).toFixed(1)}%)`,
               String(name),
@@ -129,12 +125,7 @@ export function PieChartComponent({
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{
-              backgroundColor: '#18181b',
-              border: '1px solid #27272a',
-              borderRadius: '0.5rem',
-              color: '#fafafa',
-            }}
+            {...TOOLTIP_STYLE}
             formatter={(value: unknown, name: unknown) => [
               `${value} (${((Number(value) / total) * 100).toFixed(1)}%)`,
               String(name),

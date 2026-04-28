@@ -6,6 +6,13 @@ import { type CalendarEvent } from "@/lib/api";
 import { useQuery } from '@tanstack/react-query';
 import { calendarEventKeys, calendarApi } from '@/lib/queries';
 import { getMonthDays, toISODate, format } from '@/lib/dates';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { SkeletonNoteCard } from '@/components/ui/Skeleton';
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -50,90 +57,108 @@ export default function CalendarPage() {
     return eventsByDate.get(dateStr) || [];
   };
 
-  const days = getMonthDays(year, month, 0); // weekStartsOn=0 (Sunday) to match DAYS array
+  const days = getMonthDays(year, month, 0);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Calendar</h1>
-          <div className="flex items-center gap-4">
-            <input
-              type="text"
+    <div className="max-w-7xl space-y-6">
+      <SectionHeader
+        title="Calendar"
+        description={`${rawEvents.length} events in ${format(currentDate, "MMMM yyyy")}`}
+        action={
+          <div className="flex items-center gap-3">
+            <Input
               placeholder="Filter by attendee..."
               value={attendeeFilter}
               onChange={(e) => setAttendeeFilter(e.target.value)}
-              className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm w-48"
+              className="w-52"
             />
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={prevMonth}
-              className="bg-zinc-800 hover:bg-zinc-700 rounded p-2"
               data-testid="month-nav-prev"
             >
-              ←
-            </button>
-            <span className="text-lg font-semibold w-40 text-center" data-testid="current-month">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span
+              className="text-lg font-semibold text-zinc-100 min-w-40 text-center"
+              data-testid="current-month"
+            >
               {format(currentDate, "MMMM yyyy")}
             </span>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={nextMonth}
-              className="bg-zinc-800 hover:bg-zinc-700 rounded p-2"
               data-testid="month-nav-next"
             >
-              →
-            </button>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
+        }
+      />
+
+      {loading && (
+        <div className="space-y-3">
+          <SkeletonNoteCard />
+          <SkeletonNoteCard />
+          <SkeletonNoteCard />
         </div>
+      )}
 
-        {loading && <p className="text-zinc-400">Loading events...</p>}
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-          <div className="grid grid-cols-7 bg-zinc-800">
+      {!loading && (
+        <Card>
+          <div className="grid grid-cols-7 bg-zinc-800/50 rounded-t-xl">
             {DAYS.map((day) => (
               <div key={day} className="p-2 text-center text-sm font-medium text-zinc-400">
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-px bg-zinc-800" data-testid="calendar-grid">
+          <div className="grid grid-cols-7 gap-px bg-zinc-800/30" data-testid="calendar-grid">
             {days.map((day, idx) => {
               if (day === null) {
                 return (
-                  <div key={idx} className="bg-zinc-950 min-h-24 p-2" />
+                  <div key={idx} className="min-h-24 p-2" />
                 );
               }
               const dayEvents = getEventsForDay(day);
               const dateStr = toISODate(day);
               return (
-                <div
+                <Card
                   key={idx}
+                  hover
                   onClick={() => router.push(`/calendar/${dateStr}`)}
-                  className="bg-zinc-900 min-h-24 p-2 cursor-pointer hover:bg-zinc-800"
+                  className="min-h-24 cursor-pointer rounded-none group"
                   data-testid={`calendar-day-${dateStr}`}
                 >
-                  <div className="font-medium text-sm mb-1">{day.getDate()}</div>
-                  <div className="space-y-1" data-testid={`calendar-events-${dateStr}`}>
-                    {dayEvents.slice(0, 3).map((event) => (
-                      <div
-                        key={event.id}
-                        className="text-xs bg-zinc-700 rounded px-1 py-0.5 truncate"
-                        data-testid={`calendar-event-${event.id}`}
-                      >
-                        {event.summary}
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div className="text-xs text-zinc-400">
-                        +{dayEvents.length - 3} more
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  <CardContent className="p-2">
+                    <div className="font-medium text-sm mb-1">{day.getDate()}</div>
+                    <div className="space-y-1" data-testid={`calendar-events-${dateStr}`}>
+                      {dayEvents.slice(0, 3).map((event) => (
+                        <Badge
+                          key={event.id}
+                          variant="purple"
+                          size="sm"
+                          className="truncate w-full block"
+                          data-testid={`calendar-event-${event.id}`}
+                        >
+                          {event.summary}
+                        </Badge>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <div className="text-xs text-zinc-400">
+                          +{dayEvents.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
-        </div>
-      </div>
+        </Card>
+      )}
     </div>
   );
 }

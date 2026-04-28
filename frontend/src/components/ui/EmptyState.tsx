@@ -11,7 +11,7 @@ interface EmptyStateProps {
   };
 }
 
-export function EmptyState({ icon = <Search className="w-16 h-16 mx-auto mb-4 text-zinc-600" />, title, subtitle, action }: EmptyStateProps) {
+export function EmptyState({ icon = <Search className="w-16 h-16 mx-auto mb-4 text-zinc-500" />, title, subtitle, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       {icon}

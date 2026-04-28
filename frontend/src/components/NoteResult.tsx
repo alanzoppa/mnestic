@@ -99,7 +99,7 @@ export function NoteResult({
       {displayTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">
           {displayTags.slice(0, 6).map((tag) => (
-            <Badge key={tag} variant="green" size="sm">
+            <Badge key={tag} variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'} size="sm">
               {tag}
             </Badge>
           ))}

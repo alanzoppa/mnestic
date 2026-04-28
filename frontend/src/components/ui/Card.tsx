@@ -5,9 +5,10 @@ interface CardProps {
   className?: string;
   hover?: boolean;
   onClick?: MouseEventHandler<HTMLDivElement>;
+  'data-testid'?: string;
 }
 
-export function Card({ children, className = '', hover = false, onClick }: CardProps) {
+export function Card({ children, className = '', hover = false, onClick, 'data-testid': dataTestId }: CardProps) {
   const baseClasses = hover ? 'card-hover' : 'card';
   const cursorClass = onClick ? 'cursor-pointer' : '';
   
@@ -17,6 +18,7 @@ export function Card({ children, className = '', hover = false, onClick }: CardP
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
+      data-testid={dataTestId}
     >
       {children}
     </div>
