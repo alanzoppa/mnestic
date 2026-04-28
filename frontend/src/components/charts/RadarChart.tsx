@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
+import { TOOLTIP_STYLE } from '@/lib/chart-styles';
 
 interface RadarChartData {
   metric: string;
@@ -34,7 +35,7 @@ export function RadarChartComponent({
   className = '',
 }: RadarChartProps) {
   return (
-    <div className={`chart-container ${className}`}>
+    <div className={`card p-6 ${className}`}>
       {title && (
         <h3 className="text-lg font-semibold text-zinc-100 mb-4">{title}</h3>
       )}
@@ -59,12 +60,7 @@ export function RadarChartComponent({
             strokeWidth={2}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: '#18181b',
-              border: '1px solid #27272a',
-              borderRadius: '0.5rem',
-              color: '#fafafa',
-            }}
+            {...TOOLTIP_STYLE}
             formatter={(value: unknown) => [Number(value), '']}
           />
         </RadarChart>

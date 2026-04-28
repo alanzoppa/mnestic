@@ -37,7 +37,7 @@ export function LineChartComponent({
   className = '',
 }: LineChartProps) {
   return (
-    <div className={`chart-container ${className}`}>
+    <div className={`card p-6 ${className}`}>
       {title && (
         <h3 className="text-lg font-semibold text-zinc-100 mb-4">{title}</h3>
       )}
@@ -85,7 +85,7 @@ export function AreaChartComponent({
   className = '',
 }: AreaChartProps) {
   return (
-    <div className={`chart-container ${className}`}>
+    <div className={`card p-6 ${className}`}>
       {title && (
         <h3 className="text-lg font-semibold text-zinc-100 mb-4">{title}</h3>
       )}
