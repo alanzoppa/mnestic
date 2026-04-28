@@ -408,8 +408,17 @@ export default function SearchPage() {
         </>
       )}
 
+      {/* Loading State */}
+      {searched && loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }, (_, i) => (
+            <SkeletonNoteCard key={i} />
+          ))}
+        </div>
+      )}
+
       {/* Empty State */}
-      {searched && results.length === 0 && (
+      {searched && !loading && results.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <EmptyState

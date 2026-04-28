@@ -228,6 +228,35 @@ class NoteStore:
             })
         return notes
 
+    def get_note_embedding(self, note_id: str) -> list[float] | None:
+        results = self._notes.get(
+            where={"$and": [{"note_id": note_id}, {"chunk_index": 0}]},
+            include=["embeddings"],
+            limit=1,
+        )
+        embs = results.get("embeddings")
+        if embs is None or len(embs) == 0:
+            return None
+        return list(embs[0])
+
+    def get_embeddings_for_notes(self, note_ids: list[str]) -> dict[str, list[float]]:
+        if not note_ids:
+            return {}
+        results = self._notes.get(
+            where={"$and": [{"note_id": {"$in": note_ids}}, {"chunk_index": 0}]},
+            include=["embeddings", "metadatas"],
+        )
+        out: dict[str, list[float]] = {}
+        embs_raw = results.get("embeddings")
+        if embs_raw is None:
+            return {}
+        for i, meta in enumerate(results.get("metadatas", []) or []):
+            nid = meta.get("note_id") if meta else None
+            emb = list(embs_raw[i]) if i < len(embs_raw) else None
+            if nid and emb:
+                out[nid] = emb
+        return out
+
     def get_similar(self, note_id: str, n: int = 10) -> list[dict]:
         result = self._notes.get(ids=[note_id], include=["metadatas", "embeddings"])
         if not result.get("ids"):

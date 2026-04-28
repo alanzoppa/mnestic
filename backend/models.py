@@ -95,6 +95,7 @@ class SimilarNoteRef(BaseModel):
     title: str = ""
     score: float = 0.0
     created: str = ""
+    embedding: list[float] = []
 
 
 class SimilarNotesResponse(BaseModel):
@@ -107,6 +108,7 @@ class NoteDetailResponse(BaseModel):
     content: str = ""
     calendar_events: list[CalendarEvent] = []
     similar_notes: list[SimilarNoteRef] = []
+    embedding: list[float] = []
 
 
 class UpdateNoteResponse(BaseModel):

@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Calendar, Clock, Loader2, Check, Pencil, Paperclip, Zap } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Loader2, Check, Pencil, Paperclip, Zap, ChevronRight, Eye, ChevronDown } from 'lucide-react'
 import {
   noteKeys, notesApi,
   tagKeys, tagsApi,
@@ -25,6 +25,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { EditableTitle } from '@/components/EditableTitle'
 import { TagInput } from '@/components/TagInput'
 import { PersonInput } from '@/components/PersonInput'
+import { EmbeddingHeatmap } from '@/components/EmbeddingHeatmap'
 import { useFavorites } from '@/lib/favorites'
 import { asArray } from '@/lib/constants'
 
@@ -131,6 +132,8 @@ export default function NotePage() {
   const { isFav, toggle } = useFavorites()
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIndex, setGalleryIndex] = useState(0)
+  const [showEmbeddings, setShowEmbeddings] = useState(false)
+  const [expandedSimilar, setExpandedSimilar] = useState<Set<string>>(new Set())
 
   // Queries
   const {
@@ -520,6 +523,78 @@ export default function NotePage() {
                       </Link>
                     ))}
                   </div>
+
+                  {/* Embeddings toggle */}
+                  {(note.embedding?.length === 256 || note.similar_notes.some(sn => sn.embedding?.length === 256)) && (
+                    <>
+                      <button
+                        onClick={() => setShowEmbeddings(!showEmbeddings)}
+                        className="mt-3 flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {showEmbeddings ? 'Hide' : 'Show'} Embeddings
+                      </button>
+
+                      {showEmbeddings && (
+                        <div className="mt-3 space-y-4 pt-3 border-t border-zinc-800">
+                          {note.embedding?.length === 256 && (
+                            <EmbeddingHeatmap
+                              embedding={note.embedding}
+                              size={140}
+                              label="Current note embedding"
+                            />
+                          )}
+
+                          {note.similar_notes
+                            .slice(0, 5)
+                            .filter((sn) => sn.embedding?.length === 256 && note.embedding?.length === 256)
+                            .map((sn) => {
+                              const isExpanded = expandedSimilar.has(sn.note_id || sn.id)
+                              return (
+                                <div key={sn.id} className="space-y-2">
+                                  <button
+                                    onClick={() => {
+                                      const next = new Set(expandedSimilar)
+                                      const key = sn.note_id || sn.id
+                                      if (isExpanded) next.delete(key)
+                                      else next.add(key)
+                                      setExpandedSimilar(next)
+                                    }}
+                                    className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors w-full text-left"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                                    ) : (
+                                      <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                                    )}
+                                    <span className="truncate">{sn.title}</span>
+                                    <span className="text-zinc-600 ml-auto">
+                                      {(sn.score * 100).toFixed(0)}%
+                                    </span>
+                                  </button>
+
+                                  {isExpanded && (
+                                    <div className="pl-4 space-y-2">
+                                      <EmbeddingHeatmap
+                                        embedding={sn.embedding}
+                                        size={120}
+                                        label={`Embedding`}
+                                      />
+                                      <EmbeddingHeatmap
+                                        embedding={sn.embedding}
+                                        compareEmbedding={note.embedding!}
+                                        size={120}
+                                        label={`Diff from current (${(sn.score * 100).toFixed(0)}% similar)`}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}

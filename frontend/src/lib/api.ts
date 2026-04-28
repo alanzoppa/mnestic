@@ -26,6 +26,7 @@ export interface NoteDetail {
   content: string;
   calendar_events: CalendarEvent[];
   similar_notes: SimilarNote[];
+  embedding: number[];
 }
 
 export interface SimilarNote {
@@ -34,6 +35,7 @@ export interface SimilarNote {
   title: string;
   score: number;
   created: string;
+  embedding: number[];
 }
 
 export interface CalendarEvent {

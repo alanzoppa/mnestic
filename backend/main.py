@@ -303,12 +303,19 @@ async def get_note(note_id: str) -> dict:
             "created": meta.get("created", ""),
         })
 
+    current_embedding = store.get_note_embedding(logical_note_id) or []
+    similar_nids = [sn["note_id"] for sn in similar_notes if sn["note_id"]]
+    embeddings_map = store.get_embeddings_for_notes(similar_nids)
+    for sn in similar_notes:
+        sn["embedding"] = embeddings_map.get(sn["note_id"], [])
+
     return {
         "id": logical_note_id,
         "metadata": metadata,
         "content": content,
         "calendar_events": calendar_events,
         "similar_notes": similar_notes,
+        "embedding": current_embedding,
     }
 
 
