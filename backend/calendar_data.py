@@ -133,4 +133,4 @@ class CalendarProcessor:
         return by_participant.get(normalized, [])
 
     def get_embedding_text(self, event: CalendarEvent) -> str:
-        return f"search_document: {event.summary}. {event.description}. Attendees: {event.attendees}. Location: {event.location}"
+        return f"{event.summary}. {event.description}. Attendees: {event.attendees}. Location: {event.location}"

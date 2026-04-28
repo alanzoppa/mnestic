@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FileText, Tag, Calendar, Clock, Search, FolderOpen, Zap } from 'lucide-react';
 import { type Stats } from '@/lib/api';
 import {
   statsKeys, statsApi,
@@ -15,31 +16,6 @@ import { StatCard, StatsGrid } from '@/components/ui/StatCard';
 import { DonutChart } from '@/components/charts/PieCharts';
 import { SkeletonStatCards } from '@/components/ui/Skeleton';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
-
-// Icons
-const DocumentIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
-
-const TagIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  </svg>
-);
-
-const ClockIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -101,22 +77,22 @@ export default function Dashboard() {
           <StatCard
             value={stats.total_notes.toLocaleString()}
             label="Total Notes"
-            icon={<DocumentIcon />}
+            icon={<FileText className="w-6 h-6" />}
           />
           <StatCard
             value={stats.total_tags.toLocaleString()}
             label="Unique Tags"
-            icon={<TagIcon />}
+            icon={<Tag className="w-6 h-6" />}
           />
           <StatCard
             value={stats.total_calendar_events.toLocaleString()}
             label="Calendar Events"
-            icon={<CalendarIcon />}
+            icon={<Calendar className="w-6 h-6" />}
           />
           <StatCard
             value={stats.date_range[0] ? `${stats.date_range[0]?.slice(0, 4)}–${stats.date_range[1]?.slice(0, 4)}` : 'N/A'}
             label="Date Range"
-            icon={<ClockIcon />}
+            icon={<Clock className="w-6 h-6" />}
           />
         </StatsGrid>
       ) : (
@@ -167,33 +143,25 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3">
               <Link href="/search">
                 <Button variant="secondary" className="w-full justify-start">
-                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <Search className="w-4 h-4 mr-2" />
                   Advanced Search
                 </Button>
               </Link>
               <Link href="/browse">
                 <Button variant="secondary" className="w-full justify-start">
-                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
+                  <FolderOpen className="w-4 h-4 mr-2" />
                   Browse All
                 </Button>
               </Link>
               <Link href="/tags">
                 <Button variant="secondary" className="w-full justify-start">
-                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
+                  <Tag className="w-4 h-4 mr-2" />
                   Tags
                 </Button>
               </Link>
               <Link href="/graph">
                 <Button variant="secondary" className="w-full justify-start">
-                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                  <Zap className="w-4 h-4 mr-2" />
                   Graph
                 </Button>
               </Link>

@@ -88,7 +88,7 @@ def test_get_embedding_text(loaded_calendar):
     events = loaded_calendar.process_events()
     first = events[0]
     text = loaded_calendar.get_embedding_text(first)
-    assert text.startswith("search_document:")
+    assert not text.startswith("search_document:")
     assert "1:1 with Alice" in text
     assert "Alice Smith" in text
     assert "Conference Room A" in text

@@ -20,6 +20,7 @@ import {
   type CalendarEvent,
   type PersonInfo,
 } from './api';
+import { asArray } from './constants';
 
 // ============================================================================
 // Query Keys
@@ -145,7 +146,14 @@ export const searchApi = {
   }): Promise<SearchResult[]> => {
     const { query = '', filters, n = 50, includeCalendar = true } = options;
     const res = await search(query || '*', Object.keys(filters || {}).length ? filters : undefined, n, includeCalendar);
-    return res.results;
+    return res.results.map(r => ({
+      ...r,
+      metadata: r.metadata ? {
+        ...r.metadata,
+        tags: asArray(r.metadata.tags),
+        participants: asArray(r.metadata.participants),
+      } : r.metadata,
+    }));
   },
   byTag: async (tag: string): Promise<SearchResult[]> => {
     const res = await search('', { tags: tag });

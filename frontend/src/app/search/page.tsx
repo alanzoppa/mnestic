@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { Filter, ChevronRight } from 'lucide-react'
 import {
   tagKeys, tagsApi,
   schemaKeys, schemaApi,
@@ -15,11 +16,13 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonNoteCard } from '@/components/ui/Skeleton'
 import { SearchAutocomplete } from '@/components/SearchAutocomplete'
 import { DateRangePicker } from '@/components/DateRangePicker'
 import { NoteResult } from '@/components/NoteResult'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles'
 
 interface SearchFilters {
   source: string
@@ -189,9 +192,7 @@ export default function SearchPage() {
                 onClick={() => setShowFilters(!showFilters)}
                 data-testid="filter-toggle"
               >
-                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
+                <Filter className="w-4 h-4 mr-2" />
                 Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
               </Button>
 
@@ -333,23 +334,16 @@ export default function SearchPage() {
                 {topResultTags.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={topResultTags} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                      <XAxis type="number" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
+                      <CartesianGrid {...CARTESIAN_GRID} horizontal={false} />
+                      <XAxis type="number" {...X_AXIS_DARK} />
                       <YAxis
                         dataKey="name"
                         type="category"
                         width={100}
-                        stroke="#52525b"
-                        tick={{ fill: '#a1a1aa', fontSize: 10 }}
+                        {...Y_AXIS_DARK}
+                        tick={{ ...Y_AXIS_DARK.tick, fontSize: 10 }}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#18181b',
-                          border: '1px solid #27272a',
-                          borderRadius: '0.5rem',
-                          color: '#fafafa',
-                        }}
-                      />
+                      <Tooltip {...TOOLTIP_STYLE} />
                       <Bar
                         dataKey="value"
                         fill="#8b5cf6"
@@ -404,9 +398,7 @@ export default function SearchPage() {
                       />
                     </div>
                     <div className="text-zinc-600 group-hover:text-blue-400 transition-colors">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      <ChevronRight className="w-5 h-5" />
                     </div>
                   </div>
                 </CardContent>
@@ -420,16 +412,11 @@ export default function SearchPage() {
       {searched && results.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
-            <svg className="w-16 h-16 mx-auto mb-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <p className="text-xl font-medium text-zinc-300">No results found</p>
-            <p className="text-sm text-zinc-500 mt-2">Try adjusting your search query or filters</p>
-            {activeFiltersCount > 0 && (
-              <Button variant="secondary" onClick={clearFilters} className="mt-4">
-                Clear Filters
-              </Button>
-            )}
+            <EmptyState
+              title="No results found"
+              subtitle="Try adjusting your search query or filters"
+              action={activeFiltersCount > 0 ? { label: 'Clear Filters', onClick: clearFilters } : undefined}
+            />
           </CardContent>
         </Card>
       )}

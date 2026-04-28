@@ -39,7 +39,11 @@ def discover_schema(notes_dir: str) -> dict:
             for field in EXPECTED_FIELDS:
                 val = fm.get(field)
                 if val is not None:
-                    unique_values[field].add(val)
+                    if isinstance(val, list):
+                        for item in val:
+                            unique_values[field].add(item)
+                    else:
+                        unique_values[field].add(val)
                     if len(sample_values[field]) < 3:
                         if isinstance(val, list):
                             sample_values[field].append(val[:3])

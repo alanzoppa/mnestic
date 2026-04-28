@@ -4,11 +4,12 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
+import { Search, Filter, Star, ChevronRight } from 'lucide-react'
 import { schemaKeys, schemaApi, searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
 import { useDebouncedValue } from '@/lib/hooks'
 import { useFavorites } from '@/lib/favorites'
-import { STRUCTURAL_TAGS, asArray } from '@/lib/constants'
+import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -16,6 +17,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SkeletonNoteCard } from '@/components/ui/Skeleton'
 import { NoteResult } from '@/components/NoteResult'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const PAGE_SIZE = 50
 
@@ -70,7 +72,7 @@ export default function BrowsePage() {
       }
       
       // Tags
-      const noteTags = asArray(meta.tags)
+      const noteTags = meta.tags || []
       noteTags.forEach((tag) => {
         tags.set(tag, (tags.get(tag) || 0) + 1)
       })
@@ -97,7 +99,7 @@ export default function BrowsePage() {
       
       // Tag filter
       if (tagFilter) {
-        const noteTags = asArray(meta.tags)
+        const noteTags = meta.tags || []
         if (!noteTags.includes(tagFilter)) return false
       }
       
@@ -173,9 +175,7 @@ export default function BrowsePage() {
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
                 icon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <Search className="w-5 h-5" />
                 }
               />
             </div>
@@ -184,9 +184,7 @@ export default function BrowsePage() {
               variant="secondary"
               onClick={() => setShowFilters(!showFilters)}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
+              <Filter className="w-4 h-4 mr-2" />
               Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
             </Button>
             
@@ -194,9 +192,7 @@ export default function BrowsePage() {
               variant={showFavoritesOnly ? 'primary' : 'secondary'}
               onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setCurrentPage(1) }}
             >
-              <svg className={`w-4 h-4 mr-2 ${showFavoritesOnly ? 'fill-yellow-400 text-yellow-400' : ''}`} viewBox="0 0 24 24" fill={showFavoritesOnly ? 'currentColor' : 'none'} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-              </svg>
+              <Star className={`w-4 h-4 mr-2 ${showFavoritesOnly ? 'fill-yellow-400 text-yellow-400' : ''}`} />
               Favorites{showFavoritesOnly && ` (${favorites.length})`}
             </Button>
             
@@ -339,13 +335,11 @@ export default function BrowsePage() {
                     source={meta.source}
                     folder={meta.folder}
                     created={meta.created}
-                    tags={asArray(meta.tags)}
+                    tags={meta.tags || []}
                     snippet={result.snippet}
                   />
                   <div className="flex justify-end mt-2">
-                    <svg className="w-5 h-5 text-zinc-600 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-blue-400 transition-colors" />
                   </div>
                 </CardContent>
               </Card>
@@ -405,18 +399,11 @@ export default function BrowsePage() {
       {filtered.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
-            <div className="text-zinc-500">
-              <svg className="w-12 h-12 mx-auto mb-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-lg font-medium">No notes found</p>
-              <p className="text-sm mt-1">Try adjusting your filters</p>
-              {activeFiltersCount > 0 && (
-                <Button variant="secondary" onClick={clearFilters} className="mt-4">
-                  Clear Filters
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              title="No notes found"
+              subtitle="Try adjusting your filters"
+              action={activeFiltersCount > 0 ? { label: 'Clear Filters', onClick: clearFilters } : undefined}
+            />
           </CardContent>
         </Card>
       )}

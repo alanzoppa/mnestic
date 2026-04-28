@@ -240,12 +240,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
 
     for note_id_prefix in ids_to_delete:
         try:
-            existing = store._notes.get(
-                where={"note_id": note_id_prefix},
-                include=["metadatas"],
-            )
-            if existing["ids"]:
-                store.delete_notes(existing["ids"])
+            store.delete_note_chunks(note_id_prefix)
         except Exception:
             pass
 

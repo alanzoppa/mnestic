@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { Search } from 'lucide-react'
 import { type TagInfo, type CoOccurrence } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { tagKeys, tagsApi } from '@/lib/queries'
@@ -14,6 +15,7 @@ import { Select } from '@/components/ui/Input'
 import { DonutChart, PieChartComponent } from '@/components/charts/PieCharts'
 import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles'
 
 const TAG_CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -158,9 +160,7 @@ export default function TagsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 icon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <Search className="w-5 h-5" />
                 }
               />
             </div>
@@ -193,23 +193,15 @@ export default function TagsPage() {
             {barChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                  <XAxis type="number" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
+                  <CartesianGrid {...CARTESIAN_GRID} horizontal={false} />
+                  <XAxis type="number" {...X_AXIS_DARK} />
                   <YAxis 
                     dataKey="name" 
                     type="category" 
                     width={100}
-                    stroke="#52525b" 
-                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                    {...Y_AXIS_DARK}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: '1px solid #27272a',
-                      borderRadius: '0.5rem',
-                      color: '#fafafa',
-                    }}
-                  />
+                  <Tooltip {...TOOLTIP_STYLE} />
                   <Bar 
                     dataKey="count" 
                     fill="#3b82f6" 

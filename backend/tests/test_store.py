@@ -1,6 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from store import NoteStore, _serialize_metadata, _to_chroma_scalar as _flatten_tags, _to_chroma_scalar_participants as _flatten_participants
+from store import NoteStore, _serialize_metadata, _to_chroma_scalar as _flatten_tags, _to_chroma_scalar as _flatten_participants
 import pytest
 
 

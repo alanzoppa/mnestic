@@ -1,5 +1,5 @@
 from datetime import date as date_type
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -46,6 +46,29 @@ class NoteMetadata(BaseModel):
         if isinstance(v, str):
             return [x.strip() for x in v.split(",") if x.strip()]
         return v or []
+
+
+# ------------------------------------------------------------------
+# Request models
+# ------------------------------------------------------------------
+
+class SearchRequest(BaseModel):
+    query: str
+    filters: dict = Field(default_factory=dict)
+    n: int = 20
+    include_calendar: bool = True
+    rerank: bool = True
+
+
+class UpdateNoteRequest(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[list[str]] = None
+    participants: Optional[list[str]] = None
+
+
+class IngestRequest(BaseModel):
+    full: bool = False
 
 
 # ------------------------------------------------------------------

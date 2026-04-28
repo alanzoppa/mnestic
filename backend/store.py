@@ -6,7 +6,7 @@ from typing import Any
 import chromadb
 from chromadb.config import Settings
 
-CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "..", "chroma_data")
+from config import CHROMA_PERSIST_DIR
 
 
 def _to_chroma_scalar(tags: Any) -> str:
@@ -15,14 +15,6 @@ def _to_chroma_scalar(tags: Any) -> str:
     if isinstance(tags, list):
         return ",".join(str(t) for t in tags)
     return str(tags)
-
-
-def _to_chroma_scalar_participants(participants: Any) -> str:
-    if participants is None:
-        return ""
-    if isinstance(participants, list):
-        return ",".join(str(p) for p in participants)
-    return str(participants)
 
 
 def _serialize_metadata(meta: dict) -> dict:

@@ -69,6 +69,116 @@ notes-browser/
     └── notes-browser-frontend.service
 ```
 
+## Code Conventions — Backend
+
+### Imports
+- Always import from `config.py` for path constants (`NOTES_DIR`, `CHROMA_PERSIST_DIR`, `IMAGES_DIR`)
+  — never recompute with `os.path.join(os.path.dirname(__file__), "..")`
+- Use `from __future__ import annotations` at the top of every file
+
+### Shared utilities
+- `backend/shared.py` contains `_read_state`, `_write_state`, `_state_lock`, `_is_safe_filename`
+  — if you need these, import them; do not copy-paste
+- `backend/models.py` contains ALL Pydantic models (request + response)
+  — never define models in route handlers
+
+### State files
+- State files use `filelock.FileLock` with `.lock` suffix (via `_state_lock`)
+- State format is JSON dict read/written via `_read_state`/`_write_state`
+
+### Store access
+- Never access `store._notes` or `store._calendar` directly from outside `store.py`
+  — add a public method to `NoteStore` if you need something not yet exposed
+- Embedding prefix is handled by `embed_texts_sync()` in `embed.py`
+  — do NOT prepend `search_document:` yourself
+
+### File organization
+Each file has one clear responsibility:
+
+| File | Responsibility |
+|------|---------------|
+| `config.py` | Environment + paths |
+| `constants.py` | Numerical/config constants |
+| `models.py` | All Pydantic models |
+| `store.py` | ChromaDB operations |
+| `embed.py` | Ollama embedding client |
+| `rerank.py` | Cross-encoder reranker |
+| `ingest.py` | Ingestion pipeline |
+| `watcher.py` | File watcher (watchdog) |
+| `calendar_data.py` | Calendar event processing |
+| `schema.py` | Frontmatter schema discovery |
+| `graph_service.py` | Similarity graph construction |
+| `shared.py` | Shared helpers (state, safety) |
+| `main.py` | FastAPI endpoint definitions ONLY (thin wrappers) |
+
+### Error handling
+- Ingestion errors are collected and returned (not thrown)
+- API endpoints rely on FastAPI's default 500 handler — add explicit try/except only if you need custom error messages
+- Embedding failures trigger bisect fallback in `embed_texts_sync`
+
+## Frontend `lib/` catalog
+
+All shared utilities live in `frontend/src/lib/`. Import from here instead of copying patterns.
+
+| File | Purpose |
+|------|---------|
+| `api.ts` | FastAPI client — all API call functions + TypeScript interfaces for every data type |
+| `queries.ts` | React Query wrappers — query keys + query functions + mutation wrappers. Pages import from here, not from `api.ts` directly |
+| `constants.ts` | `STRUCTURAL_TAGS` (folder/source tags), `asArray()` (tags/participants normalization) |
+| `chart-styles.ts` | Shared Recharts config (Tooltip style, axis styles, grid config) |
+| `dates.ts` | date-fns wrappers (`toISODate`, `parseISODate`, `getMonthDays`, date presets, etc.) |
+| `hooks.ts` | `useDebouncedValue`, `useLocalStorage` (generic) |
+| `favorites.ts` | `useFavorites()` hook — localStorage-backed favorites tracking. Returns `{ favorites, isFav, toggle }` |
+
+### API wrapper pattern
+- `api.ts` is raw — returns what the backend sends
+- `queries.ts` wraps and normalizes (e.g., extracting `.events` from calendar response, normalizing tags to arrays)
+- Pages call **query functions** (e.g., `searchApi.all(...)`) — never import `api.ts` functions directly
+
+### Icons
+- Use `lucide-react` for ALL icons. Available: `FileText`, `Tag`, `Calendar`, `Clock`, `Search`, `Filter`, `ChevronRight`, `ArrowLeft`, `Star`, `Frown`, `Paperclip`, `Pencil`, `Zap`, `Check`, `Loader2`, `FolderOpen`, `ArrowLeft`
+- Never add inline SVG path elements — import the lucide wrapper component
+
+## Graph construction algorithm
+
+The similarity graph (`/api/graph`) shows note relationships based on embedding cosine similarity.
+
+### Pipeline
+1. **Filter candidates** — optional `tag`/`folder` filter selects candidate notes (capped at 1000)
+2. **Fetch embeddings** — retrieve embeddings from ChromaDB for all candidate note_ids
+3. **Similarity matrix** — compute pairwise cosine similarity via `sklearn.metrics.pairwise.cosine_similarity`
+4. **Edge construction** — for each pair (i, j) where `i < j`: if `sim[i][j] >= threshold` (default 0.75), create an edge. Skip pairs with the same note_id (chunk deduplication)
+5. **Deduplication** — edges use sorted tuple `(source_nid, target_nid)` with a Set to prevent duplicates
+6. **Node list** — only include nodes that have at least one edge
+
+### Key parameters
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `tag` | None | Filter to notes containing this tag (case-insensitive, ChromaDB `$contains`) |
+| `folder` | None | Filter to notes in this folder |
+| `threshold` | 0.75 | Minimum cosine similarity for an edge |
+
+### Frontend rendering
+- `react-force-graph-3d` renders the 3D force-directed graph
+- Nodes are colored by primary tag (first tag) via `hashString()` + `COLOR_PALETTE`
+- Clicking a node moves camera and shows the detail pane
+
+## Reranker
+
+Second-stage ranking for note search results using `BAAI/bge-reranker-v2-m3`.
+
+### How it works
+1. **First stage** — ChromaDB semantic search returns candidates (up to `RERANK_MAX_CANDIDATES = 100`)
+2. **Second stage** — cross-encoder scores each `(query, candidate_text)` pair, where `candidate_text = "{title}. {snippet}"`
+3. **Results** — candidates sorted by reranker score descending; original `score` field is overwritten
+4. **Fallback** — if model fails to load or inference errors, candidates returned in original order
+
+### Graceful degradation
+- If `sentence_transformers` import fails, `CrossEncoder = None` and `reranker.available()` returns `False`
+- Search endpoint checks `reranker.available()` — if unavailable, returns raw embedding scores
+- `rerank=false` query param skips reranking entirely (used by Browse page)
+- Empty query (`"*"`) never triggers reranker
+
 ## .env Configuration (machine-specific paths)
 
 Create a `.env` file in the repo root on first startup (pydantic-settings reads it automatically if present; defaults match former auto-generated content):

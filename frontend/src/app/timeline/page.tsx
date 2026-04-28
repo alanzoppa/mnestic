@@ -23,6 +23,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
+import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles';
 import { parse, format, isValid } from 'date-fns';
 
 const TAGS = [
@@ -186,28 +187,16 @@ export default function TimelinePage() {
                       <stop offset="100%" stopColor="#1d4ed8" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                  <CartesianGrid {...CARTESIAN_GRID} />
                   <XAxis
                     dataKey="displayLabel"
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                    {...X_AXIS_DARK}
                     angle={groupBy === 'month' ? -45 : 0}
                     textAnchor={groupBy === 'month' ? 'end' : 'middle'}
                     height={groupBy === 'month' ? 60 : 30}
                   />
-                  <YAxis
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 12 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: '1px solid #27272a',
-                      borderRadius: '0.5rem',
-                      color: '#fafafa',
-                    }}
-                    cursor={{ fill: '#27272a', opacity: 0.5 }}
-                  />
+                  <YAxis {...Y_AXIS_DARK} />
+                  <Tooltip {...TOOLTIP_STYLE} cursor={{ fill: '#27272a', opacity: 0.5 }} />
                   <Bar 
                     dataKey="count" 
                     fill="url(#barGradient)" 
@@ -217,27 +206,16 @@ export default function TimelinePage() {
                 </BarChart>
               ) : chartType === 'line' ? (
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                  <CartesianGrid {...CARTESIAN_GRID} />
                   <XAxis
                     dataKey="displayLabel"
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                    {...X_AXIS_DARK}
                     angle={groupBy === 'month' ? -45 : 0}
                     textAnchor={groupBy === 'month' ? 'end' : 'middle'}
                     height={groupBy === 'month' ? 60 : 30}
                   />
-                  <YAxis
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 12 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: '1px solid #27272a',
-                      borderRadius: '0.5rem',
-                      color: '#fafafa',
-                    }}
-                  />
+                  <YAxis {...Y_AXIS_DARK} />
+                  <Tooltip {...TOOLTIP_STYLE} />
                   <Line
                     type="monotone"
                     dataKey="count"
@@ -255,27 +233,16 @@ export default function TimelinePage() {
                       <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                  <CartesianGrid {...CARTESIAN_GRID} />
                   <XAxis
                     dataKey="displayLabel"
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                    {...X_AXIS_DARK}
                     angle={groupBy === 'month' ? -45 : 0}
                     textAnchor={groupBy === 'month' ? 'end' : 'middle'}
                     height={groupBy === 'month' ? 60 : 30}
                   />
-                  <YAxis
-                    stroke="#52525b"
-                    tick={{ fill: '#a1a1aa', fontSize: 12 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: '1px solid #27272a',
-                      borderRadius: '0.5rem',
-                      color: '#fafafa',
-                    }}
-                  />
+                  <YAxis {...Y_AXIS_DARK} />
+                  <Tooltip {...TOOLTIP_STYLE} />
                   <Area
                     type="monotone"
                     dataKey="count"
