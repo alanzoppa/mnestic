@@ -94,7 +94,7 @@ export function ImageGallery({
 
   if (images.length === 0) return null
 
-  const current = images[currentIndex]
+  const current = images[currentIndex]!
 
   return (
     <>

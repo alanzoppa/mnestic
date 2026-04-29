@@ -206,8 +206,9 @@ export default function TagsPage() {
                     dataKey="count" 
                     fill="#3b82f6" 
                     radius={[0, 4, 4, 0]}
-                    onClick={(data: any) => {
-                      router.push(`/tags/${data.fullName}`)
+                    onClick={(data) => {
+                      const name = (data.payload as Record<string, unknown> | undefined)?.fullName as string | undefined;
+                      if (name) router.push(`/tags/${name}`)
                     }}
                     className="cursor-pointer hover:fill-blue-400"
                   />

@@ -73,14 +73,14 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
       if (e.key === 'Enter' && input.trim()) {
         e.preventDefault()
         if (suggestions.length > 0 && highlightedIndex >= 0) {
-          addTag(suggestions[highlightedIndex])
+          addTag(suggestions[highlightedIndex]!)
         } else {
           addTag(input.trim())
         }
       } else if (e.key === 'Escape') {
         closeMenu()
       } else if (e.key === 'Backspace' && !input && editableTags.length > 0) {
-        removeTag(editableTags[editableTags.length - 1])
+        removeTag(editableTags[editableTags.length - 1]!)
       }
     },
   }, { suppressRefError: true })

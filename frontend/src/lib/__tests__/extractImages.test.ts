@@ -8,9 +8,9 @@ describe("extractImages", () => {
       const { content, images } = extractImages(input);
       expect(content).toBe("Here is a photo:  and some text");
       expect(images).toHaveLength(1);
-      expect(images[0].src).toBe("image.png");
-      expect(images[0].alt).toBe("my image");
-      expect(images[0].type).toBe("inline");
+      expect(images[0]!.src).toBe("image.png");
+      expect(images[0]!.alt).toBe("my image");
+      expect(images[0]!.type).toBe("inline");
     });
 
     it("handles multiple images with surrounding text", () => {
@@ -18,8 +18,8 @@ describe("extractImages", () => {
       const { content, images } = extractImages(input);
       expect(content).toBe("Before  middle  after");
       expect(images).toHaveLength(2);
-      expect(images[0].src).toBe("a.png");
-      expect(images[1].src).toBe("b.png");
+      expect(images[0]!.src).toBe("a.png");
+      expect(images[1]!.src).toBe("b.png");
     });
   });
 
@@ -29,7 +29,7 @@ describe("extractImages", () => {
       const { content, images } = extractImages(input);
       expect(content.trim()).toBe("");
       expect(images).toHaveLength(1);
-      expect(images[0].src).toBe("image.jpg");
+      expect(images[0]!.src).toBe("image.jpg");
     });
 
     it("handles multiple images with no text", () => {
@@ -47,9 +47,9 @@ describe("extractImages", () => {
 [myref]: <data:image/png;base64,abc123>`;
       const { content, images } = extractImages(input);
       expect(images).toHaveLength(1);
-      expect(images[0].src).toBe("data:image/png;base64,abc123");
-      expect(images[0].alt).toBe("Alt text");
-      expect(images[0].type).toBe("inline");
+      expect(images[0]!.src).toBe("data:image/png;base64,abc123");
+      expect(images[0]!.alt).toBe("Alt text");
+      expect(images[0]!.type).toBe("inline");
     });
 
     it("handles multiple reference definitions", () => {
@@ -67,24 +67,24 @@ describe("extractImages", () => {
       const input = "Text before <img src=\"photo.jpg\" alt=\"test\"> text after";
       const { content, images } = extractImages(input);
       expect(images).toHaveLength(1);
-      expect(images[0].src).toBe("photo.jpg");
-      expect(images[0].alt).toBe("test");
-      expect(images[0].type).toBe("inline");
+      expect(images[0]!.src).toBe("photo.jpg");
+      expect(images[0]!.alt).toBe("test");
+      expect(images[0]!.type).toBe("inline");
     });
 
     it("handles img tags without alt", () => {
       const input = "<img src=\"photo.jpg\">";
       const { content, images } = extractImages(input);
       expect(images).toHaveLength(1);
-      expect(images[0].alt).toBeUndefined();
+      expect(images[0]!.alt).toBeUndefined();
     });
 
     it("extracts img tags with single quotes", () => {
       const input = "<img src='image.png' alt='My Image'>";
       const { content, images } = extractImages(input);
       expect(images).toHaveLength(1);
-      expect(images[0].src).toBe("image.png");
-      expect(images[0].alt).toBe("My Image");
+      expect(images[0]!.src).toBe("image.png");
+      expect(images[0]!.alt).toBe("My Image");
     });
   });
 
@@ -93,21 +93,21 @@ describe("extractImages", () => {
       const input = "Check [View original](../images/photo.png) here";
       const { content, images } = extractImages(input);
       expect(images).toHaveLength(1);
-      expect(images[0].src).toBe("images/photo.png");
-      expect(images[0].type).toBe("link");
-      expect(images[0].alt).toBe("View original");
+      expect(images[0]!.src).toBe("images/photo.png");
+      expect(images[0]!.type).toBe("link");
+      expect(images[0]!.alt).toBe("View original");
     });
 
     it("normalizes relative paths with ../", () => {
       const input = "![img](../images/photo.png)";
       const { images } = extractImages(input);
-      expect(images[0].src).toBe("images/photo.png");
+      expect(images[0]!.src).toBe("images/photo.png");
     });
 
     it("normalizes relative paths with ./", () => {
       const input = "![img](./images/photo.png)";
       const { images } = extractImages(input);
-      expect(images[0].src).toBe("images/photo.png");
+      expect(images[0]!.src).toBe("images/photo.png");
     });
 
     it("handles empty string input", () => {

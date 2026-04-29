@@ -312,7 +312,7 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
         ? mockCalendarDate
         : route.request().url().includes("/api/calendar?") || route.request().url().endsWith("/api/calendar")
           ? mockCalendarEvents
-          : mockCalendarEvents.events[0]
+          : mockCalendarEvents.events[0]!
     );
     await route.fulfill({
       status: 200,

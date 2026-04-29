@@ -21,8 +21,8 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     const result: Heading[] = []
     let match
     while ((match = regex.exec(content)) !== null) {
-      const level = match[1].length
-      const text = match[2].trim()
+      const level = match[1]!.length
+      const text = match[2]!.trim()
       const id = text
         .toLowerCase()
         .replace(/[^\w\s-]/g, '')
@@ -36,7 +36,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   useEffect(() => {
     if (headings.length < 3) return
 
-    const headingEls = headings.map(h => document.getElementById(h.id)).filter(Boolean) as HTMLElement[]
+    const headingEls = headings.map(h => document.getElementById(h.id)).filter((el): el is HTMLElement => el !== null)
 
     if (headingEls.length === 0) return
 

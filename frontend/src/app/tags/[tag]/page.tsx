@@ -14,7 +14,7 @@ import { ArrowLeft } from 'lucide-react'
 export default function TagPage() {
   const params = useParams()
   const router = useRouter()
-  const tag = params.tag as string
+  const tag = typeof params.tag === 'string' ? params.tag : Array.isArray(params.tag) ? params.tag[0] ?? '' : ''
   const { data: results = [], isLoading } = useQuery({
     queryKey: ['search', 'tag', tag],
     queryFn: () => searchApi.byTag(tag),

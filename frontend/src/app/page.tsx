@@ -41,7 +41,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: statsKeys.all });
       queryClient.invalidateQueries({ queryKey: tagKeys.all });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       setIngestResult(`Error: ${e.message}`);
     },
   });

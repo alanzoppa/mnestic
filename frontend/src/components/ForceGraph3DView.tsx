@@ -3,20 +3,28 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import * as THREE from 'three'
+import type { GraphNode, GraphEdge } from '@/lib/api'
+
+export type ForceGraphNode = GraphNode & { x?: number; y?: number; z?: number }
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false, loading: () => null })
 
+interface ForceGraph3DRef {
+  scene: () => THREE.Scene | null;
+  cameraPosition: (camera: { x: number; y: number; z: number }, lookAt: { x: number; y: number; z: number }, duration: number) => void;
+}
+
 interface ForceGraph3DViewProps {
-  graphData: { nodes: any[]; links: any[] } | null
+  graphData: { nodes: GraphNode[]; links: GraphEdge[] } | null
   isLoading: boolean
   error: Error | null
   headerSlot?: ReactNode
   detailPaneSlot?: ReactNode
   legendSlot?: ReactNode
-  nodeObjectFn?: (node: any) => THREE.Object3D
-  nodePositionUpdateFn?: (obj: THREE.Object3D, coords: { x: number; y: number; z: number }, node: any) => void
-  nodeLabelFn?: (node: any) => string
-  onNodeClick?: (node: any) => void
+  nodeObjectFn?: (node: ForceGraphNode) => THREE.Object3D
+  nodePositionUpdateFn?: (obj: THREE.Object3D, coords: { x: number; y: number; z: number }, node: ForceGraphNode) => void
+  nodeLabelFn?: (node: ForceGraphNode) => string
+  onNodeClick?: (node: ForceGraphNode) => void
   dataTestId?: string
 }
 
@@ -33,6 +41,7 @@ export default function ForceGraph3DView({
   onNodeClick,
   dataTestId,
 }: ForceGraph3DViewProps) {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const fgRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
@@ -86,12 +95,12 @@ export default function ForceGraph3DView({
   const hasData = graphData && graphData.nodes.length > 0
   const showEmpty = !showLoading && !error && graphData && graphData.nodes.length === 0
 
-  const handleNodeClick = useCallback((node: any, event: any) => {
+  const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (fgRef.current && node.x !== undefined && node.y !== undefined) {
       const dist = 45
       fgRef.current.cameraPosition(
-        { x: node.x + dist * 0.6, y: node.y + dist * 0.6, z: node.z + dist },
-        { x: node.x, y: node.y, z: node.z },
+        { x: node.x + dist * 0.6, y: node.y + dist * 0.6, z: (node.z ?? 0) + dist },
+        { x: node.x, y: node.y, z: node.z ?? 0 },
         800,
       )
     }
@@ -133,11 +142,11 @@ export default function ForceGraph3DView({
               ref={fgRef}
               graphData={graphData!}
               nodeId="id"
-              nodeLabel={nodeLabelFn || "title"}
-              nodeThreeObject={nodeObjectFn}
-              nodePositionUpdate={nodePositionUpdateFn}
+              nodeLabel={nodeLabelFn as ((node: object) => string) | undefined}
+              nodeThreeObject={nodeObjectFn as ((node: object) => THREE.Object3D) | undefined}
+              nodePositionUpdate={nodePositionUpdateFn as any}
               backgroundColor="#09090b"
-              onNodeClick={handleNodeClick}
+              onNodeClick={handleNodeClick as any}
               enableNodeDrag={false}
               nodeResolution={12}
               showNavInfo={true}

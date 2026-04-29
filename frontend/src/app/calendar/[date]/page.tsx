@@ -3,6 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
 import { calendarEventKeys, calendarApi } from '@/lib/queries';
+import type { CalendarDateNote } from '@/lib/api';
 import { parseISO, format, isValid } from 'date-fns';
 import { ArrowLeft, MapPin, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -11,22 +12,15 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonNoteCard } from '@/components/ui/Skeleton';
 
-interface Note {
-  id: string;
-  title: string;
-  folder: string;
-  created: string;
-  modified: string;
-  source: string;
-  source_id: string;
-  tags: string[];
-  participants: string[];
-}
+const getDateParam = (params: Record<string, string | string[] | undefined>): string => {
+  const val = params.date;
+  return Array.isArray(val) ? val[0] ?? '' : val ?? '';
+};
 
 export default function CalendarDatePage() {
   const router = useRouter();
   const params = useParams();
-  const dateStr = params.date as string;
+  const dateStr = getDateParam(params as Record<string, string | string[] | undefined>);
 
   const { data, isLoading: loading } = useQuery({
     queryKey: calendarEventKeys.date(dateStr),
@@ -34,7 +28,7 @@ export default function CalendarDatePage() {
     enabled: !!dateStr,
   });
   const events = data?.events ?? [];
-  const notes = (data?.notes ?? []) as Note[];
+  const notes: CalendarDateNote[] = data?.notes ?? [];
 
   const formattedDate = isValid(parseISO(dateStr))
     ? format(parseISO(dateStr), "EEEE, MMMM d, yyyy")
@@ -147,9 +141,9 @@ export default function CalendarDatePage() {
                       <h3 className="font-medium">{note.title}</h3>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant="zinc" size="sm">
-                          {note.folder}
+                          {note.metadata.folder}
                         </Badge>
-                        <span className="text-xs text-zinc-400">{note.source}</span>
+                        <span className="text-xs text-zinc-400">{note.metadata.source}</span>
                       </div>
                     </CardContent>
                   </Card>

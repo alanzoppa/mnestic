@@ -72,7 +72,7 @@ export default function BrowsePage() {
       }
       
       // Tags
-      const noteTags: string[] = Array.isArray(meta.tags) ? meta.tags : typeof meta.tags === 'string' ? meta.tags.split(',').filter(Boolean) : []
+      const noteTags: string[] = Array.isArray(meta.tags) ? meta.tags : []
       noteTags.forEach((tag: string) => {
         tags.set(tag, (tags.get(tag) || 0) + 1)
       })

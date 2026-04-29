@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { format, parseISO, isValid } from 'date-fns'
 import { Search, ArrowLeft } from 'lucide-react'
 import { type GraphNode } from '@/lib/api'
+import type { ForceGraphNode } from '@/components/ForceGraph3DView'
 import { searchGraphKeys, searchGraphApi } from '@/lib/queries'
 import ForceGraph3DView from '@/components/ForceGraph3DView'
 import Link from 'next/link'
@@ -31,7 +32,7 @@ function scoreToHex(ratio: number): string {
   const t = Math.max(0, Math.min(1, ratio))
   const idx = Math.min(Math.floor(t * (GRADIENT_STOPS.length - 1)), GRADIENT_STOPS.length - 2)
   const localT = (t * (GRADIENT_STOPS.length - 1)) - idx
-  return lerpColor(GRADIENT_STOPS[idx], GRADIENT_STOPS[idx + 1], localT)
+  return lerpColor(GRADIENT_STOPS[idx]!, GRADIENT_STOPS[idx + 1]!, localT)
 }
 
 export default function SearchGraphPage() {
@@ -78,7 +79,7 @@ export default function SearchGraphPage() {
     return map
   }, [data, minScore, maxScore])
 
-  const createNodeObject = useCallback((node: any): THREE.Object3D => {
+  const createNodeObject = useCallback((node: ForceGraphNode): THREE.Object3D => {
     const color = nodeColorMap[node.id] || '#6b7280'
     const geometry = new THREE.SphereGeometry(4.2, 24, 24)
     const material = new THREE.MeshStandardMaterial({
@@ -92,10 +93,10 @@ export default function SearchGraphPage() {
     return new THREE.Mesh(geometry, material)
   }, [nodeColorMap])
 
-  const handleNodeClick = useCallback((node: any) => {
+  const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
     selectedNodeIdRef.current = node.id
-    setViewingNode(node as GraphNode)
+    setViewingNode(node)
   }, [])
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function SearchGraphPage() {
     }
   }, [viewingNode])
 
-  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: any) => {
+  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
     const mesh = obj as THREE.Mesh
     const material = mesh.material as THREE.MeshStandardMaterial
     if (!material) return
@@ -292,13 +293,13 @@ export default function SearchGraphPage() {
     <ForceGraph3DView
       graphData={graphData}
       isLoading={isLoading}
-      error={error as Error | null}
+      error={error}
       headerSlot={headerSlot}
       detailPaneSlot={detailPaneSlot}
       legendSlot={legendSlot}
       nodeObjectFn={createNodeObject}
       nodePositionUpdateFn={nodePositionUpdate}
-      nodeLabelFn={(node: any) => {
+      nodeLabelFn={(node) => {
         const pct = node.search_score !== undefined ? `${(node.search_score * 100).toFixed(0)}%` : ''
         return pct ? `${node.title} (${pct})` : node.title
       }}

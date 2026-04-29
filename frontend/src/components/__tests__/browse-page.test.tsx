@@ -103,7 +103,7 @@ describe("BrowsePage", () => {
     // Click the Apple Notes source filter button (in the facet panel)
     const sourceButtons = screen.getAllByText("Apple Notes");
     // First one is the filter button in the facet panel
-    fireEvent.click(sourceButtons[0]);
+    fireEvent.click(sourceButtons[0]!);
     // All visible notes should be from Apple Notes
     await waitFor(() => {
       const cards = screen.getAllByText(/Apple Notes/);

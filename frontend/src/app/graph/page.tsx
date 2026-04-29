@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
 import { format, parseISO, isValid } from 'date-fns'
 import { type GraphNode } from '@/lib/api'
+import type { ForceGraphNode } from '@/components/ForceGraph3DView'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { TagAutocomplete } from '@/components/TagAutocomplete'
@@ -42,7 +43,7 @@ function assignTagStyles(tags: string[]): Record<string, { color: string; roughn
     const hue = (index * GOLDEN_ANGLE) % 360
     styles[tag] = {
       color: hslToHex(hue, 0.72, 0.58),
-      ...MATERIAL_PROFILES[index % MATERIAL_PROFILES.length],
+      ...MATERIAL_PROFILES[index % MATERIAL_PROFILES.length]!,
     }
   })
   return styles
@@ -100,7 +101,7 @@ export default function GraphPage() {
 
   const tagStyles = useMemo(() => {
     if (!data) return {}
-    const primaryTags = data.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter(Boolean) as string[]
+    const primaryTags = data.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter((t): t is string => Boolean(t))
     return assignTagStyles(primaryTags)
   }, [data])
 
@@ -114,10 +115,10 @@ export default function GraphPage() {
     return counts
   }, [data])
 
-  const handleNodeClick = useCallback((node: any) => {
+  const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
     selectedNodeIdRef.current = node.id
-    setViewingNode(node as GraphNode)
+    setViewingNode(node)
   }, [])
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function GraphPage() {
     }
   }, [viewingNode])
 
-  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: any) => {
+  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
     const mesh = obj as THREE.Mesh
     const material = mesh.material as THREE.MeshStandardMaterial
     if (!material) return
@@ -140,7 +141,7 @@ export default function GraphPage() {
 
     const targetIntensity = isSelected ? SELECTED_INTENSITY : 0
     const targetOpacity = isSelected || !hasSelection ? NORMAL_OPACITY : DIMMED_OPACITY
-    const targetEmissive = isSelected ? new THREE.Color(getNodeColor(node as GraphNode, tagStyles)) : new THREE.Color(0x000000)
+    const targetEmissive = isSelected ? new THREE.Color(getNodeColor(node, tagStyles)) : new THREE.Color(0x000000)
 
     if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.01) {
       material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
@@ -251,11 +252,11 @@ export default function GraphPage() {
     <ForceGraph3DView
       graphData={graphData}
       isLoading={isLoading}
-      error={error as Error | null}
+      error={error}
       headerSlot={headerSlot}
       detailPaneSlot={detailPaneSlot}
       legendSlot={legendSlot}
-      nodeObjectFn={(node: any) => createNodeObject(node as GraphNode, tagStyles, degreeMap)}
+      nodeObjectFn={(node) => createNodeObject(node, tagStyles, degreeMap)}
       nodePositionUpdateFn={nodePositionUpdate}
       onNodeClick={handleNodeClick}
     />

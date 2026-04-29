@@ -48,8 +48,8 @@ export function EditableTitle({ value, onSave, className }: EditableTitleProps) 
     try {
       await onSave(trimmed)
       setEditing(false)
-    } catch (e: any) {
-      setError(e?.message || 'Failed to save')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
     } finally {
       setSaving(false)
     }

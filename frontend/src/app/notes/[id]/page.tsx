@@ -420,8 +420,8 @@ export default function NotePage() {
                     >
                       <div className="rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors">
                         <img
-                          src={getImageUrl(attachments[0].src)}
-                          alt={attachments[0].alt || attachments[0].src.split('/').pop() || 'Attachment'}
+                          src={getImageUrl(attachments[0]!.src)}
+                          alt={attachments[0]!.alt || attachments[0]!.src.split('/').pop() || 'Attachment'}
                           loading="lazy"
                           className="w-full h-auto object-contain"
                           onError={(e) => {
@@ -430,7 +430,7 @@ export default function NotePage() {
                         />
                       </div>
                       <p className="text-xs text-zinc-500 mt-2 truncate group-hover:text-zinc-400">
-                        {attachments[0].src.split('/').pop() || 'image-1'}
+                        {attachments[0]!.src.split('/').pop() || 'image-1'}
                       </p>
                     </div>
                   ) : (

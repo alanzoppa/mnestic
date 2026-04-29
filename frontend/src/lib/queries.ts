@@ -19,7 +19,11 @@ import {
   type GraphData,
   type Stats,
   type CalendarEvent,
+  type CalendarDateNote,
   type PersonInfo,
+  type SchemaResponse,
+  type IngestResponse,
+  type UpdateNoteRequest,
 } from './api';
 import { asArray } from './constants';
 
@@ -108,7 +112,7 @@ export const statsApi = {
 };
 
 export const schemaApi = {
-  get: (): Promise<any> => getSchema(),
+  get: (): Promise<SchemaResponse> => getSchema(),
 };
 
 export const calendarApi = {
@@ -116,7 +120,7 @@ export const calendarApi = {
     const res = await getCalendarEvents(startStr, endStr);
     return res.events;
   },
-  date: async (date: string): Promise<{ events: CalendarEvent[]; notes: any[] }> => {
+  date: async (date: string): Promise<{ events: CalendarEvent[]; notes: CalendarDateNote[] }> => {
     const res = await getCalendarDate(date);
     return { events: res.events, notes: res.notes || [] };
   },
@@ -134,13 +138,13 @@ export const peopleApi = {
 // ============================================================================
 
 export const notesMutations = {
-  update: async ({ id, data }: { id: string; data: { title?: string; content?: string; tags?: string[]; participants?: string[] } }) => {
+  update: async ({ id, data }: { id: string; data: UpdateNoteRequest }) => {
     return updateNote(id, data);
   },
 };
 
 export const ingestApi = {
-  trigger: async (full?: boolean): Promise<any> => triggerIngest(full),
+  trigger: async (full?: boolean): Promise<IngestResponse> => triggerIngest(full),
 };
 
 // ============================================================================

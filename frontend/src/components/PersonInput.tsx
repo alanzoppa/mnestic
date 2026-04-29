@@ -79,14 +79,14 @@ export function PersonInput({ participants, people, onChange }: PersonInputProps
       if (e.key === 'Enter' && input.trim()) {
         e.preventDefault()
         if (suggestions.length > 0 && highlightedIndex >= 0) {
-          addPerson(suggestions[highlightedIndex].name)
+          addPerson(suggestions[highlightedIndex]!.name)
         } else {
           addPerson(input.trim())
         }
       } else if (e.key === 'Escape') {
         closeMenu()
       } else if (e.key === 'Backspace' && !input && participants.length > 0) {
-        removePerson(participants[participants.length - 1])
+        removePerson(participants[participants.length - 1]!)
       }
     },
   }, { suppressRefError: true })

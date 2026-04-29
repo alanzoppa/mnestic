@@ -139,7 +139,7 @@ export default function SearchPage() {
   const resultTags = results
     .flatMap(r => r.metadata?.tags || [])
     .reduce((acc, tag) => {
-      acc[tag as string] = (acc[tag as string] || 0) + 1
+      acc[tag] = (acc[tag] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 

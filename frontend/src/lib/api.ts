@@ -6,23 +6,39 @@ async function fetchAPI(path: string, options?: RequestInit) {
   return res.json();
 }
 
+export interface NoteMetadata {
+  note_id: string;
+  title: string;
+  folder: string;
+  tags: string[];
+  participants: string[];
+  created: string;
+  modified: string;
+  source: string;
+  source_id: string;
+  date: string;
+  filename: string;
+  chunk_index: number;
+  [key: string]: unknown;
+}
+
 export interface SearchResult {
   id: string;
   title: string;
   snippet: string;
-  metadata: Record<string, any>;
+  metadata: NoteMetadata;
   score: number;
   type: "note" | "calendar";
   note_id?: string;
 }
 
-export function getNoteUrl(result: { id: string; note_id?: string; metadata?: Record<string, any> }): string {
+export function getNoteUrl(result: { id: string; note_id?: string; metadata?: NoteMetadata }): string {
   return `/notes/${encodeURIComponent(result.note_id || result.metadata?.note_id || result.id)}`;
 }
 
 export interface NoteDetail {
   id: string;
-  metadata: Record<string, any>;
+  metadata: NoteMetadata;
   content: string;
   calendar_events: CalendarEvent[];
   similar_notes: SimilarNote[];
@@ -102,7 +118,39 @@ export async function getSimilar(noteId: string, n?: number): Promise<{ notes: S
   return fetchAPI(`/similar/${encodeURIComponent(noteId)}?n=${n || 10}`);
 }
 
-export async function triggerIngest(full?: boolean): Promise<any> {
+export interface IngestResponse {
+  notes_result: Record<string, unknown> | null;
+  calendar_result: Record<string, unknown> | null;
+}
+
+export interface SchemaField {
+  name: string;
+  type: string;
+  cardinality: string;
+  samples: unknown[];
+  classification: string;
+}
+
+export interface SchemaResponse {
+  total_files: number;
+  fields: SchemaField[];
+  sources: string[];
+  folders: string[];
+}
+
+export interface CalendarDateNote {
+  id: string;
+  title: string;
+  metadata: NoteMetadata;
+}
+
+export interface CalendarDateResponse {
+  date: string;
+  events: CalendarEvent[];
+  notes: CalendarDateNote[];
+}
+
+export async function triggerIngest(full?: boolean): Promise<IngestResponse> {
   return fetchAPI("/ingest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -110,7 +158,7 @@ export async function triggerIngest(full?: boolean): Promise<any> {
   });
 }
 
-export async function getSchema(): Promise<any> {
+export async function getSchema(): Promise<SchemaResponse> {
   return fetchAPI("/schema");
 }
 
@@ -127,7 +175,7 @@ export async function getCalendarEvents(startDate?: string, endDate?: string, at
   return fetchAPI(`/calendar${qs ? `?${qs}` : ""}`);
 }
 
-export async function getCalendarDate(date: string): Promise<{ date: string; events: CalendarEvent[]; notes: any[] }> {
+export async function getCalendarDate(date: string): Promise<CalendarDateResponse> {
   return fetchAPI(`/calendar/date/${date}`);
 }
 
@@ -178,7 +226,7 @@ export interface UpdateNoteRequest {
 
 export interface UpdateNoteResponse {
   id: string;
-  metadata: Record<string, any>;
+  metadata: NoteMetadata;
   content: string;
 }
 

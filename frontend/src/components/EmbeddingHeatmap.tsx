@@ -2,9 +2,9 @@
 
 function lerpColor(a: number[], b: number[], t: number): string {
   const clamped = Math.max(0, Math.min(1, t))
-  const r = Math.round(a[0] + (b[0] - a[0]) * clamped)
-  const g = Math.round(a[1] + (b[1] - a[1]) * clamped)
-  const bl = Math.round(a[2] + (b[2] - a[2]) * clamped)
+  const r = Math.round(a[0]! + (b[0]! - a[0]!) * clamped)
+  const g = Math.round(a[1]! + (b[1]! - a[1]!) * clamped)
+  const bl = Math.round(a[2]! + (b[2]! - a[2]!) * clamped)
   return `rgb(${r},${g},${bl})`
 }
 
@@ -41,7 +41,7 @@ export function EmbeddingHeatmap({ embedding, compareEmbedding, size = 160, labe
   const isDiff = compareEmbedding !== undefined && compareEmbedding.length === embedding.length
   const cellSize = size / GRID_SIZE
   const values = isDiff
-    ? embedding.map((v, i) => v - compareEmbedding[i])
+    ? embedding.map((v, i) => v - compareEmbedding[i]!)
     : embedding
 
   return (

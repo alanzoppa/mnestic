@@ -93,10 +93,10 @@ export default function TimelinePage() {
     ? chartData.slice(-24)
     : chartData.slice(-10);
 
-  const handleBarClick = (data: any) => {
-    if (data && data.activePayload) {
-      const period = data.activePayload[0].payload;
-      setSelectedBar(period);
+  const handleBarClick = (data: Record<string, unknown>) => {
+    const payload = data.activePayload as Array<{ payload: TimelinePeriod }> | undefined;
+    if (payload && payload.length > 0 && payload[0]) {
+      setSelectedBar(payload[0].payload);
     }
   };
 
