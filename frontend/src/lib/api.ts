@@ -138,6 +138,7 @@ export interface GraphNode {
   tags: string[];
   source: string;
   created?: string;
+  search_score?: number;
 }
 
 export interface GraphEdge {
@@ -158,6 +159,14 @@ export async function getGraph(tag?: string, folder?: string, threshold?: number
   if (threshold !== undefined) params.set("threshold", threshold.toString());
   const qs = params.toString();
   return fetchAPI(`/graph${qs ? `?${qs}` : ""}`);
+}
+
+export async function getSearchGraph(query: string, threshold?: number, n?: number): Promise<GraphData> {
+  const params = new URLSearchParams();
+  params.set("query", query);
+  if (threshold !== undefined) params.set("threshold", threshold.toString());
+  if (n !== undefined) params.set("n", n.toString());
+  return fetchAPI(`/search-graph?${params.toString()}`);
 }
 
 export interface UpdateNoteRequest {

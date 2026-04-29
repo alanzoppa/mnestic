@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Filter, ChevronRight } from 'lucide-react'
+import { Filter, ChevronRight, GitGraph } from 'lucide-react'
 import {
   tagKeys, tagsApi,
   schemaKeys, schemaApi,
@@ -361,6 +362,16 @@ export default function SearchPage() {
           </div>
 
           {/* Results List */}
+          <div className="flex items-center justify-between mb-2">
+            <SectionHeader title={`Results (${results.length})`} />
+            <Link
+              href={`/search-graph?q=${encodeURIComponent(query)}`}
+              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <GitGraph className="w-3.5 h-3.5" />
+              View as Graph
+            </Link>
+          </div>
           <div className="space-y-3">
             {results.map((result) => (
               <Card

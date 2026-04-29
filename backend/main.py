@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import frontmatter
-from cachetools import TTLCache
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -24,7 +24,7 @@ from rerank import Reranker
 from schema import discover_schema
 from ingest import make_note_id, make_doc_id, build_note_chunks
 from utils import normalize_and_dedup_results
-from graph_service import build_similarity_graph
+from graph_service import build_similarity_graph, build_similarity_graph_from_notes
 from models import (
     SearchRequest,
     UpdateNoteRequest,
@@ -99,11 +99,13 @@ if os.path.exists(images_dir):
     app.mount("/images", StaticFiles(directory=images_dir), name="images")
 
 
-_source_id_cache = TTLCache(maxsize=1000, ttl=300)
+_source_id_cache: dict[str, str] = {}
+_source_id_cache_populated = False
 
 
 def _build_source_id_cache() -> None:
-    if len(_source_id_cache) > 0:
+    global _source_id_cache_populated
+    if _source_id_cache_populated:
         return
     for f in os.listdir(NOTES_DIR):
         if not f.endswith(".md"):
@@ -116,6 +118,7 @@ def _build_source_id_cache() -> None:
         except Exception as e:
             logger.warning("Skipping unreadable note file %s: %s", f, e)
             continue
+    _source_id_cache_populated = True
 
 
 def _is_safe_filename(name: str) -> bool:
@@ -141,7 +144,9 @@ def find_note_file(source_id: str) -> Optional[str]:
 
 
 def _invalidate_source_id_cache() -> None:
+    global _source_id_cache_populated
     _source_id_cache.clear()
+    _source_id_cache_populated = False
 
 
 def _sanitize_filename(title: str) -> str:
@@ -484,6 +489,32 @@ async def ingest(body: IngestRequest) -> dict:
 @app.get("/api/graph", response_model=GraphResponse)
 async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_neighbors: int = 3, threshold: float = 0.75) -> dict:
     return build_similarity_graph(store, tag, folder, threshold)
+
+
+@app.get("/api/search-graph", response_model=GraphResponse)
+async def get_search_graph(query: str, threshold: float = 0.55, n: int = 50) -> dict:
+    global reranker
+    query_embedding = embed_query_sync(query) if query.strip() else None
+    if query_embedding is None:
+        return {"nodes": [], "edges": []}
+
+    n_candidates = min(n * 5, RERANK_MAX_CANDIDATES)
+    note_results = store.search_notes(query_embedding, n=n_candidates)
+
+    note_ids = []
+    scores = {}
+    seen = set()
+    for r in note_results:
+        meta = r.get("metadata", {})
+        nid = meta.get("note_id") or r["id"]
+        if nid in seen:
+            continue
+        seen.add(nid)
+        note_ids.append(nid)
+        distance = r.get("distance")
+        scores[nid] = 1 - (distance / 2) if distance is not None else 0.0
+
+    return build_similarity_graph_from_notes(store, note_ids[:n], threshold, scores)
 
 
 @app.get("/api/schema", response_model=SchemaResponse)

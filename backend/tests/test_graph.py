@@ -188,3 +188,85 @@ def test_graph_response_schema(app_client_with_store):
         assert "source" in edge
         assert "target" in edge
         assert "weight" in edge
+
+
+def test_search_graph_empty(app_client_with_store):
+    c, store = app_client_with_store
+    res = c.get("/api/search-graph?query=test")
+    assert res.status_code == 200
+    data = res.json()
+    assert data == {"nodes": [], "edges": []}
+
+
+def test_search_graph_with_results(app_client_with_store):
+    c, store = app_client_with_store
+    store.add_notes(
+        ids=["n1_chunk_0", "n2_chunk_0"],
+        documents=["Alpha", "Beta"],
+        embeddings=[DUMMY_EMBEDDING, [0.1] * 256],
+        metadatas=[
+            {"note_id": "n1", "title": "Alpha", "tags": "work", "chunk_index": 0},
+            {"note_id": "n2", "title": "Beta", "tags": "work", "chunk_index": 0},
+        ],
+    )
+    res = c.get("/api/search-graph?query=test&threshold=0.55&n=50")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["nodes"]) == 2
+    assert len(data["edges"]) == 1
+    res = c.get("/api/search-graph?query=test&threshold=0.55&n=50")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["nodes"]) == 2
+    assert len(data["edges"]) == 1
+
+
+def test_search_graph_scores_on_nodes(app_client_with_store):
+    c, store = app_client_with_store
+    store.add_notes(
+        ids=["n1_chunk_0", "n2_chunk_0"],
+        documents=["Work notes", "Personal stuff"],
+        embeddings=[DUMMY_EMBEDDING, [0.09 + 0.01 * i for i in range(256)]],
+        metadatas=[
+            {"note_id": "n1", "title": "Work", "tags": "work", "chunk_index": 0},
+            {"note_id": "n2", "title": "Personal", "tags": "personal", "chunk_index": 0},
+        ],
+    )
+    res = c.get("/api/search-graph?query=test&threshold=0.55")
+    assert res.status_code == 200
+    data = res.json()
+    if data["nodes"]:
+        for node in data["nodes"]:
+            assert "search_score" in node
+
+
+def test_search_graph_no_query(app_client_with_store):
+    c, store = app_client_with_store
+    res = c.get("/api/search-graph?query=   ")
+    assert res.status_code == 200
+    data = res.json()
+    assert data == {"nodes": [], "edges": []}
+
+
+def test_search_graph_reranker_integration(app_client_with_store):
+    c, store = app_client_with_store
+    store.add_notes(
+        ids=["n1_chunk_0", "n2_chunk_0"],
+        documents=["A", "B"],
+        embeddings=[DUMMY_EMBEDDING, [0.1 if i % 2 == 0 else 0.0 for i in range(256)]],
+        metadatas=[
+            {"note_id": "n1", "title": "A", "tags": "work", "chunk_index": 0},
+            {"note_id": "n2", "title": "B", "tags": "work", "chunk_index": 0},
+        ],
+    )
+    res = c.get("/api/search-graph?query=test&threshold=0.95")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["edges"]) == 0
+
+    res2 = c.get("/api/search-graph?query=test&threshold=0.5")
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert len(data2["nodes"]) == 2
+    assert len(data2["edges"]) == 1
+    assert data2["edges"][0]["weight"] >= 0.5

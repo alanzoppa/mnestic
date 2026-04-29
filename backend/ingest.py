@@ -64,9 +64,17 @@ def _normalize_tags_participants(fm: dict) -> tuple[list[str], list[str]]:
     tags = fm.get("tags", [])
     if isinstance(tags, str):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
+    elif isinstance(tags, list):
+        tags = [str(t).strip() for t in tags if str(t).strip()]
+    else:
+        tags = []
     participants = fm.get("participants", [])
     if isinstance(participants, str):
         participants = [p.strip() for p in participants.split(",") if p.strip()]
+    elif isinstance(participants, list):
+        participants = [str(p).strip() for p in participants if str(p).strip()]
+    else:
+        participants = []
     return tags, participants
 
 

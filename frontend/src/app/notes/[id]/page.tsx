@@ -37,7 +37,7 @@ interface ExtractedImage {
   original: string
 }
 
-function extractImages(content: string): { content: string; images: ExtractedImage[] } {
+export function extractImages(content: string): { content: string; images: ExtractedImage[] } {
   const images: ExtractedImage[] = []
   let cleanedContent = content
 
@@ -362,13 +362,19 @@ export default function NotePage() {
                 </>
               ) : (
                 <div className="markdown-body">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight]}
-                    components={MarkdownComponents}
-                  >
-                    {content || ''}
-                  </ReactMarkdown>
+                  {attachments.length > 0 && content.trim() === '' ? (
+                    <p className="text-zinc-400 italic">
+                      This note contains {attachments.length} attachment{attachments.length > 1 ? 's' : ''} with no additional text.
+                    </p>
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeHighlight]}
+                      components={MarkdownComponents}
+                    >
+                      {content || ''}
+                    </ReactMarkdown>
+                  )}
                 </div>
               )}
             </CardContent>

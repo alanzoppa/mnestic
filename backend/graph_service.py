@@ -8,13 +8,116 @@ from store import NoteStore
 from models import NoteMetadata
 
 
+def build_similarity_graph_from_notes(
+    store: NoteStore,
+    note_ids: list[str],
+    threshold: float = 0.75,
+    scores: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Build a similarity graph from a given set of note_ids.
+
+    Returns {'nodes': [...], 'edges': [...]} matching GraphResponse schema.
+    """
+    if not note_ids:
+        return {"nodes": [], "edges": []}
+
+    note_ids = note_ids[:1000]
+
+    all_meta = {}
+    seen_note_ids = set()
+    batch = store._notes.get(
+        where={"$and": [{"note_id": {"$in": note_ids}}, {"chunk_index": 0}]},
+        include=["metadatas", "embeddings"],
+    )
+    for i, mid in enumerate(batch.get("ids", [])):
+        meta = batch.get("metadatas", [])[i] if batch.get("metadatas") else {}
+        if not meta:
+            continue
+        nid = meta.get("note_id") or mid
+        if nid in seen_note_ids:
+            continue
+        seen_note_ids.add(nid)
+        all_meta[mid] = NoteMetadata(**meta).model_dump()
+
+    query_ids = list(all_meta.keys())
+    if not query_ids:
+        return {"nodes": [], "edges": []}
+
+    embeddings = batch.get("embeddings")
+    if embeddings is None or len(embeddings) == 0 or embeddings[0] is None:
+        return {"nodes": [], "edges": []}
+
+    embedding_map = {}
+    valid_ids = []
+    clean_embeddings = []
+    for i, mid in enumerate(batch.get("ids", [])):
+        if mid not in all_meta:
+            continue
+        emb = embeddings[i] if i < len(embeddings) else None
+        if emb is None:
+            continue
+        embedding_map[mid] = {"embedding": emb, "meta": all_meta[mid]}
+        valid_ids.append(mid)
+        clean_embeddings.append(emb)
+
+    if len(clean_embeddings) < 2:
+        return {"nodes": [], "edges": []}
+
+    sim_matrix = cosine_similarity(clean_embeddings)
+
+    id_to_note_id = {}
+    for mid in valid_ids:
+        meta = embedding_map[mid]["meta"]
+        id_to_note_id[mid] = meta.get("note_id") or mid
+
+    edge_set = set()
+    edges = []
+    for i in range(len(valid_ids)):
+        for j in range(i + 1, len(valid_ids)):
+            sim = float(sim_matrix[i][j])
+            if sim >= threshold:
+                src_nid = id_to_note_id.get(valid_ids[i], valid_ids[i])
+                tgt_nid = id_to_note_id.get(valid_ids[j], valid_ids[j])
+                if src_nid == tgt_nid:
+                    continue
+                pair = tuple(sorted([src_nid, tgt_nid]))
+                if pair not in edge_set:
+                    edge_set.add(pair)
+                    edges.append({"source": pair[0], "target": pair[1], "weight": round(sim, 3)})
+
+    connected = set()
+    for e in edges:
+        connected.add(e["source"])
+        connected.add(e["target"])
+
+    nodes = []
+    for mid in valid_ids:
+        meta = embedding_map[mid]["meta"]
+        nid = meta.get("note_id") or mid
+        if nid not in connected:
+            continue
+        node = {
+            "id": nid,
+            "title": meta.get("title", ""),
+            "folder": meta.get("folder", ""),
+            "tags": meta.get("tags", []) if isinstance(meta.get("tags"), list) else [],
+            "source": meta.get("source", ""),
+            "created": meta.get("created", ""),
+        }
+        if scores and nid in scores:
+            node["search_score"] = scores[nid]
+        nodes.append(node)
+
+    return {"nodes": nodes, "edges": edges}
+
+
 def build_similarity_graph(
     store: NoteStore,
     tag: str | None = None,
     folder: str | None = None,
     threshold: float = 0.75,
 ) -> dict[str, Any]:
-    """Build a similarity graph from note embeddings.
+    """Build a similarity graph from note embeddings filtered by tag/folder.
 
     Returns {'nodes': [...], 'edges': [...]} matching GraphResponse schema.
     """

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
-import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap } from 'lucide-react';
+import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutGrid },
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/timeline', label: 'Timeline', icon: BarChart3 },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/graph', label: 'Graph', icon: Zap },
+  { href: '/search-graph', label: 'Search Graph', icon: GitGraph },
 ];
 
 export default function Nav() {

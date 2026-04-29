@@ -165,6 +165,7 @@ class GraphNode(BaseModel):
     tags: list[str] = []
     source: str = ""
     created: str = ""
+    search_score: float = 0.0
 
 
 class GraphEdge(BaseModel):

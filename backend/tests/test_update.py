@@ -59,7 +59,7 @@ def app_client_with_files(tmp_path):
         from main import app
         import main
         main.store = mock_store
-        main._source_id_cache.clear()
+        main._invalidate_source_id_cache()
         client = TestClient(app)
         yield client, mock_store, notes_dir_str
 

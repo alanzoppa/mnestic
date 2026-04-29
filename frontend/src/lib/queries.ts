@@ -4,6 +4,7 @@ import {
   getTags,
   getTimeline,
   getGraph,
+  getSearchGraph,
   getStats,
   getSchema,
   getCalendarEvents,
@@ -42,6 +43,10 @@ export const timelineKeys = {
 
 export const graphKeys = {
   all: (tag?: string, threshold?: number) => ['graph', tag ?? '', threshold ?? ''] as const,
+};
+
+export const searchGraphKeys = {
+  all: (query: string, threshold?: number, n?: number) => ['search-graph', query, threshold ?? '', n ?? ''] as const,
 };
 
 export const statsKeys = {
@@ -91,6 +96,11 @@ export const graphApi = {
     const res = await getTags();
     return res.tags;
   },
+};
+
+export const searchGraphApi = {
+  get: async (query: string, threshold?: number, n?: number): Promise<GraphData> =>
+    getSearchGraph(query, threshold, n),
 };
 
 export const statsApi = {
