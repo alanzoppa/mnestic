@@ -6,48 +6,71 @@ import * as THREE from 'three'
 import { format, parseISO, isValid } from 'date-fns'
 import { type GraphNode } from '@/lib/api'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
+import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { TagAutocomplete } from '@/components/TagAutocomplete'
 import ForceGraph3DView from '@/components/ForceGraph3DView'
 import Link from 'next/link'
 
-const COLOR_PALETTE = [
-  '#3b82f6', '#f97316', '#10b981', '#ec4899',
-  '#8b5cf6', '#f59e0b', '#06b6d4', '#ef4444',
-  '#84cc16', '#d946ef', '#14b8a6', '#f43f5e',
+const GOLDEN_ANGLE = 137.508
+
+function getPrimaryTag(tags: string[]): string | undefined {
+  return tags.find(t => !STRUCTURAL_TAGS.includes(t))
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+  }
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0')
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
+}
+
+type MaterialProfile = { roughness: number; metalness: number }
+const MATERIAL_PROFILES: MaterialProfile[] = [
+  { roughness: 0.15, metalness: 0.7 },
+  { roughness: 0.6, metalness: 0.1 },
+  { roughness: 0.3, metalness: 0.4 },
+  { roughness: 0.8, metalness: 0.05 },
 ]
 
-function hashString(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i)
-    hash |= 0
-  }
-  return Math.abs(hash)
-}
-
-function assignTagColors(tags: string[]): Record<string, string> {
+function assignTagStyles(tags: string[]): Record<string, { color: string; roughness: number; metalness: number }> {
   const sorted = [...new Set(tags)].sort()
-  const colors: Record<string, string> = {}
+  const styles: Record<string, { color: string; roughness: number; metalness: number }> = {}
   sorted.forEach((tag, index) => {
-    const paletteIndex = (index + hashString(tag)) % COLOR_PALETTE.length
-    colors[tag] = COLOR_PALETTE[paletteIndex]
+    const hue = (index * GOLDEN_ANGLE) % 360
+    styles[tag] = {
+      color: hslToHex(hue, 0.72, 0.58),
+      ...MATERIAL_PROFILES[index % MATERIAL_PROFILES.length],
+    }
   })
-  return colors
+  return styles
 }
 
-function getNodeColor(node: GraphNode, tagColors: Record<string, string>): string {
-  const primaryTag = node.tags?.[0]
-  return primaryTag ? tagColors[primaryTag] || '#6b7280' : '#6b7280'
+function getNodeColor(node: GraphNode, tagStyles: Record<string, { color: string; roughness: number; metalness: number }>): string {
+  const primaryTag = getPrimaryTag(node.tags ?? [])
+  return primaryTag ? tagStyles[primaryTag]?.color || '#6b7280' : '#6b7280'
 }
 
-function createNodeObject(node: GraphNode, tagColors: Record<string, string>): THREE.Object3D {
-  const color = getNodeColor(node, tagColors)
-  const geometry = new THREE.SphereGeometry(4.2, 24, 24)
+function getNodeMaterialProfile(node: GraphNode, tagStyles: Record<string, { color: string; roughness: number; metalness: number }>): { roughness: number; metalness: number } {
+  const primaryTag = getPrimaryTag(node.tags ?? [])
+  return primaryTag && tagStyles[primaryTag]
+    ? { roughness: tagStyles[primaryTag].roughness, metalness: tagStyles[primaryTag].metalness }
+    : { roughness: 0.4, metalness: 0.2 }
+}
+
+function createNodeObject(node: GraphNode, tagStyles: Record<string, { color: string; roughness: number; metalness: number }>, degreeMap: Record<string, number>): THREE.Object3D {
+  const color = getNodeColor(node, tagStyles)
+  const { roughness, metalness } = getNodeMaterialProfile(node, tagStyles)
+  const degree = degreeMap[node.id] || 0
+  const radius = 2 + Math.min(degree, 20) * 0.35
+  const geometry = new THREE.SphereGeometry(radius, 24, 24)
   const material = new THREE.MeshStandardMaterial({
     color,
     emissive: new THREE.Color(0x000000),
-    roughness: 0.4,
-    metalness: 0.2,
+    roughness,
+    metalness,
     transparent: true,
     opacity: 0.85,
   })
@@ -75,10 +98,20 @@ export default function GraphPage() {
     return { nodes: data.nodes, links: data.edges.map(e => ({ ...e })) }
   }, [data])
 
-  const tagColors = useMemo(() => {
+  const tagStyles = useMemo(() => {
     if (!data) return {}
-    const primaryTags = data.nodes.map(n => n.tags?.[0]).filter(Boolean) as string[]
-    return assignTagColors(primaryTags)
+    const primaryTags = data.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter(Boolean) as string[]
+    return assignTagStyles(primaryTags)
+  }, [data])
+
+  const degreeMap = useMemo(() => {
+    if (!data) return {}
+    const counts: Record<string, number> = {}
+    for (const edge of data.edges) {
+      counts[edge.source] = (counts[edge.source] || 0) + 1
+      counts[edge.target] = (counts[edge.target] || 0) + 1
+    }
+    return counts
   }, [data])
 
   const handleNodeClick = useCallback((node: any) => {
@@ -107,7 +140,7 @@ export default function GraphPage() {
 
     const targetIntensity = isSelected ? SELECTED_INTENSITY : 0
     const targetOpacity = isSelected || !hasSelection ? NORMAL_OPACITY : DIMMED_OPACITY
-    const targetEmissive = isSelected ? new THREE.Color(getNodeColor(node as GraphNode, tagColors)) : new THREE.Color(0x000000)
+    const targetEmissive = isSelected ? new THREE.Color(getNodeColor(node as GraphNode, tagStyles)) : new THREE.Color(0x000000)
 
     if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.01) {
       material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
@@ -122,7 +155,7 @@ export default function GraphPage() {
     }
 
     material.emissive.lerp(targetEmissive, 0.1)
-  }, [tagColors])
+  }, [tagStyles])
 
   const headerSlot = (
     <div className="p-4 border-b border-zinc-800 flex items-center gap-4 flex-wrap">
@@ -189,9 +222,9 @@ export default function GraphPage() {
   const legendSlot = (
     <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20 max-h-56 overflow-y-auto" data-testid="graph-legend">
       <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
-      {Object.entries(tagColors).map(([tag, color]) => (
+      {Object.entries(tagStyles).map(([tag, style]) => (
         <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
-          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
           {tag}
         </div>
       ))}
@@ -200,9 +233,16 @@ export default function GraphPage() {
         Other
       </div>
       {data && (
-        <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500" data-testid="graph-stats">
-          {data.nodes.length} nodes · {data.edges.length} edges
-        </div>
+        <>
+          <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500" data-testid="graph-stats">
+            {data.nodes.length} nodes · {data.edges.length} edges
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">
+            <span className="inline-block w-2 h-2 rounded-full bg-zinc-400 mr-1 align-middle" />few
+            <span className="inline-block w-3 h-3 rounded-full bg-zinc-300 mx-1 align-middle" />more
+            <span className="inline-block w-4 h-4 rounded-full bg-zinc-200 mx-1 align-middle" />many connections
+          </div>
+        </>
       )}
     </div>
   )
@@ -215,7 +255,7 @@ export default function GraphPage() {
       headerSlot={headerSlot}
       detailPaneSlot={detailPaneSlot}
       legendSlot={legendSlot}
-      nodeObjectFn={(node: any) => createNodeObject(node as GraphNode, tagColors)}
+      nodeObjectFn={(node: any) => createNodeObject(node as GraphNode, tagStyles, degreeMap)}
       nodePositionUpdateFn={nodePositionUpdate}
       onNodeClick={handleNodeClick}
     />

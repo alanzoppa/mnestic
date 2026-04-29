@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import logging
 import hashlib
 import frontmatter
 from datetime import datetime
@@ -14,6 +15,8 @@ from embed import embed_texts_sync, BATCH_SIZE
 from models import CalendarEvent
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
+
+logger = logging.getLogger("ingest")
 
 
 def _state_lock(state_file: Path) -> Path:
@@ -200,6 +203,12 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     chunks_created = 0
     errors = []
 
+    logger.info("Found %d .md files in %s", len(all_files), notes_dir)
+    if force:
+        logger.info("Force mode: re-ingesting all notes")
+    else:
+        logger.info("Incremental mode: skipping unchanged files")
+
     all_chunks = []
     all_metadata = []
     all_ids = []
@@ -237,6 +246,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
             ids_to_delete.append(note_id)
             chunks_created += len(chunks)
             notes_ingested += 1
+            logger.debug("Ingested %s (%d chunks, tags=%s)", md_file.name, len(chunks), tags)
 
             ingest_state.setdefault("files", {})[note_id] = {
                 "mtime": current_mtime,
@@ -252,6 +262,9 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         except Exception:
             pass
 
+    logger.info("Deleted old chunks for %d notes", len(ids_to_delete))
+    logger.info("Embedding %d chunks in batches of %d...", len(all_chunks), BATCH_SIZE)
+
     for i in range(0, len(all_chunks), BATCH_SIZE):
         batch_texts = all_chunks[i:i + BATCH_SIZE]
         batch_ids = all_ids[i:i + BATCH_SIZE]
@@ -261,14 +274,19 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
             embeddings = embed_texts_sync(batch_texts)
             if embeddings:
                 store.add_notes(batch_ids, batch_texts, embeddings, batch_metadata)
+                logger.debug("Batch %d: embedded and stored %d chunks", i // BATCH_SIZE, len(batch_ids))
         except Exception as e:
             errors.append(f"Embedding batch {i}: {str(e)}")
+            logger.warning("Embedding batch %d failed: %s", i // BATCH_SIZE, e)
 
     ingest_state["last_ingest"] = datetime.utcnow().isoformat() + "Z"
     try:
         _write_state(state_file, ingest_state)
     except IOError as e:
         errors.append(f"State file error: {str(e)}")
+
+    logger.info("Ingest complete: %d ingested, %d skipped, %d chunks, %d errors",
+                notes_ingested, notes_skipped, chunks_created, len(errors))
 
     return {
         "notes_ingested": notes_ingested,
@@ -289,6 +307,8 @@ def ingest_calendar(
     events = cal.process_events()
     errors = []
     events_ingested = 0
+
+    logger.info("Processing %d calendar events", len(events))
 
     all_texts = []
     all_ids = []
@@ -326,8 +346,12 @@ def ingest_calendar(
             if embeddings:
                 store.add_calendar_events(batch_ids, batch_texts, embeddings, batch_metadata)
                 events_ingested += len(batch_ids)
+                logger.debug("Calendar batch %d: embedded %d events", i // BATCH_SIZE, len(batch_ids))
         except Exception as e:
             errors.append(f"Calendar batch {i}: {str(e)}")
+            logger.warning("Calendar batch %d failed: %s", i // BATCH_SIZE, e)
+
+    logger.info("Calendar ingest complete: %d events, %d errors", events_ingested, len(errors))
 
     return {
         "events_ingested": events_ingested,
@@ -348,7 +372,16 @@ def ingest(
     ),
     force: bool = typer.Option(False, "--force", help="Force re-ingest all notes"),
     calendar_only: bool = typer.Option(False, "--calendar-only", help="Only ingest calendar events"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
 ):
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    if verbose:
+        logging.getLogger("ingest").setLevel(logging.DEBUG)
+
     store = NoteStore()
 
     if calendar_only:
