@@ -238,7 +238,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 created_val = fm.get("created", "")
                 created_str = created_val.isoformat() if hasattr(created_val, "isoformat") else (str(created_val) if created_val else "")
                 calendar_context = get_calendar_context(participants, created_str, calendar_events)
-                series = series_assignments.get(note_id) or ""
+                series = fm.get("series", "") or series_assignments.get(note_id) or ""
 
                 chunks, metadatas, ids = build_note_chunks(
                     note_id, fm, body, md_file.name, calendar_context=calendar_context, series=series
