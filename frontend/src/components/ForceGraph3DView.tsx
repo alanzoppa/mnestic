@@ -101,7 +101,7 @@ export default function ForceGraph3DView({
       fgRef.current.cameraPosition(
         { x: node.x + dist * 0.6, y: node.y + dist * 0.6, z: (node.z ?? 0) + dist },
         { x: node.x, y: node.y, z: node.z ?? 0 },
-        800,
+        2000,
       )
     }
     onNodeClick?.(node)

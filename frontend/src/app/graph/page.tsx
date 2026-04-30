@@ -65,7 +65,7 @@ function createNodeObject(node: GraphNode, tagStyles: Record<string, { color: st
   const color = getNodeColor(node, tagStyles)
   const { roughness, metalness } = getNodeMaterialProfile(node, tagStyles)
   const degree = degreeMap[node.id] || 0
-  const radius = 2 + Math.min(degree, 20) * 0.35
+  const radius = Math.max(4, 2 + Math.min(degree, 20) * 0.35)
   const geometry = new THREE.SphereGeometry(radius, 24, 24)
   const material = new THREE.MeshStandardMaterial({
     color,
@@ -258,6 +258,7 @@ export default function GraphPage() {
       legendSlot={legendSlot}
       nodeObjectFn={(node) => createNodeObject(node, tagStyles, degreeMap)}
       nodePositionUpdateFn={nodePositionUpdate}
+      nodeLabelFn={(node) => node.title}
       onNodeClick={handleNodeClick}
     />
   )
