@@ -253,6 +253,26 @@ def test_get_notes_by_tag_no_documents(tmp_store):
     assert result[0].document == ""
 
 
+def test_get_notes_by_tag_deduplicates_by_note_id(tmp_store):
+    """A note with multiple chunks sharing a tag must appear only once."""
+    embedding = [0.1] * 256
+    tmp_store.add_notes(
+        ids=["n1_chunk_0", "n1_chunk_1", "n1_chunk_2", "n2_chunk_0"],
+        documents=["d1a", "d1b", "d1c", "d2"],
+        embeddings=[embedding, [0.3] * 256, [0.5] * 256, [0.7] * 256],
+        metadatas=[
+            {"note_id": "n1", "tags": "meeting,work"},
+            {"note_id": "n1", "tags": "meeting,work"},
+            {"note_id": "n1", "tags": "meeting,work"},
+            {"note_id": "n2", "tags": "meeting"},
+        ],
+    )
+    result = tmp_store.get_notes_by_tag("meeting")
+    assert len(result) == 2
+    note_ids = {r.metadata.note_id for r in result}
+    assert note_ids == {"n1", "n2"}
+
+
 def test_get_notes_by_tag_with_where(tmp_store):
     """get_notes_by_tag passes where clauses through to ChromaDB."""
     embedding = [0.1] * 256
