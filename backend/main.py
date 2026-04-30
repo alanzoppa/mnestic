@@ -214,6 +214,7 @@ async def search(body: SearchRequest) -> dict:
                     note_results = note_results[:body.n]
         else:
             note_results = store.list_notes(where=where, n=body.n)
+            note_results.sort(key=lambda r: r.metadata.created or "", reverse=True)
     else:
         note_results = store.get_notes_by_tag(tag_filter, n=body.n, where=where)
 
