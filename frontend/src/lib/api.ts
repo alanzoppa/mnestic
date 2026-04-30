@@ -230,9 +230,33 @@ export interface UpdateNoteResponse {
   content: string;
 }
 
+export interface CreateNoteRequest {
+  title: string;
+  content?: string;
+  folder?: string;
+  tags?: string[];
+  participants?: string[];
+  source?: string;
+  series?: string | null;
+}
+
+export interface CreateNoteResponse {
+  id: string;
+  metadata: NoteMetadata;
+  content?: string;
+}
+
 export async function updateNote(noteId: string, data: UpdateNoteRequest): Promise<UpdateNoteResponse> {
   return fetchAPI(`/notes/${encodeURIComponent(noteId)}`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function createNote(data: CreateNoteRequest): Promise<CreateNoteResponse> {
+  return fetchAPI("/notes", {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });

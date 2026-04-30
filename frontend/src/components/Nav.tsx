@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
-import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph } from 'lucide-react';
+import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph, Plus } from 'lucide-react';
 
 const navItems = [
+  { href: '/create', label: 'New Note', icon: Plus, activeClass: 'bg-gradient-to-r from-emerald-600/20 to-emerald-500/10 text-emerald-400 border border-emerald-500/30' },
   { href: '/', label: 'Dashboard', icon: LayoutGrid },
   { href: '/search', label: 'Search', icon: Search },
   { href: '/browse', label: 'Browse', icon: BookOpen },
@@ -44,6 +45,7 @@ export default function Nav() {
               href={item.href}
               icon={<item.icon className="w-5 h-5" strokeWidth={2} />}
               active={isActive}
+              activeClass={item.activeClass}
             >
               {item.label}
             </NavLink>
@@ -69,21 +71,21 @@ interface NavLinkProps {
   children: ReactNode;
   icon: ReactNode;
   active?: boolean;
+  activeClass?: string;
 }
 
-function NavLink({ href, children, icon, active }: NavLinkProps) {
+function NavLink({ href, children, icon, active, activeClass }: NavLinkProps) {
+  const activeClasses = activeClass ?? 'bg-gradient-to-r from-blue-600/20 to-blue-500/10 text-blue-400 border border-blue-500/30';
+  const iconActiveColor = activeClass ? 'text-emerald-400' : 'text-blue-400';
   return (
     <Link
       href={href}
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-        ${active
-          ? 'bg-gradient-to-r from-blue-600/20 to-blue-500/10 text-blue-400 border border-blue-500/30'
-          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-        }
+        ${active ? activeClasses : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}
       `}
     >
-      <span className={active ? 'text-blue-400' : 'text-zinc-500'}>{icon}</span>
+      <span className={active ? iconActiveColor : 'text-zinc-500'}>{icon}</span>
       {children}
     </Link>
   );

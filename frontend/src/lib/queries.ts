@@ -11,6 +11,7 @@ import {
   getCalendarDate,
   getPeople,
   updateNote,
+  createNote,
   triggerIngest,
   type SearchResult,
   type TagInfo,
@@ -24,7 +25,10 @@ import {
   type SchemaResponse,
   type IngestResponse,
   type UpdateNoteRequest,
+  type CreateNoteRequest,
+  type CreateNoteResponse,
 } from './api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { asArray } from './constants';
 
 // ============================================================================
@@ -143,6 +147,12 @@ export const notesMutations = {
   },
 };
 
+export const createNoteMutations = {
+  create: async (data: CreateNoteRequest) => {
+    return createNote(data);
+  },
+};
+
 export const ingestApi = {
   trigger: async (full?: boolean): Promise<IngestResponse> => triggerIngest(full),
 };
@@ -174,3 +184,19 @@ export const searchApi = {
     return res.results.filter((r) => r.type === 'note');
   },
 };
+
+// ============================================================================
+// Mutation Hooks
+// ============================================================================
+
+export function useCreateNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createNoteMutations.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: noteKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.invalidateQueries({ queryKey: statsKeys.all });
+    },
+  });
+}

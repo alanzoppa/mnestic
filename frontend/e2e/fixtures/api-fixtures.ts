@@ -362,6 +362,7 @@ export const mockCalendarDate = {
 export const mockSchema = {
   total_files: 1641,
   sources: ["Apple Notes", "Evernote"],
+  folders: ["Notes", "Work", "1:1 Notes", "Personal"],
   fields: [
     { name: "title", type: "str", cardinality: "high", samples: [], classification: "embedded" },
     { name: "folder", type: "str", cardinality: "low", samples: ["Notes", "Work", "1:1 Notes"], classification: "categorical" },
@@ -457,12 +458,15 @@ export const mockCreatedNote = {
   metadata: {
     title: "Newly Created Note",
     folder: "Notes",
-    created: "2026-04-30T12:00:00Z",
-    modified: "2026-04-30T12:00:00Z",
+    tags: [],
+    participants: [],
+    created: "2025-04-30T12:00:00Z",
+    modified: "2025-04-30T12:00:00Z",
     source: "Manual",
     source_id: "manual_abc123",
-    tags: ["test"],
-    participants: [],
+    date: "2025-04-30",
+    filename: "Newly Created Note.md",
+    chunk_index: 0,
     series: null,
   },
   content: "Hello world, this is a new note.",

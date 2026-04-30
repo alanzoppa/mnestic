@@ -394,6 +394,18 @@ class NoteStore:
         ]
         return tag_list, co_occur_list
 
+    def get_folders(self) -> list[str]:
+        """Get all unique folder names, sorted alphabetically."""
+        all_notes = self._notes.get(include=["metadatas"])
+        folders: set[str] = set()
+        for meta in all_notes.get("metadatas", []):
+            if not meta:
+                continue
+            folder_val = meta.get("folder", "")
+            if folder_val:
+                folders.add(folder_val)
+        return sorted(folders)
+
     def get_timeline(self, group_by: str = "month", tag: str | None = None) -> list[TimelinePeriod]:
         unique = self.get_unique_notes(include=["metadatas"])
         all_note_ids = unique["ids"]
