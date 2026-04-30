@@ -182,10 +182,6 @@ async def search(body: SearchRequest) -> dict:
         where_clauses.append({"source": {"$eq": filters.source}})
     if filters.folder:
         where_clauses.append({"folder": {"$eq": filters.folder}})
-    if filters.date_gte:
-        where_clauses.append({"created": {"$gte": filters.date_gte}})
-    if filters.date_lte:
-        where_clauses.append({"created": {"$lte": filters.date_lte}})
 
     where = None
     if len(where_clauses) == 1:
@@ -213,8 +209,13 @@ async def search(body: SearchRequest) -> dict:
                 if not should_rerank:
                     note_results = note_results[:body.n]
         else:
-            note_results = store.list_notes(where=where, n=body.n)
+            note_results = store.list_notes(where=where, n=0)
             note_results.sort(key=lambda r: r.metadata.created or "", reverse=True)
+            if filters.date_gte:
+                note_results = [r for r in note_results if r.metadata.created and r.metadata.created >= filters.date_gte]
+            if filters.date_lte:
+                note_results = [r for r in note_results if not r.metadata.created or r.metadata.created <= filters.date_lte]
+            note_results = note_results[:body.n]
     else:
         note_results = store.get_notes_by_tag(tag_filter, n=body.n, where=where)
 

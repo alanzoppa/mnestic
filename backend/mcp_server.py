@@ -78,18 +78,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         if not query.strip():
             return {"notes": []}
         embedding = embed_query_sync(query)
-        where_clauses: list[dict] = []
-        if date_gte:
-            where_clauses.append({"created": {"$gte": date_gte}})
-        if date_lte:
-            where_clauses.append({"created": {"$lte": date_lte}})
-        where = None
-        if len(where_clauses) == 1:
-            where = where_clauses[0]
-        elif len(where_clauses) > 1:
-            where = {"$and": where_clauses}
-
-        raw = store.search_notes(embedding, n=limit * 5, where=where)
+        raw = store.search_notes(embedding, n=limit * 5)
 
         if tag:
             tag_set = {t.strip().lower() for t in tag.split(",") if t.strip()}
@@ -98,6 +87,11 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         if participant:
             p_lower = participant.strip().lower()
             raw = [r for r in raw if any(p_lower in part.lower() for part in r.metadata.participants)]
+
+        if date_gte:
+            raw = [r for r in raw if r.metadata.created and r.metadata.created >= date_gte]
+        if date_lte:
+            raw = [r for r in raw if not r.metadata.created or r.metadata.created <= date_lte]
 
         deduped = normalize_and_dedup_results(raw)
         notes = []
