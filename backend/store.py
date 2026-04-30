@@ -81,11 +81,17 @@ class NoteStore:
         tag_set = {t.strip().lower() for t in tag_str.split(",") if t.strip()}
         all_notes = self._notes.get(where=where, include=["metadatas"])
         results: list[NoteResult] = []
+        seen_note_ids: set[str] = set()
         for i, meta in enumerate(all_notes.get("metadatas", [])):
             if not meta:
                 continue
+            nid = meta.get("note_id", "")
+            if nid and nid in seen_note_ids:
+                continue
             note_tags = {t.strip().lower() for t in meta.get("tags", "").split(",") if t.strip()}
             if tag_set & note_tags:
+                if nid:
+                    seen_note_ids.add(nid)
                 results.append(NoteResult(
                     id=all_notes["ids"][i],
                     metadata=NoteMetadata(**meta),
