@@ -28,6 +28,8 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
 }
 
+type TagStyle = { color: string; roughness: number; metalness: number; shape: string }
+
 type MaterialProfile = { roughness: number; metalness: number }
 const MATERIAL_PROFILES: MaterialProfile[] = [
   { roughness: 0.15, metalness: 0.7 },
@@ -36,44 +38,79 @@ const MATERIAL_PROFILES: MaterialProfile[] = [
   { roughness: 0.8, metalness: 0.05 },
 ]
 
-function assignTagStyles(tags: string[]): Record<string, { color: string; roughness: number; metalness: number }> {
+const SHAPES = ['sphere', 'box', 'octahedron', 'dodecahedron', 'icosahedron', 'torus', 'cone', 'tetrahedron'] as const
+
+function assignTagStyles(tags: string[]): Record<string, TagStyle> {
   const sorted = [...new Set(tags)].sort()
-  const styles: Record<string, { color: string; roughness: number; metalness: number }> = {}
+  const styles: Record<string, TagStyle> = {}
   sorted.forEach((tag, index) => {
     const hue = (index * GOLDEN_ANGLE) % 360
     styles[tag] = {
       color: hslToHex(hue, 0.72, 0.58),
       ...MATERIAL_PROFILES[index % MATERIAL_PROFILES.length]!,
+      shape: SHAPES[index % SHAPES.length]!,
     }
   })
   return styles
 }
 
-function getNodeColor(node: GraphNode, tagStyles: Record<string, { color: string; roughness: number; metalness: number }>): string {
-  const primaryTag = getPrimaryTag(node.tags ?? [])
-  return primaryTag ? tagStyles[primaryTag]?.color || '#6b7280' : '#6b7280'
+function makeGeometry(shape: string, radius: number): THREE.BufferGeometry {
+  switch (shape) {
+    case 'box': return new THREE.BoxGeometry(radius * 1.6, radius * 1.6, radius * 1.6)
+    case 'octahedron': return new THREE.OctahedronGeometry(radius)
+    case 'dodecahedron': return new THREE.DodecahedronGeometry(radius)
+    case 'icosahedron': return new THREE.IcosahedronGeometry(radius)
+    case 'torus': return new THREE.TorusGeometry(radius * 0.7, radius * 0.3, 16, 32)
+    case 'cone': return new THREE.ConeGeometry(radius * 0.8, radius * 1.8, 16)
+    case 'tetrahedron': return new THREE.TetrahedronGeometry(radius)
+    default: return new THREE.SphereGeometry(radius, 24, 24)
+  }
 }
 
-function getNodeMaterialProfile(node: GraphNode, tagStyles: Record<string, { color: string; roughness: number; metalness: number }>): { roughness: number; metalness: number } {
+function ShapeIndicator({ shape, color }: { shape: string; color: string }) {
+  const size = 14
+  const half = size / 2
+  const svgProps = { width: size, height: size, viewBox: `${-half} ${-half} ${size} ${size}` }
+  const fill = color
+
+  switch (shape) {
+    case 'box':
+      return <svg {...svgProps}><rect x={-4} y={-4} width={8} height={8} fill={fill} /></svg>
+    case 'octahedron':
+      return <svg {...svgProps}><polygon points="0,-6 5,0 0,6 -5,0" fill={fill} /></svg>
+    case 'dodecahedron':
+      return <svg {...svgProps}><polygon points="0,-6 5.7,-1.85 3.53,4.85 -3.53,4.85 -5.7,-1.85" fill={fill} /></svg>
+    case 'icosahedron':
+      return <svg {...svgProps}><polygon points="0,-6 5.71,-1.85 3.53,4.85 -3.53,4.85 -5.71,-1.85" fill={fill} stroke={fill} strokeWidth={1.5} /><line x1={0} y1={-6} x2={3.53} y2={4.85} stroke="rgba(0,0,0,0.25)" strokeWidth={0.75} /><line x1={-5.71} y1={-1.85} x2={5.71} y2={-1.85} stroke="rgba(0,0,0,0.25)" strokeWidth={0.75} /></svg>
+    case 'torus':
+      return <svg {...svgProps}><ellipse cx={0} cy={0} rx={5} ry={3} fill="none" stroke={fill} strokeWidth={2.5} /></svg>
+    case 'cone':
+      return <svg {...svgProps}><polygon points="0,-6 5,5 -5,5" fill={fill} /></svg>
+    case 'tetrahedron':
+      return <svg {...svgProps}><polygon points="0,-6 5.5,4 -5.5,4" fill={fill} /></svg>
+    default:
+      return <svg {...svgProps}><circle cx={0} cy={0} r={5} fill={fill} /></svg>
+  }
+}
+
+function getNodeStyle(node: GraphNode, tagStyles: Record<string, TagStyle>): TagStyle {
   const primaryTag = getPrimaryTag(node.tags ?? [])
   return primaryTag && tagStyles[primaryTag]
-    ? { roughness: tagStyles[primaryTag].roughness, metalness: tagStyles[primaryTag].metalness }
-    : { roughness: 0.4, metalness: 0.2 }
+    ? tagStyles[primaryTag]
+    : { color: '#6b7280', roughness: 0.4, metalness: 0.2, shape: 'sphere' }
 }
 
-function createNodeObject(node: GraphNode, tagStyles: Record<string, { color: string; roughness: number; metalness: number }>, degreeMap: Record<string, number>): THREE.Object3D {
-  const color = getNodeColor(node, tagStyles)
-  const { roughness, metalness } = getNodeMaterialProfile(node, tagStyles)
-  const degree = degreeMap[node.id] || 0
-  const radius = Math.max(4, 2 + Math.min(degree, 20) * 0.35)
-  const geometry = new THREE.SphereGeometry(radius, 24, 24)
+function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>): THREE.Object3D {
+  const { color, roughness, metalness, shape } = getNodeStyle(node, tagStyles)
+  const radius = 8
+  const geometry = makeGeometry(shape, radius)
   const material = new THREE.MeshStandardMaterial({
     color,
     emissive: new THREE.Color(0x000000),
     roughness,
     metalness,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.9,
   })
   return new THREE.Mesh(geometry, material)
 }
@@ -105,16 +142,6 @@ export default function GraphPage() {
     return assignTagStyles(primaryTags)
   }, [data])
 
-  const degreeMap = useMemo(() => {
-    if (!data) return {}
-    const counts: Record<string, number> = {}
-    for (const edge of data.edges) {
-      counts[edge.source] = (counts[edge.source] || 0) + 1
-      counts[edge.target] = (counts[edge.target] || 0) + 1
-    }
-    return counts
-  }, [data])
-
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
     selectedNodeIdRef.current = node.id
@@ -132,27 +159,17 @@ export default function GraphPage() {
     const material = mesh.material as THREE.MeshStandardMaterial
     if (!material) return
 
-    const NORMAL_OPACITY = 0.85
-    const DIMMED_OPACITY = 0.5
     const SELECTED_INTENSITY = 0.8
 
     const isSelected = selectedNodeIdRef.current === node.id
-    const hasSelection = !!selectedNodeIdRef.current
 
     const targetIntensity = isSelected ? SELECTED_INTENSITY : 0
-    const targetOpacity = isSelected || !hasSelection ? NORMAL_OPACITY : DIMMED_OPACITY
-    const targetEmissive = isSelected ? new THREE.Color(getNodeColor(node, tagStyles)) : new THREE.Color(0x000000)
+    const targetEmissive = isSelected ? new THREE.Color(getNodeStyle(node, tagStyles).color) : new THREE.Color(0x000000)
 
     if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.01) {
       material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
     } else {
       material.emissiveIntensity = targetIntensity
-    }
-
-    if (Math.abs(material.opacity - targetOpacity) > 0.01) {
-      material.opacity += (targetOpacity - material.opacity) * 0.1
-    } else {
-      material.opacity = targetOpacity
     }
 
     material.emissive.lerp(targetEmissive, 0.1)
@@ -224,24 +241,19 @@ export default function GraphPage() {
     <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20 max-h-56 overflow-y-auto" data-testid="graph-legend">
       <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
       {Object.entries(tagStyles).map(([tag, style]) => (
-        <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
-          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
+        <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1 cursor-pointer hover:text-zinc-200 transition-colors" onClick={() => { setSelectedTag(tag); setViewingNode(null) }}>
+          <ShapeIndicator shape={style.shape} color={style.color} />
           {tag}
         </div>
       ))}
       <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-        <div className="w-3 h-3 rounded-full bg-zinc-500 shrink-0" />
+        <ShapeIndicator shape="sphere" color="#6b7280" />
         Other
       </div>
       {data && (
         <>
           <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500" data-testid="graph-stats">
             {data.nodes.length} nodes · {data.edges.length} edges
-          </div>
-          <div className="mt-1 text-xs text-zinc-500">
-            <span className="inline-block w-2 h-2 rounded-full bg-zinc-400 mr-1 align-middle" />few
-            <span className="inline-block w-3 h-3 rounded-full bg-zinc-300 mx-1 align-middle" />more
-            <span className="inline-block w-4 h-4 rounded-full bg-zinc-200 mx-1 align-middle" />many connections
           </div>
         </>
       )}
@@ -256,7 +268,7 @@ export default function GraphPage() {
       headerSlot={headerSlot}
       detailPaneSlot={detailPaneSlot}
       legendSlot={legendSlot}
-      nodeObjectFn={(node) => createNodeObject(node, tagStyles, degreeMap)}
+      nodeObjectFn={(node) => createNodeObject(node, tagStyles)}
       nodePositionUpdateFn={nodePositionUpdate}
       nodeLabelFn={(node) => node.title}
       onNodeClick={handleNodeClick}
