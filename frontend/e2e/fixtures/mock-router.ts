@@ -12,6 +12,14 @@ import {
   mockCalendarEvents,
   mockCalendarDate,
   mockSchema,
+  mockSeriesList,
+  mockSeriesNotes,
+  mockSearchSimilar,
+  mockPeopleQuery,
+  mockGlossaryEntries,
+  mockNotesSince,
+  mockWatcherStatus,
+  mockCreatedNote,
 } from "./api-fixtures";
 
 // 1x1 transparent PNG for mock images
@@ -63,9 +71,42 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
   // Mutable per-call state — avoids cross-test contamination in parallel runs
   let currentNote = { ...mockNoteDetail };
 
-  // Note detail - matches pattern /api/notes/{id}
-  await page.route("**/api/notes/*", async (route) => {
-    log(`→ ${route.request().method()} ${route.request().url()}`);
+  // Note routes - handle POST create, GET detail, since query, and PATCH
+  await page.route("**/api/notes**", async (route) => {
+    const url = route.request().url();
+    log(`→ ${route.request().method()} ${url}`);
+
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify(mockCreatedNote),
+      });
+      log(`← 201 ${url}`);
+      return;
+    }
+
+    if (url.includes("?since=")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockNotesSince),
+      });
+      log(`← 200 ${url}`);
+      return;
+    }
+
+    // /api/notes without params - return empty response
+    if (url.match(/\/api\/notes$/)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ notes: [], count: 0 }),
+      });
+      log(`← 200 ${url}`);
+      return;
+    }
+
     if (route.request().method() === "PATCH") {
       const body = route.request().postDataJSON();
       if (body?.title) {
@@ -89,7 +130,7 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
           content: currentNote.content,
         }),
       });
-      log(`← 200 PATCH ${route.request().url()}`);
+      log(`← 200 PATCH ${url}`);
       return;
     }
     await route.fulfill({
@@ -97,7 +138,7 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
       contentType: "application/json",
       body: JSON.stringify(currentNote),
     });
-    log(`← 200 ${route.request().url()}`);
+    log(`← 200 ${url}`);
   });
 
   // Tags
@@ -240,6 +281,85 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
     log(`← 200 ${route.request().url()}`);
   });
 
+  // Series endpoints
+  await page.route("**/api/series/*/notes**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockSeriesNotes),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
+  await page.route("**/api/series", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockSeriesList),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
+  // Search similar
+  await page.route("**/api/search/similar", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockSearchSimilar),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
+  // People with q param
+  await page.route("**/api/people**", async (route) => {
+    const url = route.request().url();
+    log(`→ ${route.request().method()} ${url}`);
+    if (url.includes("?q=")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockPeopleQuery),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          people: [
+            { name: "Alice Smith", aliases: ["Alice"], context: "direct report", frequency: 45 },
+            { name: "Bob Jones", aliases: ["Bob"], context: "colleague", frequency: 23 },
+          ],
+        }),
+      });
+    }
+    log(`← 200 ${url}`);
+  });
+
+  // Glossary
+  await page.route("**/api/glossary**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockGlossaryEntries),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
+  // Watcher status
+  await page.route("**/api/watcher/status**", async (route) => {
+    log(`→ ${route.request().method()} ${route.request().url()}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockWatcherStatus),
+    });
+    log(`← 200 ${route.request().url()}`);
+  });
+
   log("Mock API routes setup complete");
 }
 
@@ -265,11 +385,18 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
     });
   });
 
-  await page.route("**/api/notes/*", async (route) => {
+  await page.route("**/api/notes**", async (route) => {
+    const body = await mockWithDelay(
+      route.request().method() === "POST"
+        ? mockCreatedNote
+        : route.request().url().includes("?since=")
+          ? mockNotesSince
+          : mockNoteDetail
+    );
     await route.fulfill({
-      status: 200,
+      status: route.request().method() === "POST" ? 201 : 200,
       contentType: "application/json",
-      body: await mockWithDelay(mockNoteDetail),
+      body,
     });
   });
 
@@ -329,17 +456,16 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
     });
   });
 
-  await page.route("**/api/people", async (route) => {
+  await page.route("**/api/people**", async (route) => {
+    const body = await mockWithDelay(
+      route.request().url().includes("?q=")
+        ? mockPeopleQuery
+        : { people: [{ name: "Alice Smith", aliases: ["Alice"], context: "direct report", frequency: 45 }] }
+    );
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: await mockWithDelay({
-        people: [
-          { name: "Alice Smith", aliases: ["Alice"], context: "direct report" },
-          { name: "Bob Jones", aliases: ["Bob"], context: "colleague" },
-          { name: "Valentin Cekov", aliases: ["Val"], context: "principal engineer" },
-        ],
-      }),
+      body,
     });
   });
 
@@ -351,6 +477,46 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
         notes_result: { notes_ingested: 10, notes_skipped: 0, chunks_created: 15 },
         calendar_result: { events_ingested: 25 },
       }),
+    });
+  });
+
+  await page.route("**/api/series", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay(mockSeriesList),
+    });
+  });
+
+  await page.route("**/api/series/*/notes**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay(mockSeriesNotes),
+    });
+  });
+
+  await page.route("**/api/search/similar", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay(mockSearchSimilar),
+    });
+  });
+
+  await page.route("**/api/glossary**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay(mockGlossaryEntries),
+    });
+  });
+
+  await page.route("**/api/watcher/status**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: await mockWithDelay(mockWatcherStatus),
     });
   });
 }

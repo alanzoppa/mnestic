@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest
 import frontmatter
 from fastapi.testclient import TestClient
+from models import NoteResult, NoteMetadata
 
 DUMMY_EMBEDDING = [0.1] * 256
 
@@ -33,21 +34,21 @@ def app_client_with_files(tmp_path):
 
     mock_store = MagicMock()
     mock_store.get_note.return_value = None
-    mock_store.get_note_by_note_id.return_value = {
-        "id": "x-coredata---test-note-1_chunk_0",
-        "metadata": {
-            "note_id": "x-coredata---test-note-1",
-            "source_id": "x-coredata://test-note-1",
-            "title": "Test Note",
-            "folder": "Notes",
-            "tags": "notes,test",
-            "participants": "Alice",
-            "created": "2024-01-01T10:00:00Z",
-            "modified": "2024-01-01T10:00:00Z",
-            "source": "Apple Notes",
-        },
-        "document": "Title: Test Note\nFolder: Notes\nTags: notes,test\nParticipants: Alice\n\nOriginal note body content.",
-    }
+    mock_store.get_note_by_note_id.return_value = NoteResult(
+        id="x-coredata---test-note-1_chunk_0",
+        metadata=NoteMetadata(
+            note_id="x-coredata---test-note-1",
+            source_id="x-coredata://test-note-1",
+            title="Test Note",
+            folder="Notes",
+            tags=["notes", "test"],
+            participants=["Alice"],
+            created="2024-01-01T10:00:00Z",
+            modified="2024-01-01T10:00:00Z",
+            source="Apple Notes",
+        ),
+        document="Title: Test Note\nFolder: Notes\nTags: notes,test\nParticipants: Alice\n\nOriginal note body content.",
+    )
     mock_store.delete_note_chunks.return_value = 1
     mock_store.add_notes.return_value = None
 
@@ -67,21 +68,21 @@ def app_client_with_files(tmp_path):
 def test_update_note_title(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
-    mock_store.get_note_by_note_id.return_value = {
-        "id": "x-coredata---test-note-1_chunk_0",
-        "metadata": {
-            "note_id": "x-coredata---test-note-1",
-            "source_id": "x-coredata://test-note-1",
-            "title": "Updated Title",
-            "folder": "Notes",
-            "tags": "notes,test",
-            "participants": "Alice",
-            "created": "2024-01-01T10:00:00Z",
-            "modified": "2024-06-01T12:00:00Z",
-            "source": "Apple Notes",
-        },
-        "document": "Updated content",
-    }
+    mock_store.get_note_by_note_id.return_value = NoteResult(
+        id="x-coredata---test-note-1_chunk_0",
+        metadata=NoteMetadata(
+            note_id="x-coredata---test-note-1",
+            source_id="x-coredata://test-note-1",
+            title="Updated Title",
+            folder="Notes",
+            tags=["notes", "test"],
+            participants=["Alice"],
+            created="2024-01-01T10:00:00Z",
+            modified="2024-06-01T12:00:00Z",
+            source="Apple Notes",
+        ),
+        document="Updated content",
+    )
 
     res = c.patch("/api/notes/x-coredata---test-note-1", json={"title": "Updated Title"})
     assert res.status_code == 200
@@ -311,6 +312,8 @@ def test_combined_update_propagates_all_fields(app_client_with_files):
 
 def test_get_people(app_client_with_files, tmp_path):
     c, mock_store, notes_dir = app_client_with_files
+
+    mock_store.get_people_by_query.return_value = []
 
     registry = {
         "_metadata": {"total_people": 2},

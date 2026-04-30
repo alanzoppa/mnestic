@@ -79,16 +79,21 @@ notes-browser/
 ### Shared utilities
 - `backend/shared.py` contains `_read_state`, `_write_state`, `_state_lock`, `_is_safe_filename`
   — if you need these, import them; do not copy-paste
-- `backend/models.py` contains ALL Pydantic models (request + response)
+- `backend/models.py` contains ALL Pydantic models (request + response + result types)
   — never define models in route handlers
+  — result models (`NoteResult`, `NoteListItem`, `TagInfo`, etc.) are returned by `NoteStore` methods
 
 ### State files
-- State files use `filelock.FileLock` with `.lock` suffix (via `_state_lock`)
-- State format is JSON dict read/written via `_read_state`/`_write_state`
+- State files use `filelock.FileLock` with `.lock` suffix (via `_state_lock` in `shared.py`)
+- State format is JSON dict read/written via `_read_state`/`_write_state` (in `shared.py`)
+- `_is_safe_filename` (used for path traversal prevention) lives in `shared.py`, not duplicated in `main.py` or `mcp_server.py`
 
 ### Store access
 - Never access `store._notes` or `store._calendar` directly from outside `store.py`
   — add a public method to `NoteStore` if you need something not yet exposed
+- `NoteStore` methods return **typed Pydantic models** (`NoteResult`, `NoteListItem`, `TagInfo`, `CoOccurrence`, `TimelinePeriod`, `StatsResponse`), not raw dicts
+  — use `.metadata.title`, `.id`, etc. (attribute access) instead of `["metadata"]["title"]`, `["id"]`, etc. (dict access)
+  — call `.model_dump()` on models when you need a plain dict (e.g., for JSON serialization)
 - Embedding prefix is handled by `embed_texts_sync()` in `embed.py`
   — do NOT prepend `search_document:` yourself
 
@@ -115,6 +120,13 @@ Each file has one clear responsibility:
 - Ingestion errors are collected and returned (not thrown)
 - API endpoints rely on FastAPI's default 500 handler — add explicit try/except only if you need custom error messages
 - Embedding failures trigger bisect fallback in `embed_texts_sync`
+
+### Type safety
+- `NoteStore` returns typed models, not raw dicts — always use attribute access (`.metadata.title`) instead of dict access (`["metadata"]["title"]`)
+- `utils.normalize_and_dedup_results()` accepts both `NoteResult` objects and raw dicts, always returns `list[dict]`
+- `SearchRequest.filters` is a `SearchFilters` model (`filters.source`, `filters.tags`), not a bare `dict`
+- `IngestResponse.notes_result` is `IngestResult | None`, `calendar_result` is `CalendarIngestResult | None` — not `Any`
+- Shared helpers (`_is_safe_filename`, `_read_state`, `_write_state`, `_state_lock`) live in `backend/shared.py` — import from there, don't copy-paste
 
 ## Frontend `lib/` catalog
 

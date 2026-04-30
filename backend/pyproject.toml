@@ -10,3 +10,13 @@ testpaths = ["backend/tests"]
 [tool.ruff]
 line-length = 140
 target-version = "py311"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.11"
+include = ["*.py"]
+exclude = ["tests/**", ".venv/**"]
+reportMissingImports = "warning"
+reportMissingTypeStubs = "none"
+reportOptionalSubclass = "none"
+reportUnnecessaryTypeIgnoreComment = "warning"

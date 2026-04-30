@@ -69,6 +69,14 @@ def get_destination_path(dest_dir, filename):
         counter += 1
 
 
+_SEXAGESIMAL_REVERSE = {61: "1:1"}
+
+def _fix_sexagesimal(items):
+    if not isinstance(items, list):
+        return items
+    return [_SEXAGESIMAL_REVERSE[v] if isinstance(v, int) and v in _SEXAGESIMAL_REVERSE else v for v in items]
+
+
 def process_md_file(src_path, dest_dir, force):
     filename = os.path.basename(src_path)
     dest_path = get_destination_path(dest_dir, filename)
@@ -89,6 +97,9 @@ def process_md_file(src_path, dest_dir, force):
             normalized = normalize_date(metadata["modified"])
             if normalized:
                 metadata["modified"] = normalized
+
+        metadata["tags"] = _fix_sexagesimal(metadata.get("tags", []))
+        metadata["participants"] = _fix_sexagesimal(metadata.get("participants", []))
 
         post.content = normalize_image_references(post.content)
 

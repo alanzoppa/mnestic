@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import logging
-import json
 import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
 
 import frontmatter
-from filelock import FileLock
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+from shared import _state_lock, _read_state, _write_state
 from embed import embed_texts_sync
 from ingest import make_note_id, build_note_chunks
 from store import NoteStore
@@ -20,27 +19,6 @@ logger = logging.getLogger(__name__)
 
 DEBOUNCE_SECONDS = 5
 STATUS_RECENT_MAX = 20
-
-
-def _state_lock(state_file: Path) -> Path:
-    return state_file.with_suffix(state_file.suffix + ".lock")
-
-
-def _read_state(state_file: Path) -> dict:
-    lock = FileLock(str(_state_lock(state_file)))
-    with lock.acquire(timeout=10):
-        if state_file.exists():
-            try:
-                return json.loads(state_file.read_text())
-            except Exception:
-                pass
-        return {}
-
-
-def _write_state(state_file: Path, data: dict) -> None:
-    lock = FileLock(str(_state_lock(state_file)))
-    with lock.acquire(timeout=10):
-        state_file.write_text(json.dumps(data, indent=2))
 
 
 class _DebounceEntry:

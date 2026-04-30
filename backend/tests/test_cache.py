@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 from fastapi.testclient import TestClient
+from models import StatsResponse
 
 DUMMY_EMBEDDING = [0.1] * 256
 
@@ -43,7 +44,7 @@ def app_client(tmp_path):
     notes_dir_str = str(notes_dir)
 
     mock_store = MagicMock()
-    mock_store.get_stats.return_value = {"total_notes": 4}
+    mock_store.get_stats.return_value = StatsResponse(total_notes=4)
 
     with patch("main.NoteStore", return_value=mock_store), \
          patch("main.embed_query_sync", return_value=DUMMY_EMBEDDING), \

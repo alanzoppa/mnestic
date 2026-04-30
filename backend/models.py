@@ -35,6 +35,7 @@ class NoteMetadata(BaseModel):
     created: str = ""
     modified: str = ""
     source: str = ""
+    series: str | None = None
     source_id: str = ""
     date: str = ""
     filename: str = ""
@@ -52,9 +53,18 @@ class NoteMetadata(BaseModel):
 # Request models
 # ------------------------------------------------------------------
 
+class SearchFilters(BaseModel):
+    tags: str = ""
+    source: str = ""
+    series: str = ""
+    folder: str = ""
+    date_gte: str = ""
+    date_lte: str = ""
+
+
 class SearchRequest(BaseModel):
     query: str
-    filters: dict = Field(default_factory=dict)
+    filters: SearchFilters = Field(default_factory=SearchFilters)
     n: int = 20
     include_calendar: bool = True
     rerank: bool = True
@@ -65,6 +75,22 @@ class UpdateNoteRequest(BaseModel):
     content: Optional[str] = None
     tags: Optional[list[str]] = None
     participants: Optional[list[str]] = None
+
+
+class CreateNoteRequest(BaseModel):
+    title: str
+    content: str = ""
+    folder: str = "Notes"
+    tags: list[str] = []
+    participants: list[str] = []
+    source: str = "Manual"
+    series: str | None = None
+
+
+class CreateNoteResponse(BaseModel):
+    id: str
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+    content: str = ""
 
 
 class IngestRequest(BaseModel):
@@ -153,9 +179,36 @@ class TimelineResponse(BaseModel):
     periods: list[TimelinePeriod] = []
 
 
+class NoteResult(BaseModel):
+    id: str = ""
+    document: str = ""
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+    score: float = 0.0
+    distance: float | None = None
+
+
+class NoteListItem(BaseModel):
+    id: str = ""
+    title: str = ""
+    metadata: NoteMetadata = Field(default_factory=NoteMetadata)
+
+
+class IngestResult(BaseModel):
+    notes_ingested: int = 0
+    notes_skipped: int = 0
+    chunks_created: int = 0
+    calendar_events: int = 0
+    errors: list[str] = []
+
+
+class CalendarIngestResult(BaseModel):
+    events_ingested: int = 0
+    errors: list[str] = []
+
+
 class IngestResponse(BaseModel):
-    notes_result: Any = None
-    calendar_result: Any = None
+    notes_result: IngestResult | None = None
+    calendar_result: CalendarIngestResult | None = None
 
 
 class GraphNode(BaseModel):
@@ -197,6 +250,7 @@ class SchemaResponse(BaseModel):
 class WatcherStatus(BaseModel):
     running: bool = False
     notes_dir: str = ""
+    recent_events: list[dict] = []
 
 
 class StatsResponse(BaseModel):
@@ -238,3 +292,52 @@ class CalendarDateResponse(BaseModel):
     date: str
     events: list[CalendarEvent] = []
     notes: list[CalendarDateNote] = []
+
+
+class GlossaryEntry(BaseModel):
+    term: str
+    definition: str = ""
+    source_note_ids: list[str] = []
+    frequency: int = 0
+
+
+class GlossaryResponse(BaseModel):
+    entries: list[GlossaryEntry] = []
+
+
+class NotesSinceResponse(BaseModel):
+    notes: list[NoteListItem] = []
+    since: str = ""
+    count: int = 0
+
+
+class PersonWithFrequency(BaseModel):
+    name: str
+    aliases: list[str] = []
+    context: str = ""
+    frequency: int = 0
+
+
+class PeopleQueryResponse(BaseModel):
+    people: list[PersonWithFrequency] = []
+
+
+class SeriesInfo(BaseModel):
+    name: str
+    count: int = 0
+    latest_date: str = ""
+    latest_note_id: str = ""
+
+
+class SeriesListResponse(BaseModel):
+    series: list[SeriesInfo] = []
+
+
+class SeriesNotesResponse(BaseModel):
+    series: str
+    notes: list[NoteListItem] = []
+
+
+class SimilarTextRequest(BaseModel):
+    text: str
+    n: int = 10

@@ -7,7 +7,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest
 from fastapi.testclient import TestClient
 from constants import RERANK_MAX_CANDIDATES
-from models import CalendarEvent
+from models import (
+    CalendarEvent,
+    NoteResult,
+    NoteMetadata,
+    NoteListItem,
+    TagInfo,
+    CoOccurrence,
+    TimelinePeriod,
+    StatsResponse,
+)
 
 
 DUMMY_EMBEDDING = [0.1] * 256
@@ -16,25 +25,28 @@ DUMMY_EMBEDDING = [0.1] * 256
 @pytest.fixture
 def app_client():
     mock_store = MagicMock()
-    mock_store.get_stats.return_value = {
-        "total_notes": 100,
-        "total_tags": 20,
-        "date_range": ["2019-01-01", "2024-12-31"],
-        "avg_note_length": 500,
-        "total_calendar_events": 50,
-    }
+    mock_store.get_stats.return_value = StatsResponse(
+        total_notes=100,
+        total_tags=20,
+        date_range=["2019-01-01", "2024-12-31"],
+        avg_note_length=500,
+        total_calendar_events=50,
+    )
     mock_store.get_tags.return_value = (
-        [{"name": "work", "count": 10}, {"name": "personal", "count": 5}],
-        [{"tag1": "work", "tag2": "personal", "count": 3}],
+        [TagInfo(name="work", count=10), TagInfo(name="personal", count=5)],
+        [CoOccurrence(tag1="work", tag2="personal", count=3)],
     )
     mock_store.get_timeline.return_value = [
-        {"period": "2024-01", "count": 5, "sample_ids": ["note1"]},
-        {"period": "2024-02", "count": 10, "sample_ids": ["note2"]},
+        TimelinePeriod(period="2024-01", count=5, sample_ids=["note1"]),
+        TimelinePeriod(period="2024-02", count=10, sample_ids=["note2"]),
     ]
     mock_store.search_notes.return_value = []
     mock_store.search_calendar.return_value = []
     mock_store.get_note.return_value = None
     mock_store.get_similar.return_value = []
+    mock_store.list_notes.return_value = []
+    mock_store.get_notes_by_date.return_value = []
+    mock_store.get_note_by_note_id.return_value = None
 
     mock_reranker = MagicMock()
     mock_reranker.rerank.side_effect = lambda query, candidates: candidates
@@ -63,7 +75,7 @@ def test_get_stats(app_client):
 def test_search_basic(app_client):
     c, mock_store = app_client
     mock_store.search_notes.return_value = [
-        {"id": "note1", "metadata": {"title": "Test Note"}, "document": "Test content body", "distance": 0.1}
+        NoteResult(id="note1", metadata=NoteMetadata(title="Test Note"), document="Test content body", distance=0.1)
     ]
     mock_store.search_calendar.return_value = []
 
@@ -79,8 +91,8 @@ def test_search_empty_query_returns_all_notes(app_client):
     """Browse page sends '' query — should still return notes via list_notes."""
     c, mock_store = app_client
     mock_store.list_notes.return_value = [
-        {"id": "note1", "metadata": {"title": "Note 1", "tags": "work"}, "document": "body1", "score": 0.0},
-        {"id": "note2", "metadata": {"title": "Note 2", "tags": "personal"}, "document": "body2", "score": 0.0},
+        NoteResult(id="note1", metadata=NoteMetadata(title="Note 1", tags="work"), document="body1", score=0.0),
+        NoteResult(id="note2", metadata=NoteMetadata(title="Note 2", tags="personal"), document="body2", score=0.0),
     ]
 
     res = c.post("/api/search", json={"query": "", "n": 500, "filters": {}})
@@ -97,7 +109,7 @@ def test_search_with_calendar(app_client):
     c, mock_store = app_client
     mock_store.search_notes.return_value = []
     mock_store.search_calendar.return_value = [
-        {"id": "event1", "metadata": {"summary": "Meeting"}, "document": "Calendar event", "distance": 0.15}
+        NoteResult(id="event1", metadata=NoteMetadata(**{"summary": "Meeting"}), document="Calendar event", distance=0.15)
     ]
 
     res = c.post("/api/search", json={"query": "meeting", "include_calendar": True})
@@ -136,8 +148,8 @@ def test_get_timeline(app_client):
 def test_get_similar(app_client):
     c, mock_store = app_client
     mock_store.get_similar.return_value = [
-        {"id": "sim1", "metadata": {"title": "Similar 1"}, "distance": 0.1},
-        {"id": "sim2", "metadata": {"title": "Similar 2"}, "distance": 0.2},
+        NoteResult(id="sim1", metadata=NoteMetadata(title="Similar 1"), distance=0.1),
+        NoteResult(id="sim2", metadata=NoteMetadata(title="Similar 2"), distance=0.2),
     ]
 
     res = c.get("/api/similar/test-id")
@@ -301,8 +313,8 @@ def test_search_reranker_called(app_client):
     """Reranker is called with non-empty query when rerank is enabled (default)."""
     c, mock_store = app_client
     mock_store.search_notes.return_value = [
-        {"id": "n1", "metadata": {"title": "Note A", "tags": "test"}, "document": "body a", "distance": 0.1},
-        {"id": "n2", "metadata": {"title": "Note B", "tags": "test"}, "document": "body b", "distance": 0.2},
+        NoteResult(id="n1", metadata=NoteMetadata(title="Note A", tags="test"), document="body a", distance=0.1),
+        NoteResult(id="n2", metadata=NoteMetadata(title="Note B", tags="test"), document="body b", distance=0.2),
     ]
     mock_store.search_calendar.return_value = []
 
@@ -316,7 +328,7 @@ def test_search_reranker_skipped_when_empty_query(app_client):
     """Browse page sends empty query — reranker should not be called."""
     c, mock_store = app_client
     mock_store.list_notes.return_value = [
-        {"id": "n1", "metadata": {"title": "Note A"}, "document": "body a", "score": 0.0},
+        NoteResult(id="n1", metadata=NoteMetadata(title="Note A"), document="body a", score=0.0),
     ]
     mock_store.search_calendar.return_value = []
 
@@ -330,7 +342,7 @@ def test_search_reranker_disabled(app_client):
     """rerank=false skips reranking and uses embedding scores directly."""
     c, mock_store = app_client
     mock_store.search_notes.return_value = [
-        {"id": "n1", "metadata": {"title": "Note A", "tags": "test"}, "document": "body a", "distance": 0.1},
+        NoteResult(id="n1", metadata=NoteMetadata(title="Note A", tags="test"), document="body a", distance=0.1),
     ]
     mock_store.search_calendar.return_value = []
 

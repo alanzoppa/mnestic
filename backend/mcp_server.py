@@ -11,9 +11,8 @@ if TYPE_CHECKING:
     from store import NoteStore
 
 from utils import normalize_and_dedup_results
-from models import NoteMetadata
-
-NOTES_DIR = os.path.join(os.path.dirname(__file__), "..", "notes")
+from shared import _is_safe_filename
+from config import NOTES_DIR
 
 
 def _flatten_tags(val: Any) -> list[str]:
@@ -38,13 +37,6 @@ def _note_from_unique(meta: dict, note_id: str) -> dict[str, Any]:
     }
 
 
-def _is_safe_filename(name: str) -> bool:
-    """Reject names with path traversal attempts."""
-    if not name:
-        return False
-    return ".." not in name and "/" not in name and "\\" not in name and "\x00" not in name
-
-
 def _find_note_file(source_id: str, note_id: str) -> str | None:
     for ext in (".md", ".txt", ""):
         if _is_safe_filename(source_id):
@@ -65,23 +57,131 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
     mcp = FastMCP("notes-browser")
 
     @mcp.tool()
-    def search_notes(query: str, limit: int = 10) -> dict[str, Any]:
-        """Search notes using semantic search (embedding-based).
+    def search_notes(
+        query: str,
+        limit: int = 10,
+        tag: str | None = None,
+        participant: str | None = None,
+        date_gte: str | None = None,
+        date_lte: str | None = None,
+    ) -> dict[str, Any]:
+        """Search notes using semantic search with optional metadata filters.
 
         Args:
             query: The search query string.
             limit: Maximum number of unique notes to return (default 10).
+            tag: Optional tag filter (exact match, case-insensitive).
+            participant: Optional participant filter (case-insensitive substring match).
+            date_gte: Optional lower bound on note creation date (ISO format).
+            date_lte: Optional upper bound on note creation date (ISO format).
         """
         if not query.strip():
             return {"notes": []}
         embedding = embed_query_sync(query)
-        raw = store.search_notes(embedding, n=limit * 5)
+        where_clauses: list[dict] = []
+        if date_gte:
+            where_clauses.append({"created": {"$gte": date_gte}})
+        if date_lte:
+            where_clauses.append({"created": {"$lte": date_lte}})
+        where = None
+        if len(where_clauses) == 1:
+            where = where_clauses[0]
+        elif len(where_clauses) > 1:
+            where = {"$and": where_clauses}
+
+        raw = store.search_notes(embedding, n=limit * 5, where=where)
+
+        if tag:
+            tag_set = {t.strip().lower() for t in tag.split(",") if t.strip()}
+            raw = [r for r in raw if tag_set & {t.strip().lower() for t in r.metadata.tags if t.strip()}]
+
+        if participant:
+            p_lower = participant.strip().lower()
+            raw = [r for r in raw if any(p_lower in part.lower() for part in r.metadata.participants)]
+
         deduped = normalize_and_dedup_results(raw)
         notes = []
         for entry in deduped[:limit]:
             meta = entry["metadata"]
             notes.append(_note_from_unique(meta, entry["note_id"]))
         return {"notes": notes}
+
+    @mcp.tool()
+    def create_note(
+        title: str,
+        content: str = "",
+        folder: str = "Notes",
+        tags: str = "",
+        participants: str = "",
+        series: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a new note with frontmatter metadata and markdown content.
+        The note is immediately written to disk and indexed for semantic search.
+
+        Args:
+            title: The note title (required).
+            content: Markdown body content (optional).
+            folder: Folder/category name (default 'Notes').
+            tags: Comma-separated tag names (optional).
+            participants: Comma-separated participant names (optional).
+            series: Series name if this note belongs to a recurring series (optional).
+        """
+        import hashlib
+        from datetime import datetime, timezone
+
+        if not title.strip():
+            return {"error": "Title is required"}
+
+        now = datetime.now(timezone.utc).isoformat()
+        raw = f"{title}{now}"
+        source_id = hashlib.sha256(raw.encode()).hexdigest()[:12]
+        note_id = f"manual_{source_id}"
+        sanitized = title.strip().replace("/", "-").replace(":", "-")[:100]
+        filepath = os.path.join(NOTES_DIR, f"{sanitized}.md")
+
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+        part_list = [p.strip() for p in participants.split(",") if p.strip()] if participants else []
+
+        meta = {
+            "title": title.strip(),
+            "folder": folder or "Notes",
+            "tags": tag_list,
+            "participants": part_list,
+            "created": now,
+            "modified": now,
+            "source": "Manual",
+            "source_id": note_id,
+        }
+        if series:
+            meta["series"] = series
+
+        post = frontmatter.Post(content or "")
+        post.metadata = meta
+        with open(filepath, "wb") as f:
+            frontmatter.dump(post, f, allow_unicode=True)
+
+        from ingest import build_note_chunks
+        from embed import embed_texts_sync
+
+        chunks, metadatas, ids = build_note_chunks(
+            note_id, meta, content or "", os.path.basename(filepath)
+        )
+        embeddings = embed_texts_sync(chunks)
+        if embeddings:
+            store.delete_note_chunks(note_id)
+            store.add_notes(ids, chunks, embeddings, metadatas)
+
+        return {
+            "id": note_id,
+            "title": title.strip(),
+            "folder": folder or "Notes",
+            "tags": tag_list,
+            "participants": part_list,
+            "series": series or "",
+            "created": now,
+            "source": "Manual",
+            "content": content or "",
+        }
 
     @mcp.tool()
     def get_note(note_id: str) -> dict[str, Any] | None:
@@ -96,8 +196,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         if not note:
             return None
 
-        meta = note.get("metadata", {})
-        meta = NoteMetadata(**meta).model_dump() if meta else meta
+        meta = note.metadata.model_dump()
         source_id = meta.get("source_id", "")
 
         content = ""
@@ -118,8 +217,8 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             except Exception:
                 pass
 
-        similar = store.get_similar(note["id"], n=10)
-        logical_note_id = meta.get("note_id", note["id"])
+        similar = store.get_similar(note.id, n=10)
+        logical_note_id = meta.get("note_id") or note.id
         deduped_similar = normalize_and_dedup_results(similar)
         similar_notes = []
         for entry in deduped_similar:
@@ -176,8 +275,8 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         """Return all tags with occurrence counts and co-occurrence data."""
         tags, co = store.get_tags()
         return {
-            "tags": tags,
-            "co_occurrence": co,
+            "tags": [t.model_dump() for t in tags],
+            "co_occurrence": [c.model_dump() for c in co],
         }
 
     @mcp.tool()
@@ -199,7 +298,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
     @mcp.tool()
     def get_stats() -> dict[str, Any]:
         """Return collection-level statistics: total notes, tags, date range, etc."""
-        return store.get_stats()
+        return store.get_stats().model_dump()
 
     @mcp.tool()
     def get_calendar_events(date: str | None = None) -> dict[str, Any]:
@@ -231,7 +330,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         if not similar:
             note = store.get_note_by_note_id(note_id)
             if note:
-                similar = store.get_similar(note["id"], n=limit + 5)
+                similar = store.get_similar(note.id, n=limit + 5)
         deduped = normalize_and_dedup_results(similar)
         notes: list[dict[str, Any]] = []
         for entry in deduped:
@@ -248,16 +347,100 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
                 break
         return {"notes": notes}
 
+    @mcp.tool()
+    def get_series_history(series_name: str, limit: int = 10) -> dict[str, Any]:
+        """Return recent notes in a specific series, frontmatter only (no body).
+
+        Args:
+            series_name: The canonical series name.
+            limit: Maximum number of notes to return (default 10).
+        """
+        notes = store.get_notes_by_series(series_name, limit=limit)
+        return {
+            "series": series_name,
+            "notes": [_note_from_unique(n.metadata.model_dump(), n.id) for n in notes],
+        }
+
+    @mcp.tool()
+    def lookup_person(name: str) -> dict[str, Any]:
+        """Fuzzy lookup over participants across all notes. Returns matching people with frequency.
+
+        Args:
+            name: Partial name to search for (e.g., 'tiffany' or 'Alan').
+        """
+        people = store.get_people_by_query(q=name)
+        return {
+            "people": [{
+                "name": p.name,
+                "frequency": p.frequency,
+            } for p in people],
+        }
+
+    @mcp.tool()
+    def lookup_glossary(term: str) -> dict[str, Any]:
+        """Look up tag definitions and context from the corpus.
+
+        Args:
+            term: Glossary term to look up (e.g., 'MHQOL').
+        """
+        entries = store.get_glossary_entries(q=term)
+        return {
+            "entries": [{
+                "term": e.term,
+                "definition": e.definition,
+                "frequency": e.frequency,
+                "source_note_ids": e.source_note_ids,
+            } for e in entries],
+        }
+
+    @mcp.tool()
+    def list_series() -> dict[str, Any]:
+        """List all distinct series across the corpus with counts."""
+        series_list = store.get_series_list()
+        return {"series": [s.model_dump() for s in series_list]}
+
+    @mcp.tool()
+    def search_similar_text(text: str, limit: int = 10) -> dict[str, Any]:
+        """Given raw text (e.g., a Zoom transcript paste), return the K most similar prior notes.
+
+        Args:
+            text: Raw text to find similar notes for.
+            limit: Maximum number of notes to return (default 10).
+        """
+        if not text.strip():
+            return {"notes": []}
+        embedding = embed_query_sync(text)
+        raw = store.search_notes(embedding, n=limit * 3)
+        deduped = normalize_and_dedup_results(raw)
+        notes = []
+        for entry in deduped[:limit]:
+            meta = entry["metadata"]
+            notes.append(_note_from_unique(meta, entry["note_id"]))
+        return {"notes": notes}
+
+    @mcp.tool()
+    def get_notes_since(timestamp: str) -> dict[str, Any]:
+        """Return notes created or modified since an ISO timestamp.
+
+        Args:
+            timestamp: ISO format timestamp (e.g., '2024-01-01T00:00:00Z').
+        """
+        notes = store.get_notes_since(timestamp, limit=100)
+        return {
+            "since": timestamp,
+            "notes": [_note_from_unique(n.metadata.model_dump(), n.id) for n in notes],
+        }
+
     @mcp.resource("notes://stats")
     def resource_stats() -> str:
         """Collection statistics overview."""
         stats = store.get_stats()
         return (
-            f"Total notes: {stats.get('total_notes', 0)}\n"
-            f"Total tags: {stats.get('total_tags', 0)}\n"
-            f"Total calendar events: {stats.get('total_calendar_events', 0)}\n"
-            f"Date range: {stats.get('date_range', [None, None])}\n"
-            f"Avg note length: {stats.get('avg_note_length', 0)} chars"
+            f"Total notes: {stats.total_notes}\n"
+            f"Total tags: {stats.total_tags}\n"
+            f"Total calendar events: {stats.total_calendar_events}\n"
+            f"Date range: {stats.date_range}\n"
+            f"Avg note length: {stats.avg_note_length} chars"
         )
 
     @mcp.resource("notes://recent")
@@ -326,6 +509,26 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         lines = [f"{t['name']}: {t['count']}" for t in tags[:50]]
         return "\n".join(lines)
 
+    @mcp.resource("notes://series")
+    def resource_series() -> str:
+        """List of all distinct series sorted by frequency."""
+        series_list = store.get_series_list()
+        if not series_list:
+            return "No series found."
+        lines = [f"{s.name}: {s.count} notes (latest: {s.latest_date[:10] if s.latest_date else 'unknown'})" for s in series_list[:50]]
+        return "\n".join(lines)
+
+    @mcp.resource("notes://series/{series_name}")
+    def resource_series_notes(series_name: str) -> str:
+        """Notes in a specific series."""
+        notes = store.get_notes_by_series(series_name, limit=20)
+        if not notes:
+            return f"No notes found in series '{series_name}'."
+        lines = [f"Series: {series_name}", ""]
+        for n in notes:
+            lines.append(f"- {n.title} ({n.metadata.created[:10] if n.metadata.created else 'unknown date'})")
+        return "\n".join(lines)
+
     @mcp.prompt()
     def summarize_recent(days: int = 7) -> str:
         """Prompt: Summarize all notes from the last N days.
@@ -347,6 +550,16 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             f"Summarize their context: what projects, topics, or events are they connected to? "
             f"Identify any other people frequently mentioned alongside {person}."
         )
+
+    @mcp.prompt()
+    def search_for_context(query: str) -> str:
+        """Prompt: Find notes relevant to a query and summarize connections.
+        Useful for cross-referencing before summarizing.
+
+        Args:
+            query: Search query to find relevant prior discussions.
+        """
+        return f"Search for notes about '{query}'. Identify prior discussions, resolutions, and related concepts. Cross-reference with any similar or connected notes to provide a richer context summary."
 
     return mcp
 

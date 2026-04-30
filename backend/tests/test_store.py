@@ -1,6 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from store import NoteStore, _serialize_metadata, _to_chroma_scalar as _flatten_tags, _to_chroma_scalar as _flatten_participants
+from models import NoteResult, NoteMetadata, TagInfo, CoOccurrence, TimelinePeriod, StatsResponse
 import pytest
 
 
@@ -53,7 +54,7 @@ def test_add_and_search_notes(tmp_store):
     )
 
     results = tmp_store.search_notes(embedding1, n=5)
-    result_ids = [r["id"] for r in results]
+    result_ids = [r.id for r in results]
     assert "note1" in result_ids
 
 
@@ -70,7 +71,7 @@ def test_add_and_search_calendar(tmp_store):
 
     results = tmp_store.search_calendar(embedding1, n=5)
     assert len(results) >= 1
-    assert results[0]["id"] == "cal1"
+    assert results[0].id == "cal1"
 
 
 def test_get_note_found(tmp_store):
@@ -84,8 +85,8 @@ def test_get_note_found(tmp_store):
 
     result = tmp_store.get_note("note1")
     assert result is not None
-    assert result["id"] == "note1"
-    assert "title" in result["metadata"]
+    assert result.id == "note1"
+    assert result.metadata.title == "Test Note"
 
 
 def test_get_note_not_found(tmp_store):
@@ -105,7 +106,7 @@ def test_get_tags(tmp_store):
     )
 
     tag_list, _ = tmp_store.get_tags()
-    tag_counts = {t["name"]: t["count"] for t in tag_list}
+    tag_counts = {t.name: t.count for t in tag_list}
     assert tag_counts["work"] == 2
     assert tag_counts["notes"] == 1
     assert tag_counts["personal"] == 1
@@ -123,9 +124,9 @@ def test_get_tags_co_occurrence(tmp_store):
     )
 
     _, co_occur = tmp_store.get_tags()
-    work_notes = next((c for c in co_occur if c["tag1"] == "notes" and c["tag2"] == "work"), None)
+    work_notes = next((c for c in co_occur if c.tag1 == "notes" and c.tag2 == "work"), None)
     assert work_notes is not None
-    assert work_notes["count"] == 2
+    assert work_notes.count == 2
 
 
 def test_get_timeline(tmp_store):
@@ -141,8 +142,8 @@ def test_get_timeline(tmp_store):
 
     timeline = tmp_store.get_timeline(group_by="month")
     assert len(timeline) == 1
-    assert timeline[0]["period"] == "2024-01"
-    assert timeline[0]["count"] == 2
+    assert timeline[0].period == "2024-01"
+    assert timeline[0].count == 2
 
 
 def test_get_timeline_filter_by_tag(tmp_store):
@@ -161,8 +162,8 @@ def test_get_timeline_filter_by_tag(tmp_store):
 
     timeline = tmp_store.get_timeline(group_by="month", tag="work")
     assert len(timeline) == 1
-    assert timeline[0]["count"] == 1
-    assert "note1" in timeline[0]["sample_ids"]
+    assert timeline[0].count == 1
+    assert "note1" in timeline[0].sample_ids
 
 
 def test_get_stats(tmp_store):
@@ -185,10 +186,10 @@ def test_get_stats(tmp_store):
     )
 
     stats = tmp_store.get_stats()
-    assert stats["total_notes"] == 2
-    assert stats["total_calendar_events"] == 1
-    assert stats["total_tags"] >= 0
-    assert stats["avg_note_length"] > 0
+    assert stats.total_notes == 2
+    assert stats.total_calendar_events == 1
+    assert stats.total_tags >= 0
+    assert stats.avg_note_length > 0
 
 
 def test_delete_notes(tmp_store):
@@ -230,8 +231,8 @@ def test_reset(tmp_store):
     tmp_store.reset()
 
     stats = tmp_store.get_stats()
-    assert stats["total_notes"] == 0
-    assert stats["total_calendar_events"] == 0
+    assert stats.total_notes == 0
+    assert stats.total_calendar_events == 0
 
 
 def test_get_notes_by_tag_no_documents(tmp_store):
@@ -248,8 +249,8 @@ def test_get_notes_by_tag_no_documents(tmp_store):
     )
     result = tmp_store.get_notes_by_tag("work")
     assert len(result) == 1
-    assert result[0]["id"] == "note1"
-    assert result[0]["document"] == ""
+    assert result[0].id == "note1"
+    assert result[0].document == ""
 
 
 def test_get_notes_by_tag_with_where(tmp_store):
@@ -266,7 +267,7 @@ def test_get_notes_by_tag_with_where(tmp_store):
     )
     result = tmp_store.get_notes_by_tag("work", where={"source": "Evernote"})
     assert len(result) == 1
-    assert result[0]["metadata"]["source"] == "Evernote"
+    assert result[0].metadata.source == "Evernote"
 
 
 def test_get_similar_single_db_call(tmp_store):
@@ -307,7 +308,7 @@ def test_list_notes_no_filter(tmp_store):
     )
     results = tmp_store.list_notes()
     assert len(results) == 2
-    titles = {r["metadata"]["title"] for r in results}
+    titles = {r.metadata.title for r in results}
     assert titles == {"Note 1", "Note 2"}
 
 
@@ -325,7 +326,7 @@ def test_list_notes_with_where_filter(tmp_store):
     )
     results = tmp_store.list_notes(where={"folder": "Work"})
     assert len(results) == 1
-    assert results[0]["metadata"]["title"] == "Note 1"
+    assert results[0].metadata.title == "Note 1"
 
 
 def test_list_notes_deduplicates_by_note_id(tmp_store):
@@ -342,4 +343,4 @@ def test_list_notes_deduplicates_by_note_id(tmp_store):
     )
     results = tmp_store.list_notes()
     assert len(results) == 1
-    assert results[0]["metadata"]["title"] == "Note 1"
+    assert results[0].metadata.title == "Note 1"

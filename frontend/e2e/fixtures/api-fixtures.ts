@@ -370,3 +370,100 @@ export const mockSchema = {
     { name: "source", type: "str", cardinality: "low", samples: ["Apple Notes", "Evernote"], classification: "categorical" },
   ],
 };
+
+export const mockSeriesList = {
+  series: [
+    { name: "weekly_standup", count: 45, latest_date: "2024-03-15", latest_note_id: "note-001" },
+    { name: "1:1_alice", count: 23, latest_date: "2024-03-10", latest_note_id: "note-002" },
+    { name: "engineering_review", count: 18, latest_date: "2024-02-28", latest_note_id: "note-003" },
+  ],
+};
+
+export const mockSeriesNotes = {
+  series: "weekly_standup",
+  notes: [
+    { id: "note-001", title: "Standup Mar 15", metadata: { title: "Standup Mar 15", created: "2024-03-15T09:00:00Z", tags: "work" } },
+    { id: "note-004", title: "Standup Mar 8", metadata: { title: "Standup Mar 8", created: "2024-03-08T09:00:00Z", tags: "work" } },
+  ],
+};
+
+export const mockSearchSimilar = {
+  results: [
+    {
+      id: "note-010",
+      title: "Previous Discussion on Contact Form",
+      snippet: "We discussed contact form spam architecture...",
+      metadata: {
+        title: "Previous Discussion on Contact Form",
+        folder: "Work",
+        created: "2024-01-15T10:00:00Z",
+        source: "Apple Notes",
+        tags: ["work", "architecture", "spam"],
+        participants: [],
+      },
+      score: 0.92,
+      type: "note",
+    },
+    {
+      id: "note-011",
+      title: "Server Blocker Investigation",
+      snippet: "Octave test server blocker investigation...",
+      metadata: {
+        title: "Server Blocker Investigation",
+        folder: "Work",
+        created: "2024-02-01T14:00:00Z",
+        source: "Evernote",
+        tags: ["work", "server", "blocker"],
+        participants: [],
+      },
+      score: 0.87,
+      type: "note",
+    },
+  ],
+};
+
+export const mockPeopleQuery = {
+  people: [
+    { name: "alice", frequency: 45 },
+    { name: "alice smith", frequency: 12 },
+  ],
+};
+
+export const mockGlossaryEntries = {
+  entries: [
+    { term: "zendesk", definition: "Zendesk customer service platform used by the team", source_note_ids: ["note-002"], frequency: 297 },
+    { term: "architecture", definition: "System architecture and design patterns discussion", source_note_ids: ["note-010"], frequency: 156 },
+  ],
+};
+
+export const mockNotesSince = {
+  notes: [
+    { id: "note-100", title: "Recently Created", metadata: { title: "Recently Created", created: "2024-03-15T12:00:00Z", tags: "work" } },
+  ],
+  since: "2024-03-01T00:00:00Z",
+  count: 1,
+};
+
+export const mockWatcherStatus = {
+  running: true,
+  notes_dir: "/Users/test/notes-browser/notes",
+  recent_events: [
+    { type: "note_changed", path: "/Users/test/notes-browser/notes/test.md", timestamp: "2024-03-15T10:00:00Z" },
+  ],
+};
+
+export const mockCreatedNote = {
+  id: "manual_abc123",
+  metadata: {
+    title: "Newly Created Note",
+    folder: "Notes",
+    created: "2026-04-30T12:00:00Z",
+    modified: "2026-04-30T12:00:00Z",
+    source: "Manual",
+    source_id: "manual_abc123",
+    tags: ["test"],
+    participants: [],
+    series: null,
+  },
+  content: "Hello world, this is a new note.",
+};

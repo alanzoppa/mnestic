@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 from fastapi.testclient import TestClient
+from models import StatsResponse
 
 
 DUMMY_EMBEDDING = [0.1] * 256
@@ -15,13 +16,12 @@ DUMMY_EMBEDDING = [0.1] * 256
 @pytest.fixture
 def app_client():
     mock_store = MagicMock()
-    mock_store.get_stats.return_value = {
-        "total_notes": 0,
-        "total_tags": 0,
-        "date_range": [None, None],
-        "avg_note_length": 0,
-        "total_calendar_events": 0,
-    }
+    mock_store.get_stats.return_value = StatsResponse(
+        total_notes=0,
+        total_tags=0,
+        avg_note_length=0,
+        total_calendar_events=0,
+    )
     mock_store.search_notes.return_value = []
     mock_store.search_calendar.return_value = []
     mock_store.get_note.return_value = None

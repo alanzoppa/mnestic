@@ -8,36 +8,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from filelock import FileLock
 from langchain_text_splitters import MarkdownTextSplitter
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, MofNCompleteColumn
 
+from shared import _state_lock, _read_state, _write_state
 from embed import embed_texts_sync, BATCH_SIZE
 from models import CalendarEvent
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
 
 logger = logging.getLogger("ingest")
-
-
-def _state_lock(state_file: Path) -> Path:
-    return state_file.with_suffix(state_file.suffix + ".lock")
-
-
-def _read_state(state_file: Path) -> dict:
-    lock = FileLock(str(_state_lock(state_file)))
-    with lock.acquire(timeout=10):
-        if state_file.exists():
-            try:
-                return json.loads(state_file.read_text())
-            except Exception:
-                pass
-        return {}
-
-
-def _write_state(state_file: Path, data: dict) -> None:
-    lock = FileLock(str(_state_lock(state_file)))
-    with lock.acquire(timeout=10):
-        state_file.write_text(json.dumps(data, indent=2))
 
 
 def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[str]:
@@ -63,22 +43,29 @@ def make_doc_id(note_id: str, chunk_index: int, filename: str) -> str:
     return f"{note_id}_chunk_{chunk_index}"
 
 
+_SEXAGESIMAL_REVERSE = {61: "1:1"}
+
+def _reverse_sexagesimal(value: Any) -> str:
+    if isinstance(value, int) and value in _SEXAGESIMAL_REVERSE:
+        return _SEXAGESIMAL_REVERSE[value]
+    return str(value).strip()
+
+def _reverse_sexagesimal_list(items: Any) -> list[str]:
+    if isinstance(items, str):
+        return [t.strip() for t in items.split(",") if t.strip()]
+    elif isinstance(items, list):
+        return [_reverse_sexagesimal(t) for t in items if str(t).strip()]
+    return []
+
 def _normalize_tags_participants(fm: dict) -> tuple[list[str], list[str]]:
-    tags = fm.get("tags", [])
-    if isinstance(tags, str):
-        tags = [t.strip() for t in tags.split(",") if t.strip()]
-    elif isinstance(tags, list):
-        tags = [str(t).strip() for t in tags if str(t).strip()]
-    else:
-        tags = []
-    participants = fm.get("participants", [])
-    if isinstance(participants, str):
-        participants = [p.strip() for p in participants.split(",") if p.strip()]
-    elif isinstance(participants, list):
-        participants = [str(p).strip() for p in participants if str(p).strip()]
-    else:
-        participants = []
+    tags = _reverse_sexagesimal_list(fm.get("tags", []))
+    participants = _reverse_sexagesimal_list(fm.get("participants", []))
     return tags, participants
+
+
+def _load_series_assignments() -> dict[str, str | None]:
+    meta = _read_state("series_assignments.json")
+    return meta if isinstance(meta, dict) else {}
 
 
 def build_note_chunks(
@@ -87,10 +74,11 @@ def build_note_chunks(
     body: str,
     filename: str,
     calendar_context: str = "",
+    series: str = "",
 ) -> tuple[list[str], list[dict], list[str]]:
     """Return (chunks, metadatas, ids) for a note ready to embed.
 
-    Tier 1: title + folder + tags + participants + first ~2k chars + optional calendar context.
+    Tier 1: title + folder + tags + participants + series + first ~2k chars + optional calendar context.
     Tier 2: body chunks at ~2k chars with 200 char overlap, respecting markdown boundaries.
     """
     title = fm.get("title", note_id)
@@ -123,6 +111,7 @@ def build_note_chunks(
         "source": source,
         "source_id": source_id,
         "date": created_str[:10] if created_str else "",
+        "series": series or "",
     }
 
     chunks = [tier1_text]
@@ -148,6 +137,7 @@ def build_note_chunks(
                     "source": source,
                     "source_id": source_id,
                     "date": created_str[:10] if created_str else "",
+                    "series": series or "",
                 }
                 chunks.append(chunk)
                 metadatas.append(chunk_metadata)
@@ -197,6 +187,8 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     cal.load()
     calendar_events = cal.process_events()
 
+    series_assignments = _load_series_assignments() if not force else {}
+
     all_files = [f for f in notes_path.iterdir() if f.suffix == ".md" and f.name != ".ingest_state.json"]
     notes_ingested = 0
     notes_skipped = 0
@@ -215,69 +207,103 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
 
     ids_to_delete = []
 
-    for md_file in all_files:
-        try:
-            post = frontmatter.load(str(md_file))
-            fm = post.metadata
-            body = post.content
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        parse_task = progress.add_task("Parsing notes", total=len(all_files))
+        for md_file in all_files:
+            try:
+                post = frontmatter.load(str(md_file))
+                fm = post.metadata
+                body = post.content
 
-            source_id = fm.get("source_id", md_file.stem)
-            note_id = make_note_id(source_id)
+                source_id = fm.get("source_id", md_file.stem)
+                note_id = make_note_id(source_id)
 
-            current_mtime = md_file.stat().st_mtime
+                current_mtime = md_file.stat().st_mtime
 
-            if not force and note_id in ingest_state.get("files", {}):
-                stored_mtime = ingest_state["files"][note_id].get("mtime", 0)
-                if current_mtime <= stored_mtime:
-                    notes_skipped += 1
-                    continue
+                if not force and note_id in ingest_state.get("files", {}):
+                    stored_mtime = ingest_state["files"][note_id].get("mtime", 0)
+                    if current_mtime <= stored_mtime:
+                        notes_skipped += 1
+                        progress.advance(parse_task)
+                        continue
 
-            tags, participants = _normalize_tags_participants(fm)
-            created_val = fm.get("created", "")
-            created_str = created_val.isoformat() if hasattr(created_val, "isoformat") else (str(created_val) if created_val else "")
-            calendar_context = get_calendar_context(participants, created_str, calendar_events)
+                tags, participants = _normalize_tags_participants(fm)
+                created_val = fm.get("created", "")
+                created_str = created_val.isoformat() if hasattr(created_val, "isoformat") else (str(created_val) if created_val else "")
+                calendar_context = get_calendar_context(participants, created_str, calendar_events)
+                series = series_assignments.get(note_id) or ""
 
-            chunks, metadatas, ids = build_note_chunks(
-                note_id, fm, body, md_file.name, calendar_context=calendar_context
-            )
-            all_chunks.extend(chunks)
-            all_metadata.extend(metadatas)
-            all_ids.extend(ids)
-            ids_to_delete.append(note_id)
-            chunks_created += len(chunks)
-            notes_ingested += 1
-            logger.debug("Ingested %s (%d chunks, tags=%s)", md_file.name, len(chunks), tags)
+                chunks, metadatas, ids = build_note_chunks(
+                    note_id, fm, body, md_file.name, calendar_context=calendar_context, series=series
+                )
+                all_chunks.extend(chunks)
+                all_metadata.extend(metadatas)
+                all_ids.extend(ids)
+                ids_to_delete.append(note_id)
+                chunks_created += len(chunks)
+                notes_ingested += 1
+                logger.debug("Ingested %s (%d chunks, tags=%s)", md_file.name, len(chunks), tags)
 
-            ingest_state.setdefault("files", {})[note_id] = {
-                "mtime": current_mtime,
-                "chunks": len(chunks),
-            }
+                ingest_state.setdefault("files", {})[note_id] = {
+                    "mtime": current_mtime,
+                    "chunks": len(chunks),
+                }
 
-        except Exception as e:
-            errors.append(f"{md_file.name}: {str(e)}")
+            except Exception as e:
+                errors.append(f"{md_file.name}: {str(e)}")
+            progress.advance(parse_task)
 
-    for note_id_prefix in ids_to_delete:
-        try:
-            store.delete_note_chunks(note_id_prefix)
-        except Exception:
-            pass
-
-    logger.info("Deleted old chunks for %d notes", len(ids_to_delete))
+    if force:
+        store.reset()
+        logger.info("Reset collections for force re-ingest")
+    else:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+        ) as progress:
+            del_task = progress.add_task("Deleting old chunks", total=len(ids_to_delete))
+            for note_id_prefix in ids_to_delete:
+                try:
+                    store.delete_note_chunks(note_id_prefix)
+                except Exception:
+                    pass
+                progress.advance(del_task)
     logger.info("Embedding %d chunks in batches of %d...", len(all_chunks), BATCH_SIZE)
 
-    for i in range(0, len(all_chunks), BATCH_SIZE):
-        batch_texts = all_chunks[i:i + BATCH_SIZE]
-        batch_ids = all_ids[i:i + BATCH_SIZE]
-        batch_metadata = all_metadata[i:i + BATCH_SIZE]
+    total_batches = (len(all_chunks) + BATCH_SIZE - 1) // BATCH_SIZE
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        embed_task = progress.add_task("Embedding chunks", total=total_batches)
+        for i in range(0, len(all_chunks), BATCH_SIZE):
+            batch_texts = all_chunks[i:i + BATCH_SIZE]
+            batch_ids = all_ids[i:i + BATCH_SIZE]
+            batch_metadata = all_metadata[i:i + BATCH_SIZE]
 
-        try:
-            embeddings = embed_texts_sync(batch_texts)
-            if embeddings:
-                store.add_notes(batch_ids, batch_texts, embeddings, batch_metadata)
-                logger.debug("Batch %d: embedded and stored %d chunks", i // BATCH_SIZE, len(batch_ids))
-        except Exception as e:
-            errors.append(f"Embedding batch {i}: {str(e)}")
-            logger.warning("Embedding batch %d failed: %s", i // BATCH_SIZE, e)
+            try:
+                embeddings = embed_texts_sync(batch_texts)
+                if embeddings:
+                    store.add_notes(batch_ids, batch_texts, embeddings, batch_metadata)
+                    logger.debug("Batch %d: embedded and stored %d chunks", i // BATCH_SIZE, len(batch_ids))
+            except Exception as e:
+                errors.append(f"Embedding batch {i}: {str(e)}")
+                logger.warning("Embedding batch %d failed: %s", i // BATCH_SIZE, e)
+            progress.advance(embed_task)
 
     ingest_state["last_ingest"] = datetime.utcnow().isoformat() + "Z"
     try:
@@ -336,20 +362,31 @@ def ingest_calendar(
         all_ids.append(cal_id)
         all_metadata.append(metadata)
 
-    for i in range(0, len(all_texts), BATCH_SIZE):
-        batch_texts = all_texts[i:i + BATCH_SIZE]
-        batch_ids = all_ids[i:i + BATCH_SIZE]
-        batch_metadata = all_metadata[i:i + BATCH_SIZE]
+    total_cal_batches = (len(all_texts) + BATCH_SIZE - 1) // BATCH_SIZE
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        cal_task = progress.add_task("Embedding calendar", total=total_cal_batches)
+        for i in range(0, len(all_texts), BATCH_SIZE):
+            batch_texts = all_texts[i:i + BATCH_SIZE]
+            batch_ids = all_ids[i:i + BATCH_SIZE]
+            batch_metadata = all_metadata[i:i + BATCH_SIZE]
 
-        try:
-            embeddings = embed_texts_sync(batch_texts)
-            if embeddings:
-                store.add_calendar_events(batch_ids, batch_texts, embeddings, batch_metadata)
-                events_ingested += len(batch_ids)
-                logger.debug("Calendar batch %d: embedded %d events", i // BATCH_SIZE, len(batch_ids))
-        except Exception as e:
-            errors.append(f"Calendar batch {i}: {str(e)}")
-            logger.warning("Calendar batch %d failed: %s", i // BATCH_SIZE, e)
+            try:
+                embeddings = embed_texts_sync(batch_texts)
+                if embeddings:
+                    store.add_calendar_events(batch_ids, batch_texts, embeddings, batch_metadata)
+                    events_ingested += len(batch_ids)
+                    logger.debug("Calendar batch %d: embedded %d events", i // BATCH_SIZE, len(batch_ids))
+            except Exception as e:
+                errors.append(f"Calendar batch {i}: {str(e)}")
+                logger.warning("Calendar batch %d failed: %s", i // BATCH_SIZE, e)
+            progress.advance(cal_task)
 
     logger.info("Calendar ingest complete: %d events, %d errors", events_ingested, len(errors))
 
