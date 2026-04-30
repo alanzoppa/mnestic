@@ -167,9 +167,16 @@ export const searchApi = {
     filters?: Record<string, string>;
     n?: number;
     includeCalendar?: boolean;
+    daysBack?: number;
   }): Promise<SearchResult[]> => {
-    const { query = '', filters, n = 50, includeCalendar = true } = options;
-    const res = await search(query || '*', Object.keys(filters || {}).length ? filters : undefined, n, includeCalendar);
+    const { query = '', filters, n = 50, includeCalendar = true, daysBack } = options;
+    const merged = { ...(filters || {}) };
+    if (daysBack) {
+      const d = new Date();
+      d.setDate(d.getDate() - daysBack);
+      merged.date_gte = d.toISOString();
+    }
+    const res = await search(query, Object.keys(merged).length ? merged : undefined, n, includeCalendar, false);
     return res.results.map(r => ({
       ...r,
       metadata: r.metadata ? {

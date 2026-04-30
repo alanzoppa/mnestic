@@ -40,7 +40,7 @@ export default function BrowsePage() {
   const { data: allResults = [], isLoading: loading } = useQuery({
     queryKey: ['browse', 'all-notes'],
     queryFn: async () => {
-      const res = await searchApi.all({ query: '', n: 500 });
+      const res = await searchApi.all({ query: '', n: 500, daysBack: 30 });
       return res.filter((r: SearchResult) => r.type === 'note');
     },
     staleTime: Infinity,
