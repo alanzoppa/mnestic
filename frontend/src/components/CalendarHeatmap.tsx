@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { timelineKeys, timelineApi } from '@/lib/queries'
 import type { TimelinePeriod } from '@/lib/api'
@@ -25,6 +26,7 @@ interface DayData {
 }
 
 export function CalendarHeatmap() {
+  const router = useRouter()
   const [year, setYear] = useState(() => getYear(new Date()))
   const [tooltip, setTooltip] = useState<{ date: string; count: number; x: number; y: number } | null>(null)
 
@@ -144,9 +146,7 @@ export function CalendarHeatmap() {
                       })
                     }}
                     onMouseLeave={() => setTooltip(null)}
-                    onClick={() => {
-                      window.location.href = `/calendar/${day.date}`
-                    }}
+                    onClick={() => router.push(`/calendar/${day.date}`)}
                   />
                 )
               })}

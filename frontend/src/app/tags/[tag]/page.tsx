@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
@@ -46,21 +47,22 @@ export default function TagPage() {
         {results.map((result) => {
           const meta = result.metadata || {}
           return (
-            <Card
+            <Link
               key={result.id}
-              hover
-              className="cursor-pointer"
-              onClick={() => router.push(`/notes/${result.note_id || result.metadata?.note_id || result.id}`)}
+              href={`/notes/${result.note_id || result.metadata?.note_id || result.id}`}
+              className="block"
             >
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-zinc-100">{meta.title || 'Untitled'}</h3>
-                <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{result.snippet}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="zinc" size="sm">{meta.folder || 'Unknown'}</Badge>
-                  {meta.source && <Badge variant="zinc" size="sm">{meta.source}</Badge>}
-                </div>
-              </CardContent>
-            </Card>
+              <Card hover>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-zinc-100">{meta.title || 'Untitled'}</h3>
+                  <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{result.snippet}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="zinc" size="sm">{meta.folder || 'Unknown'}</Badge>
+                    {meta.source && <Badge variant="zinc" size="sm">{meta.source}</Badge>}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           )
         })}
       </div>

@@ -93,32 +93,6 @@ function getImageUrl(src: string): string {
   return `/api/images/${encodeURIComponent(src)}`
 }
 
-// Custom components for ReactMarkdown (no images - they're extracted)
-const MarkdownComponents = {
-  img: ({ src, alt }: { src?: string | Blob; alt?: string }) => {
-    if (!src || typeof src !== 'string') return null
-    return <img src={src} alt={alt || ''} loading="lazy" className="max-w-full h-auto rounded" />
-  },
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
-    return <a href={href} className="text-blue-400 hover:text-blue-300 transition-colors">{children}</a>
-  },
-  h1: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
-    const text = typeof children === 'string' ? children : ''
-    const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
-    return <h1 id={headingId} className="scroll-mt-20">{children}</h1>
-  },
-  h2: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
-    const text = typeof children === 'string' ? children : ''
-    const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
-    return <h2 id={headingId} className="scroll-mt-20">{children}</h2>
-  },
-  h3: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
-    const text = typeof children === 'string' ? children : ''
-    const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
-    return <h3 id={headingId} className="scroll-mt-20">{children}</h3>
-  }
-}
-
 export default function NotePage() {
   const params = useParams()
   const router = useRouter()
@@ -134,6 +108,32 @@ export default function NotePage() {
   const [galleryIndex, setGalleryIndex] = useState(0)
   const [showEmbeddings, setShowEmbeddings] = useState(false)
   const [expandedSimilar, setExpandedSimilar] = useState<Set<string>>(new Set())
+
+  // Custom components for ReactMarkdown (memoized to prevent re-mount)
+  const MarkdownComponents = useMemo(() => ({
+    img: ({ src, alt }: { src?: string | Blob; alt?: string }) => {
+      if (!src || typeof src !== 'string') return null
+      return <img src={src} alt={alt || ''} loading="lazy" className="max-w-full h-auto rounded" />
+    },
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+      return <a href={href} className="text-blue-400 hover:text-blue-300 transition-colors">{children}</a>
+    },
+    h1: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
+      const text = typeof children === 'string' ? children : ''
+      const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
+      return <h1 id={headingId} className="scroll-mt-20">{children}</h1>
+    },
+    h2: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
+      const text = typeof children === 'string' ? children : ''
+      const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
+      return <h2 id={headingId} className="scroll-mt-20">{children}</h2>
+    },
+    h3: ({ children, id }: { children?: React.ReactNode; id?: string }) => {
+      const text = typeof children === 'string' ? children : ''
+      const headingId = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 50)
+      return <h3 id={headingId} className="scroll-mt-20">{children}</h3>
+    }
+  }), [])
 
   // Queries
   const {

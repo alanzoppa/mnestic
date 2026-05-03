@@ -128,8 +128,8 @@ describe("SearchPage", () => {
       expect(screen.getByText("Test Note")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Test Note"));
-    expect(mockPush).toHaveBeenCalledWith("/notes/note1");
+    const link = screen.getByRole("link", { name: /Test Note/ });
+    expect(link).toHaveAttribute("href", "/notes/note1");
   });
 
   it("date range picker is visible", () => {

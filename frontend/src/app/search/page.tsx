@@ -373,24 +373,11 @@ export default function SearchPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {results.map((result) => (
-              <Card
-                key={result.id}
-                hover
-                className="cursor-pointer group"
-                onClick={() => {
-                  if (result.type === 'calendar') {
-                    const date = result.metadata?.date
-                    if (date) {
-                      router.push(`/calendar/${date}`)
-                    } else {
-                      router.push('/calendar')
-                    }
-                  } else {
-                    router.push(`/notes/${result.note_id || result.metadata?.note_id || result.id}`)
-                  }
-                }}
-              >
+            {results.map((result) => {
+              const isCalendar = result.type === 'calendar'
+              const noteHref = `/notes/${result.note_id || result.metadata?.note_id || result.id}`
+              const calDate = result.metadata?.date
+              const cardContent = (
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -401,7 +388,7 @@ export default function SearchPage() {
                         created={result.metadata?.created}
                         date={result.metadata?.date}
                         tags={result.metadata?.tags || []}
-                        type={result.type === 'calendar' ? 'calendar' : 'note'}
+                        type={isCalendar ? 'calendar' : 'note'}
                         snippet={result.snippet}
                         score={result.score}
                         showScore={true}
@@ -413,8 +400,32 @@ export default function SearchPage() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              )
+
+              if (isCalendar) {
+                return (
+                  <Card
+                    key={result.id}
+                    hover
+                    className="cursor-pointer group"
+                    onClick={() => {
+                      if (calDate) router.push(`/calendar/${calDate}`)
+                      else router.push('/calendar')
+                    }}
+                  >
+                    {cardContent}
+                  </Card>
+                )
+              }
+
+              return (
+                <Link key={result.id} href={noteHref} className="block group">
+                  <Card hover className="cursor-pointer">
+                    {cardContent}
+                  </Card>
+                </Link>
+              )
+            })}
           </div>
         </>
       )}

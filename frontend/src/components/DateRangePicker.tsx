@@ -35,11 +35,13 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
 
   return (
     <div className={`relative ${className}`} ref={ref}>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(!isOpen) } }}
         data-testid="date-range-picker"
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
           hasRange
             ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
             : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700'
@@ -59,7 +61,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
             <X className="w-3 h-3" strokeWidth={2} />
           </button>
         )}
-      </button>
+      </div>
 
       {isOpen && (
         <div className="absolute z-50 mt-1 right-0 w-72 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl p-4 space-y-4">
