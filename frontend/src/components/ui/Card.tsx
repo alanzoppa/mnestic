@@ -1,4 +1,4 @@
-import { ReactNode, MouseEventHandler } from 'react';
+import { ReactNode, MouseEventHandler, KeyboardEventHandler } from 'react';
 
 interface CardProps {
   children: ReactNode;
@@ -11,11 +11,19 @@ interface CardProps {
 export function Card({ children, className = '', hover = false, onClick, 'data-testid': dataTestId }: CardProps) {
   const baseClasses = hover ? 'card-hover' : 'card';
   const cursorClass = onClick ? 'cursor-pointer' : '';
-  
+
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> | undefined = onClick ? (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick(e as unknown as React.MouseEvent<HTMLDivElement>);
+    }
+  } : undefined;
+
   return (
     <div 
       className={`${baseClasses} ${cursorClass} ${className}`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       data-testid={dataTestId}

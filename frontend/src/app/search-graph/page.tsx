@@ -173,8 +173,9 @@ export default function SearchGraphPage() {
         </button>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-sm text-zinc-400">Similarity:</span>
+        <label htmlFor="similarity-range" className="text-sm text-zinc-400">Similarity:</label>
         <input
+          id="similarity-range"
           type="range"
           min="0.3"
           max="0.8"

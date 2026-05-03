@@ -136,6 +136,9 @@ export function CalendarHeatmap() {
                     width={11}
                     height={11}
                     rx={2}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${day.date}: ${day.count} notes`}
                     className={`${color} cursor-pointer hover:ring-1 hover:ring-white/30 transition-all`}
                     onMouseEnter={(e) => {
                       setTooltip({
@@ -147,6 +150,12 @@ export function CalendarHeatmap() {
                     }}
                     onMouseLeave={() => setTooltip(null)}
                     onClick={() => router.push(`/calendar/${day.date}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/calendar/${day.date}`)
+                      }
+                    }}
                   />
                 )
               })}

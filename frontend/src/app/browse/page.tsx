@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Filter, Star, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Search, Filter, Star, ChevronRight, AlertTriangle, X } from 'lucide-react'
 import { schemaKeys, schemaApi, searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
 import { useDebouncedValue } from '@/lib/hooks'
@@ -320,17 +320,34 @@ export default function BrowsePage() {
               <button 
                 onClick={() => setSourceFilter('')}
                 className="ml-1 hover:text-white"
-              ></button>
+                aria-label="Remove source filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </Badge>
           )}
           {folderFilter && (
             <Badge variant="green" className="flex items-center gap-1">
               Folder: {folderFilter}
+              <button 
+                onClick={() => setFolderFilter('')}
+                className="ml-1 hover:text-white"
+                aria-label="Remove folder filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </Badge>
           )}
           {tagFilter && (
             <Badge variant="purple" className="flex items-center gap-1">
               Tag: {tagFilter}
+              <button 
+                onClick={() => setTagFilter('')}
+                className="ml-1 hover:text-white"
+                aria-label="Remove tag filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </Badge>
           )}
         </div>
