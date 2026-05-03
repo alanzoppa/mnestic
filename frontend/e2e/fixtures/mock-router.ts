@@ -46,6 +46,12 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
 
   log("Setting up mock API routes...");
 
+  const PEOPLE = [
+    { name: "Alice Smith", aliases: ["Alice"], context: "direct report", frequency: 45 },
+    { name: "Bob Jones", aliases: ["Bob"], context: "colleague", frequency: 23 },
+    { name: "Valentin Cekov", aliases: ["Val"], context: "principal engineer", frequency: 12 },
+  ];
+
   // Stats
   await page.route("**/api/stats", async (route) => {
     log(`→ ${route.request().method()} ${route.request().url()}`);
@@ -233,21 +239,26 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
     log(`← 200 ${route.request().url()}`);
   });
 
-  // People
-  await page.route("**/api/people", async (route) => {
-    log(`→ ${route.request().method()} ${route.request().url()}`);
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        people: [
-          { name: "Alice Smith", aliases: ["Alice"], context: "direct report" },
-          { name: "Bob Jones", aliases: ["Bob"], context: "colleague" },
-          { name: "Valentin Cekov", aliases: ["Val"], context: "principal engineer" },
-        ],
-      }),
-    });
-    log(`← 200 ${route.request().url()}`);
+  // People endpoints - single handler with query-aware routing
+  await page.route("**/api/people**", async (route) => {
+    const url = route.request().url();
+    log(`→ ${route.request().method()} ${url}`);
+    if (url.includes("?q=")) {
+      const q = new URL(url).searchParams.get("q") || "";
+      const filtered = PEOPLE.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || p.aliases.some((a) => a.toLowerCase().includes(q.toLowerCase())));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ people: filtered }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ people: PEOPLE }),
+      });
+    }
+    log(`← 200 ${url}`);
   });
 
   // Ingest
@@ -313,31 +324,6 @@ export async function mockApiRoutes(page: Page, options?: MockOptions) {
     log(`← 200 ${route.request().url()}`);
   });
 
-  // People with q param
-  await page.route("**/api/people**", async (route) => {
-    const url = route.request().url();
-    log(`→ ${route.request().method()} ${url}`);
-    if (url.includes("?q=")) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(mockPeopleQuery),
-      });
-    } else {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          people: [
-            { name: "Alice Smith", aliases: ["Alice"], context: "direct report", frequency: 45 },
-            { name: "Bob Jones", aliases: ["Bob"], context: "colleague", frequency: 23 },
-          ],
-        }),
-      });
-    }
-    log(`← 200 ${url}`);
-  });
-
   // Glossary
   await page.route("**/api/glossary**", async (route) => {
     log(`→ ${route.request().method()} ${route.request().url()}`);
@@ -368,6 +354,12 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
     await new Promise((resolve) => setTimeout(resolve, delayMs));
     return JSON.stringify(body);
   };
+
+  const PEOPLE_DATA = [
+    { name: "Alice Smith", aliases: ["Alice"], context: "direct report", frequency: 45 },
+    { name: "Bob Jones", aliases: ["Bob"], context: "colleague", frequency: 23 },
+    { name: "Valentin Cekov", aliases: ["Val"], context: "principal engineer", frequency: 12 },
+  ];
 
   await page.route("**/api/stats", async (route) => {
     await route.fulfill({
@@ -457,16 +449,26 @@ export async function mockApiRoutesWithDelay(page: Page, delayMs: number = 500) 
   });
 
   await page.route("**/api/people**", async (route) => {
-    const body = await mockWithDelay(
-      route.request().url().includes("?q=")
-        ? mockPeopleQuery
-        : { people: [{ name: "Alice Smith", aliases: ["Alice"], context: "direct report", frequency: 45 }] }
-    );
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body,
-    });
+    const url = route.request().url();
+    if (url.includes("?q=")) {
+      const q = new URL(url).searchParams.get("q") || "";
+      const filtered = PEOPLE_DATA.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || p.aliases.some((a) => a.toLowerCase().includes(q.toLowerCase())));
+      const body = await mockWithDelay({ people: filtered });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body,
+      });
+    } else {
+      const body = await mockWithDelay({
+        people: PEOPLE_DATA,
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body,
+      });
+    }
   });
 
   await page.route("**/api/ingest", async (route) => {

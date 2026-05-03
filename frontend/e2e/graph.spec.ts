@@ -43,16 +43,12 @@ test.describe("Graph Page", () => {
   });
 
   test("should display legend", async ({ page }) => {
-    // Wait for graph data to load
-    await page.waitForSelector('[data-testid="graph-stats"]');
-
-    // Legend should be visible
     const legend = page.locator('[data-testid="graph-legend"]');
-    await expect(legend).toBeVisible();
-
-    // Legend shows primary tag names from mock data - scope to legend only
-    await expect(legend.locator("text=1:1")).toBeVisible();
-    await expect(legend.locator("text=work")).toBeVisible();
+    await expect(legend).toBeVisible({ timeout: 10000 });
+    // Primary tags are non-structural (getPrimaryTag filters out STRUCTURAL_TAGS)
+    // management, architecture, hiring, therapy are non-structural
+    await expect(legend.locator("text=management")).toBeVisible({ timeout: 5000 });
+    await expect(legend.locator("text=architecture")).toBeVisible({ timeout: 5000 });
   });
 
   test("should display node/edge count", async ({ page }) => {

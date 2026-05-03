@@ -255,9 +255,9 @@ export const mockTimeline = {
 export const mockGraph = {
   nodes: [
     { id: "note-001", title: "1:1 with Alice", folder: "1:1 Notes", tags: ["1:1", "management"], source: "Apple Notes" },
-    { id: "note-002", title: "Zendesk Architecture", folder: "Work", tags: ["work", "zendesk"], source: "Evernote" },
-    { id: "note-003", title: "Interview Notes", folder: "Interview Notes", tags: ["interview"], source: "Apple Notes" },
-    { id: "note-004", title: "Personal Reflection", folder: "Personal", tags: ["personal"], source: "Apple Notes" },
+    { id: "note-002", title: "Zendesk Architecture", folder: "Work", tags: ["work", "zendesk", "architecture"], source: "Evernote" },
+    { id: "note-003", title: "Interview Notes", folder: "Interview Notes", tags: ["interview", "hiring"], source: "Apple Notes" },
+    { id: "note-004", title: "Personal Reflection", folder: "Personal", tags: ["personal", "therapy"], source: "Apple Notes" },
     { id: "note-005", title: "ZEIG Meeting", folder: "ZEIG things", tags: ["zeig"], source: "Apple Notes" },
     { id: "note-006", title: "General Notes", folder: "Notes", tags: ["notes"], source: "Evernote" },
   ],
