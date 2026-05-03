@@ -21,7 +21,7 @@ test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
     await expect(page.locator("h1:has-text('Notes Browser')")).toBeVisible();
 
     // Wait for stats to load from backend
-    await page.waitForTimeout(2000);
+    await page.waitForResponse((resp) => resp.url().includes("/api/stats"));
 
     // Stats should show non-zero values from real data
     // Look for stat values (numbers in the stat cards)
@@ -41,7 +41,7 @@ test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
     await searchInput.fill("management");
     await page.locator('button:has-text("Search")').click();
 
-    await page.waitForTimeout(2000);
+    await page.waitForResponse((resp) => resp.url().includes("/api/search"));
 
     // Results should appear - look for results in cards
     const results = page.locator('.recharts-wrapper, h3').first();
@@ -52,7 +52,7 @@ test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
     await page.goto("/browse");
     await expect(page.locator("h1:has-text('Browse Notes')")).toBeVisible();
 
-    await page.waitForTimeout(2000);
+    await page.waitForResponse((resp) => resp.url().includes("/api/notes"));
 
     // Should have note cards
     const notes = page.locator('h3').first();
@@ -63,7 +63,7 @@ test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
     await page.goto("/tags");
     await expect(page.locator("h1:has-text('Tag Explorer')")).toBeVisible();
 
-    await page.waitForTimeout(2000);
+    await page.waitForResponse((resp) => resp.url().includes("/api/tags"));
 
     // Tag cloud should load
     await expect(page.locator("text=Tag Cloud")).toBeVisible();
@@ -77,7 +77,7 @@ test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
     await page.goto("/timeline");
     await expect(page.locator("h1:has-text('Timeline')")).toBeVisible();
 
-    await page.waitForTimeout(2000);
+    await page.waitForResponse((resp) => resp.url().includes("/api/timeline"));
 
     // Chart should render
     await expect(page.locator(".recharts-wrapper").or(page.locator("text=Loading"))).toBeVisible();

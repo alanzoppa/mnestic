@@ -36,7 +36,7 @@ test.describe("Graph Page", () => {
   });
 
   test("should display graph container", async ({ page }) => {
-    await page.waitForTimeout(1000); // Wait for 3D force-graph to initialize
+    await page.waitForSelector('[data-testid="graph-container"]');
     // The graph renders into a canvas element
     const container = page.locator('[data-testid="graph-container"] canvas');
     await expect(container).toBeVisible();
