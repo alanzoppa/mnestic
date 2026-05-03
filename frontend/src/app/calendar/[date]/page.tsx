@@ -22,7 +22,7 @@ export default function CalendarDatePage() {
   const params = useParams();
   const dateStr = getDateParam(params as Record<string, string | string[] | undefined>);
 
-  const { data, isLoading: loading } = useQuery({
+  const { data, isLoading: loading, error } = useQuery({
     queryKey: calendarEventKeys.date(dateStr),
     queryFn: () => calendarApi.date(dateStr),
     enabled: !!dateStr,
@@ -40,6 +40,30 @@ export default function CalendarDatePage() {
     if (!isValid(d)) return "";
     return format(d, "h:mm a");
   };
+
+  if (error) {
+    return (
+      <div className="max-w-4xl space-y-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/calendar")}
+          data-testid="back-to-calendar"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to Calendar
+        </Button>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <EmptyState
+              title="Failed to load calendar"
+              subtitle={(error as Error)?.message || 'An unexpected error occurred'}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl space-y-6">

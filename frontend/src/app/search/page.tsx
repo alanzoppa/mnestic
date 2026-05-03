@@ -306,6 +306,11 @@ export default function SearchPage() {
       {/* Results Stats & Visualizations */}
       {searched && results.length > 0 && (
         <>
+          {searchMutation.isError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              Search failed: {searchMutation.error?.message || 'Unknown error'}
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Result Type Distribution */}
             <Card>

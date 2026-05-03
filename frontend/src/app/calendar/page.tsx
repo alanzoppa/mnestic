@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonNoteCard } from '@/components/ui/Skeleton';
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -26,7 +27,7 @@ export default function CalendarPage() {
   const startStr = toISODate(new Date(year, month, 1));
   const endStr = toISODate(new Date(year, month + 1, 0));
 
-  const { data: events, isLoading: loading } = useQuery({
+  const { data: events, isLoading: loading, error } = useQuery({
     queryKey: calendarEventKeys.range(startStr, endStr),
     queryFn: () => calendarApi.events(startStr, endStr),
   });
@@ -58,6 +59,22 @@ export default function CalendarPage() {
   };
 
   const days = getMonthDays(year, month, 0);
+
+  if (error) {
+    return (
+      <div className="max-w-7xl space-y-6">
+        <SectionHeader title="Calendar" description="Error loading calendar" />
+        <Card>
+          <CardContent className="p-12 text-center">
+            <EmptyState
+              title="Failed to load calendar"
+              subtitle={(error as Error)?.message || 'An unexpected error occurred'}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl space-y-6">

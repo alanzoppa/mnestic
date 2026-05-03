@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Filter, Star, ChevronRight } from 'lucide-react'
+import { Search, Filter, Star, ChevronRight, AlertTriangle } from 'lucide-react'
 import { schemaKeys, schemaApi, searchApi } from '@/lib/queries'
 import type { SearchResult } from '@/lib/api'
 import { useDebouncedValue } from '@/lib/hooks'
@@ -37,7 +37,7 @@ export default function BrowsePage() {
   const [currentPage, setCurrentPage] = useState(1)
 
   // Queries
-  const { data: allResults = [], isLoading: loading } = useQuery({
+  const { data: allResults = [], isLoading: loading, error } = useQuery({
     queryKey: ['browse', 'all-notes'],
     queryFn: async () => {
       const res = await searchApi.all({ query: '', n: 500 });
@@ -144,6 +144,22 @@ export default function BrowsePage() {
   }
 
   const activeFiltersCount = [sourceFilter, folderFilter, tagFilter].filter(Boolean).length
+
+  if (error) {
+    return (
+      <div className="max-w-7xl space-y-6">
+        <SectionHeader title="Browse Notes" description="Error loading notes" />
+        <Card>
+          <CardContent className="p-12 text-center">
+            <EmptyState
+              title="Failed to load notes"
+              subtitle={(error as Error)?.message || 'An unexpected error occurred'}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

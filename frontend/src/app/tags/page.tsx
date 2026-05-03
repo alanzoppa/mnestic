@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Search, AlertTriangle } from 'lucide-react'
 import { type TagInfo, type CoOccurrence } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { tagKeys, tagsApi } from '@/lib/queries'
@@ -16,6 +16,7 @@ import { DonutChart, PieChartComponent } from '@/components/charts/PieCharts'
 import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const TAG_CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -33,7 +34,7 @@ const SORT_OPTIONS = [
 
 export default function TagsPage() {
   const router = useRouter()
-  const { data, isLoading: loading } = useQuery({
+  const { data, isLoading: loading, error } = useQuery({
     queryKey: tagKeys.all,
     queryFn: tagsApi.all,
   })
@@ -99,6 +100,23 @@ export default function TagsPage() {
     { name: 'Structural', value: structuralCount, color: '#3b82f6' },
     { name: 'Content', value: contentCount, color: '#10b981' },
   ]
+
+  if (error) {
+    return (
+      <div className="max-w-7xl space-y-6">
+        <SectionHeader title="Tags" description="Error loading tags" />
+        <Card>
+          <CardContent className="p-12 text-center">
+            <EmptyState
+              icon={<AlertTriangle className="w-16 h-16 mx-auto mb-4 text-red-400" />}
+              title="Failed to load tags"
+              subtitle={(error as Error)?.message || 'An unexpected error occurred'}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

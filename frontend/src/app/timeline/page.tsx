@@ -100,6 +100,19 @@ export default function TimelinePage() {
     }
   };
 
+  if (error) {
+    return (
+      <div className="max-w-7xl space-y-6">
+        <SectionHeader title="Timeline" description="Error loading timeline data" />
+        <Card>
+          <CardContent className="p-12 text-center">
+            <p className="text-red-400">Failed to load timeline: {(error as Error)?.message || 'Unknown error'}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-7xl space-y-6">
       <SectionHeader

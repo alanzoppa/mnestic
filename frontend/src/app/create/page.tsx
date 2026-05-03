@@ -126,6 +126,12 @@ export default function CreateNotePage() {
                 onChange={setParticipants}
               />
 
+              {createMutation.isError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                  {createMutation.error?.message || 'Failed to create note'}
+                </div>
+              )}
+
               <div className="flex items-center gap-3 pt-2">
                 <Button
                   type="submit"
