@@ -43,7 +43,7 @@ export function DonutChart({
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className={`card p-6 ${className}`}>
+    <div className={className}>
       {title && (
         <h3 className="text-lg font-semibold text-zinc-100 mb-4">{title}</h3>
       )}
@@ -106,7 +106,7 @@ export function PieChartComponent({
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className={`card p-6 ${className}`}>
+    <div className={className}>
       {title && (
         <h3 className="text-lg font-semibold text-zinc-100 mb-4">{title}</h3>
       )}

@@ -1,4 +1,5 @@
 import { ReactNode, MouseEventHandler, KeyboardEventHandler } from 'react';
+import { twMerge } from 'tailwind-merge';
 
 interface CardProps {
   children: ReactNode;
@@ -21,7 +22,7 @@ export function Card({ children, className = '', hover = false, onClick, 'data-t
 
   return (
     <div 
-      className={`${baseClasses} ${cursorClass} ${className}`}
+      className={twMerge(baseClasses, cursorClass, className)}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role={onClick ? 'button' : undefined}

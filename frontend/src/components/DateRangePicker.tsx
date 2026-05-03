@@ -99,7 +99,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
                   type="date"
                   value={value.from}
                   onChange={(e) => onChange({ ...value, from: e.target.value })}
-                  className="input input-sm w-full"
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-zinc-800 border border-zinc-700 text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
               <div>
@@ -108,7 +108,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
                   type="date"
                   value={value.to}
                   onChange={(e) => onChange({ ...value, to: e.target.value })}
-                  className="input input-sm w-full"
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-zinc-800 border border-zinc-700 text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
             </div>
