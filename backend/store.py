@@ -54,8 +54,12 @@ class NoteStore:
             path=persist_dir,
             settings=Settings(anonymized_telemetry=False),
         )
-        self._notes = self._client.get_or_create_collection("notes")
-        self._calendar = self._client.get_or_create_collection("calendar")
+        self._notes = self._client.get_or_create_collection(
+            "notes", metadata={"hnsw:space": "cosine"}
+        )
+        self._calendar = self._client.get_or_create_collection(
+            "calendar", metadata={"hnsw:space": "cosine"}
+        )
 
     def add_notes(
         self,
@@ -495,5 +499,9 @@ class NoteStore:
     def reset(self) -> None:
         self._client.delete_collection("notes")
         self._client.delete_collection("calendar")
-        self._notes = self._client.get_or_create_collection("notes")
-        self._calendar = self._client.get_or_create_collection("calendar")
+        self._notes = self._client.get_or_create_collection(
+            "notes", metadata={"hnsw:space": "cosine"}
+        )
+        self._calendar = self._client.get_or_create_collection(
+            "calendar", metadata={"hnsw:space": "cosine"}
+        )

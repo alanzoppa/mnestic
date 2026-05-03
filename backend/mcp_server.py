@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from store import NoteStore
 
 from utils import normalize_and_dedup_results
-from shared import _is_safe_filename
+from shared import _is_safe_filename, find_note_file, _sanitize_filename
 from config import NOTES_DIR
 
 
@@ -35,20 +35,6 @@ def _note_from_unique(meta: dict, note_id: str) -> dict[str, Any]:
         "source": meta.get("source", ""),
         "source_id": meta.get("source_id", ""),
     }
-
-
-def _find_note_file(source_id: str, note_id: str) -> str | None:
-    for ext in (".md", ".txt", ""):
-        if _is_safe_filename(source_id):
-            candidate = os.path.join(NOTES_DIR, source_id + ext)
-            if os.path.exists(candidate):
-                return candidate
-    for ext in (".md", ".txt", ""):
-        if _is_safe_filename(note_id):
-            candidate = os.path.join(NOTES_DIR, note_id + ext)
-            if os.path.exists(candidate):
-                return candidate
-    return None
 
 
 def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMCP:
@@ -120,17 +106,13 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             participants: Comma-separated participant names (optional).
             series: Series name if this note belongs to a recurring series (optional).
         """
-        import hashlib
-        from datetime import datetime, timezone
-
-        if not title.strip():
-            return {"error": "Title is required"}
+        from shared import _invalidate_source_id_cache
 
         now = datetime.now(timezone.utc).isoformat()
         raw = f"{title}{now}"
         source_id = hashlib.sha256(raw.encode()).hexdigest()[:12]
         note_id = f"manual_{source_id}"
-        sanitized = title.strip().replace("/", "-").replace(":", "-")[:100]
+        sanitized = _sanitize_filename(title.strip(), NOTES_DIR)
         filepath = os.path.join(NOTES_DIR, f"{sanitized}.md")
 
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
@@ -153,6 +135,8 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         post.metadata = meta
         with open(filepath, "wb") as f:
             frontmatter.dump(post, f, allow_unicode=True)
+
+        _invalidate_source_id_cache()
 
         from ingest import build_note_chunks
         from embed import embed_texts_sync
@@ -194,7 +178,9 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         source_id = meta.get("source_id", "")
 
         content = ""
-        note_file = _find_note_file(source_id, note_id)
+        note_file = find_note_file(source_id, NOTES_DIR)
+        if not note_file:
+            note_file = find_note_file(note_id, NOTES_DIR)
         if note_file and os.path.exists(note_file):
             try:
                 post = frontmatter.load(note_file)

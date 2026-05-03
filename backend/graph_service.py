@@ -4,6 +4,7 @@ from typing import Any
 
 from sklearn.metrics.pairwise import cosine_similarity
 
+from constants import MAX_GRAPH_NODES, MAX_GRAPH_WHERE_IDS
 from store import NoteStore
 from models import NoteMetadata
 
@@ -21,7 +22,7 @@ def build_similarity_graph_from_notes(
     if not note_ids:
         return {"nodes": [], "edges": []}
 
-    note_ids = note_ids[:1000]
+    note_ids = note_ids[:MAX_GRAPH_NODES]
 
     all_meta = {}
     seen_note_ids = set()
@@ -142,15 +143,15 @@ def build_similarity_graph(
             if tag.lower() in note_tags:
                 filtered_ids.append(all_notes["ids"][i])
         if filtered_ids:
-            where_clause_ids = filtered_ids[:250]
+            where_clause_ids = filtered_ids[:MAX_GRAPH_WHERE_IDS]
         else:
             where_clause_ids = []
     else:
         where_clause_ids = None
 
     sample_ids = where_clause_ids if where_clause_ids else None
-    if sample_ids and len(sample_ids) > 1000:
-        sample_ids = sample_ids[:1000]
+    if sample_ids and len(sample_ids) > MAX_GRAPH_NODES:
+        sample_ids = sample_ids[:MAX_GRAPH_NODES]
 
     all_meta = {}
     if sample_ids:
@@ -183,7 +184,7 @@ def build_similarity_graph(
                 continue
             seen_note_ids.add(nid)
             all_meta[mid] = meta
-            if len(all_meta) >= 1000:
+            if len(all_meta) >= MAX_GRAPH_NODES:
                 break
 
     query_ids = list(all_meta.keys())

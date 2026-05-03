@@ -14,8 +14,8 @@ DUMMY_EMBEDDING = [0.1] * 256
 @pytest.fixture(autouse=True)
 def clear_cache():
     # Reset cache state before every test in this module
-    import main
-    main._invalidate_source_id_cache()
+    import shared
+    shared._invalidate_source_id_cache()
 
 
 @pytest.fixture
@@ -60,42 +60,42 @@ def app_client(tmp_path):
 
 def test_all_notes_found_by_source_id(app_client):
     c, notes_dir = app_client
-    from main import find_note_file, _source_id_cache
+    from shared import find_note_file, _source_id_cache
 
     # Build cache by calling find_note_file once
-    find_note_file("x-coredata://1234567890/com.apple.notes.Note/ABCDEFGHIJ")
+    find_note_file("x-coredata://1234567890/com.apple.notes.Note/ABCDEFGHIJ", notes_dir)
     assert len(_source_id_cache) == 4
 
     # Every source_id should resolve
     for sid in _source_id_cache:
-        result = find_note_file(sid)
+        result = find_note_file(sid, notes_dir)
         assert result is not None, f"Failed to find note for source_id: {sid}"
         assert os.path.exists(result)
 
 
 def test_apple_notes_source_id_with_colon_slash(app_client):
     c, notes_dir = app_client
-    from main import find_note_file
+    from shared import find_note_file
 
     sid = "x-coredata://1234567890/com.apple.notes.Note/ABCDEFGHIJ"
-    result = find_note_file(sid)
+    result = find_note_file(sid, notes_dir)
     assert result is not None
     assert os.path.basename(result) == "Apple_Note_0.md"
 
 
 def test_invalidation_then_find_rebuilds_cache(app_client):
     c, notes_dir = app_client
-    import main
+    import shared
 
     # Warm cache
-    main.find_note_file("evernote:note:abc123def456")
-    assert len(main._source_id_cache) == 4
-    assert main._source_id_cache_populated is True
+    shared.find_note_file("evernote:note:abc123def456", notes_dir)
+    assert len(shared._source_id_cache) == 4
+    assert shared._source_id_cache_populated is True
 
     # Invalidate
-    main._invalidate_source_id_cache()
-    assert len(main._source_id_cache) == 0
-    assert main._source_id_cache_populated is False
+    shared._invalidate_source_id_cache()
+    assert len(shared._source_id_cache) == 0
+    assert shared._source_id_cache_populated is False
 
     # Adding a new note after invalidation
     new_sid = "x-coredata://NEWNOTE"
@@ -104,17 +104,17 @@ def test_invalidation_then_find_rebuilds_cache(app_client):
         f.write(f"---\nsource_id: {new_sid}\nsource: Apple Notes\ntitle: New Note\n---\n\nContent.")
 
     # find_note_file should rebuild and find the new note
-    result = main.find_note_file(new_sid)
+    result = shared.find_note_file(new_sid, notes_dir)
     assert result is not None
     assert os.path.basename(result) == "New_Note.md"
-    assert len(main._source_id_cache) == 5
+    assert len(shared._source_id_cache) == 5
 
 
 def test_evernote_source_id(app_client):
     c, notes_dir = app_client
-    from main import find_note_file
+    from shared import find_note_file
 
     sid = "evernote:note:xyz789uvw012"
-    result = find_note_file(sid)
+    result = find_note_file(sid, notes_dir)
     assert result is not None
     assert os.path.basename(result) == "Evernote_Note_1.md"

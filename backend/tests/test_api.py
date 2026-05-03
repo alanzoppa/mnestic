@@ -290,8 +290,8 @@ def test_find_note_file_path_traversal():
     assert _is_safe_filename("a\\b.md") is False
     assert _is_safe_filename("") is False
 
-    assert find_note_file("../../../etc/passwd") is None
-    assert find_note_file("a/b") is None
+    assert find_note_file("../../../etc/passwd", "/tmp/notes") is None
+    assert find_note_file("a/b", "/tmp/notes") is None
 
 
 def test_get_calendar_events_missing_data(app_client):

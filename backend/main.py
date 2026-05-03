@@ -59,9 +59,9 @@ from models import (
     CreateNoteResponse,
 )
 
-from shared import _is_safe_filename
+from shared import _is_safe_filename, find_note_file, _invalidate_source_id_cache, _sanitize_filename
 from watcher import NoteWatcher
-from config import NOTES_DIR
+from config import NOTES_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH
 
 note_watcher: NoteWatcher | None = None
 
@@ -97,78 +97,6 @@ def get_calendar():
         except Exception:
             pass
     return calendar_processor
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Mount static files for images
-images_dir = os.path.join(NOTES_DIR, "images")
-if os.path.exists(images_dir):
-    app.mount("/images", StaticFiles(directory=images_dir), name="images")
-
-
-_source_id_cache: dict[str, str] = {}
-_source_id_cache_populated = False
-
-
-def _build_source_id_cache() -> None:
-    global _source_id_cache_populated
-    if _source_id_cache_populated:
-        return
-    for f in os.listdir(NOTES_DIR):
-        if not f.endswith(".md"):
-            continue
-        try:
-            post = frontmatter.load(os.path.join(NOTES_DIR, f))
-            sid = post.get("source_id", "")
-            if sid:
-                _source_id_cache[sid] = f
-        except Exception as e:
-            logger.warning("Skipping unreadable note file %s: %s", f, e)
-            continue
-    _source_id_cache_populated = True
-
-
-def find_note_file(source_id: str) -> Optional[str]:
-    _build_source_id_cache()
-    filename = _source_id_cache.get(source_id)
-    if filename:
-        return os.path.join(NOTES_DIR, filename)
-    # Fallback: try matching source_id directly as a filename (must be safe)
-    if not _is_safe_filename(source_id):
-        return None
-    for ext in (".md", ".txt", ""):
-        candidate = os.path.join(NOTES_DIR, source_id + ext)
-        if os.path.exists(candidate):
-            return candidate
-    return None
-
-
-def _invalidate_source_id_cache() -> None:
-    global _source_id_cache_populated
-    _source_id_cache.clear()
-    _source_id_cache_populated = False
-
-
-def _sanitize_filename(title: str) -> str:
-    sanitized = re.sub(r'[:/\\]', '-', title)
-    sanitized = sanitized.strip()
-    if not sanitized:
-        sanitized = "untitled"
-    base = sanitized[:MAX_FILENAME_LEN]
-    filepath = os.path.join(NOTES_DIR, f"{base}.md")
-    if not os.path.exists(filepath):
-        return base
-    for i in range(2, MAX_FILENAME_ATTEMPTS + 1):
-        candidate = f"{base}__{i}"
-        if not os.path.exists(os.path.join(NOTES_DIR, f"{candidate}.md")):
-            return candidate
-    raise RuntimeError(f"Could not find unique filename for '{base}' after {MAX_FILENAME_ATTEMPTS} attempts")
 
 
 @app.post("/api/search", response_model=SearchResponse)
@@ -285,7 +213,7 @@ async def create_note(body: CreateNoteRequest) -> dict:
     raw = f"{body.title}{now}"
     source_id = hashlib.sha256(raw.encode()).hexdigest()[:12]
     note_id = f"manual_{source_id}"
-    sanitized = _sanitize_filename(body.title)
+    sanitized = _sanitize_filename(body.title, NOTES_DIR)
     filepath = os.path.join(NOTES_DIR, f"{sanitized}.md")
 
     tags = body.tags if body.tags else []
@@ -332,7 +260,7 @@ async def get_note(note_id: str) -> dict:
     logical_note_id = metadata.get("note_id") or note.id
 
     content = ""
-    note_file = find_note_file(source_id)
+    note_file = find_note_file(source_id, NOTES_DIR)
     if note_file and os.path.exists(note_file):
         post = frontmatter.load(note_file)
         content = post.content
@@ -402,7 +330,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     metadata = note.metadata.model_dump()
     source_id = metadata.get("source_id", "")
 
-    md_path = find_note_file(source_id)
+    md_path = find_note_file(source_id, NOTES_DIR)
     if not md_path or not os.path.exists(md_path):
         raise HTTPException(status_code=404, detail="Note file not found on disk")
 
@@ -416,7 +344,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
 
     if body.title is not None:
         post.metadata["title"] = body.title
-        new_base = _sanitize_filename(body.title)
+        new_base = _sanitize_filename(body.title, NOTES_DIR)
         new_filename = f"{new_base}.md"
         new_path = os.path.join(NOTES_DIR, new_filename)
         renamed = new_path != md_path
@@ -451,7 +379,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     updated_note = store.get_note_by_note_id(logical_note_id)
     updated_meta = updated_note.metadata.model_dump() if updated_note else {}
     updated_source_id = updated_meta.get("source_id", "")
-    updated_md_path = find_note_file(updated_source_id)
+    updated_md_path = find_note_file(updated_source_id, NOTES_DIR)
     updated_content = ""
     if updated_md_path and os.path.exists(updated_md_path):
         updated_content = frontmatter.load(updated_md_path).content
