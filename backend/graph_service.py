@@ -195,6 +195,7 @@ def build_similarity_graph(
     if len(embeddings) == 0 or embeddings[0] is None:
         return {"nodes": [], "edges": []}
 
+    valid_query_ids = [qid for qid, emb in zip(query_ids, embeddings) if emb is not None]
     clean_embeddings = [e for e in embeddings if e is not None]
     if not clean_embeddings:
         return {"nodes": [], "edges": []}
@@ -207,12 +208,12 @@ def build_similarity_graph(
 
     edge_set = set()
     edges = []
-    for i in range(len(query_ids)):
-        for j in range(i + 1, len(query_ids)):
+    for i in range(len(valid_query_ids)):
+        for j in range(i + 1, len(valid_query_ids)):
             sim = float(sim_matrix[i][j])
             if sim >= threshold:
-                src_nid = id_to_note_id.get(query_ids[i], query_ids[i])
-                tgt_nid = id_to_note_id.get(query_ids[j], query_ids[j])
+                src_nid = id_to_note_id.get(valid_query_ids[i], valid_query_ids[i])
+                tgt_nid = id_to_note_id.get(valid_query_ids[j], valid_query_ids[j])
                 if src_nid == tgt_nid:
                     continue
                 pair = tuple(sorted([src_nid, tgt_nid]))

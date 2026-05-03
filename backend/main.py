@@ -164,11 +164,11 @@ def _sanitize_filename(title: str) -> str:
     filepath = os.path.join(NOTES_DIR, f"{base}.md")
     if not os.path.exists(filepath):
         return base
-    for i in range(2, 100):
+    for i in range(2, MAX_FILENAME_ATTEMPTS + 1):
         candidate = f"{base}__{i}"
         if not os.path.exists(os.path.join(NOTES_DIR, f"{candidate}.md")):
             return candidate
-    return base
+    raise RuntimeError(f"Could not find unique filename for '{base}' after {MAX_FILENAME_ATTEMPTS} attempts")
 
 
 @app.post("/api/search", response_model=SearchResponse)
@@ -630,7 +630,7 @@ async def get_schema() -> dict:
 async def get_watcher_status() -> dict:
     if note_watcher is None:
         return {"running": False, "notes_dir": str(NOTES_DIR), "recent_events": []}
-    return note_watcher.status.get_status()
+    return note_watcher.status()
 
 
 @app.get("/api/stats", response_model=StatsResponse)
