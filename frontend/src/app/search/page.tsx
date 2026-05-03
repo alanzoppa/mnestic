@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation } from '@tanstack/react-query'
@@ -128,25 +128,24 @@ export default function SearchPage() {
     filters.tags.length +
     (filters.dateFrom || filters.dateTo ? 1 : 0)
 
-  // Calculate result stats
-  const resultStats = {
+  const resultStats = useMemo(() => ({
     notes: results.filter(r => r.type === 'note').length,
     calendar: results.filter(r => r.type === 'calendar').length,
     sources: [...new Set(results.map(r => r.metadata?.source).filter(Boolean))],
-  }
+  }), [results])
 
-  // Get top tags from results
-  const resultTags = results
-    .flatMap(r => r.metadata?.tags || [])
-    .reduce((acc, tag) => {
-      acc[tag] = (acc[tag] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-  const topResultTags = (Object.entries(resultTags) as [string, number][])
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([name, value]) => ({ name, value }))
+  const topResultTags = useMemo(() => {
+    const tagCounts: Record<string, number> = {}
+    for (const r of results) {
+      for (const tag of (r.metadata?.tags || [])) {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1
+      }
+    }
+    return (Object.entries(tagCounts) as [string, number][])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, value]) => ({ name, value }))
+  }, [results])
 
   // Get popular tags for suggestions
   const popularTags = allTags.slice(0, 15)

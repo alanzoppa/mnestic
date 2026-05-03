@@ -418,7 +418,7 @@ export default function NotePage() {
                       }}
                       className="cursor-zoom-in group"
                     >
-                      <div className="rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors">
+                      <div className="rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors min-h-[200px] relative">
                         <img
                           src={getImageUrl(attachments[0]!.src)}
                           alt={attachments[0]!.alt || attachments[0]!.src.split('/').pop() || 'Attachment'}

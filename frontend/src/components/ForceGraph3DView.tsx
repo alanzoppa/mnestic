@@ -7,7 +7,14 @@ import type { GraphNode, GraphEdge } from '@/lib/api'
 
 export type ForceGraphNode = GraphNode & { x?: number; y?: number; z?: number }
 
-const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false, loading: () => null })
+const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-zinc-500 animate-pulse">Loading 3D graph engine...</div>
+    </div>
+  ),
+})
 
 interface ForceGraph3DRef {
   scene: () => THREE.Scene | null;
