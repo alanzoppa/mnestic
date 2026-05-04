@@ -79,7 +79,7 @@ def _sanitize_filename(title: str, notes_dir: str) -> str:
     Returns the base name (without ``.md`` suffix). If a file with that
     base already exists in *notes_dir*, appends ``__2``, ``__3``, etc.
     """
-    sanitized = re.sub(r'[:/\\]', '-', title)
+    sanitized = re.sub(r"[:/\\]", "-", title)
     sanitized = sanitized.strip()
     if not sanitized:
         sanitized = "untitled"
@@ -91,20 +91,24 @@ def _sanitize_filename(title: str, notes_dir: str) -> str:
         candidate = f"{base}__{i}"
         if not os.path.exists(os.path.join(notes_dir, f"{candidate}.md")):
             return candidate
-    raise RuntimeError(
-        f"Could not find unique filename for '{base}' after {MAX_FILENAME_ATTEMPTS} attempts"
-    )
+    raise RuntimeError(f"Could not find unique filename for '{base}' after {MAX_FILENAME_ATTEMPTS} attempts")
 
 
 # ---------------------------------------------------------------------------
 # state helpers
 # ---------------------------------------------------------------------------
 
+
 def _state_lock(state_file: Path) -> Path:
     return state_file.with_suffix(state_file.suffix + ".lock")
 
 
-def _read_state(state_file: Path) -> dict:
+def _to_path(state_file: str | Path) -> Path:
+    return Path(state_file) if isinstance(state_file, str) else state_file
+
+
+def _read_state(state_file: str | Path) -> dict:
+    state_file = _to_path(state_file)
     lock = FileLock(str(_state_lock(state_file)))
     with lock.acquire(timeout=10):
         if state_file.exists():
@@ -115,7 +119,8 @@ def _read_state(state_file: Path) -> dict:
         return {}
 
 
-def _write_state(state_file: Path, data: dict) -> None:
+def _write_state(state_file: str | Path, data: dict) -> None:
+    state_file = _to_path(state_file)
     lock = FileLock(str(_state_lock(state_file)))
     with lock.acquire(timeout=10):
         state_file.write_text(json.dumps(data, indent=2))

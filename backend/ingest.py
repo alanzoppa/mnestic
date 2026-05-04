@@ -35,8 +35,8 @@ def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[st
 
 
 def make_note_id(source_id: str) -> str:
-    sanitized = re.sub(r'[:/]+', '-', source_id)
-    sanitized = sanitized.strip('-')
+    sanitized = re.sub(r"[:/]+", "-", source_id)
+    sanitized = sanitized.strip("-")
     return sanitized
 
 
@@ -48,10 +48,12 @@ def make_doc_id(note_id: str, chunk_index: int, filename: str) -> str:
 
 _SEXAGESIMAL_REVERSE = {61: "1:1"}
 
+
 def _reverse_sexagesimal(value: Any) -> str:
     if isinstance(value, int) and value in _SEXAGESIMAL_REVERSE:
         return _SEXAGESIMAL_REVERSE[value]
     return str(value).strip()
+
 
 def _reverse_sexagesimal_list(items: Any) -> list[str]:
     if isinstance(items, str):
@@ -60,6 +62,7 @@ def _reverse_sexagesimal_list(items: Any) -> list[str]:
         return [_reverse_sexagesimal(t) for t in items if str(t).strip()]
     return []
 
+
 def _normalize_tags_participants(fm: dict) -> tuple[list[str], list[str]]:
     tags = _reverse_sexagesimal_list(fm.get("tags", []))
     participants = _reverse_sexagesimal_list(fm.get("participants", []))
@@ -67,7 +70,10 @@ def _normalize_tags_participants(fm: dict) -> tuple[list[str], list[str]]:
 
 
 def _load_series_assignments() -> dict[str, str | None]:
-    meta = _read_state("series_assignments.json")
+    from config import DATA_DIR
+
+    state_file = Path(DATA_DIR) / "series_assignments.json"
+    meta = _read_state(state_file)
     return meta if isinstance(meta, dict) else {}
 
 
@@ -164,16 +170,14 @@ def get_calendar_context(
         if event.date != note_date:
             continue
         attendee_list = event.attendee_names
-        has_overlap = any(
-            p in attendee_list or any(p.lower() in a.lower() for a in attendee_list)
-            for p in note_participants
-        )
+        has_overlap = any(p in attendee_list or any(p.lower() in a.lower() for a in attendee_list) for p in note_participants)
         if has_overlap:
             summary = event.summary or "Event"
             relevant.append(f"{summary} ({note_date})")
     if relevant:
         return "\n\nCalendar context: " + ", ".join(relevant)
     return ""
+
 
 def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     notes_path = Path(notes_dir)
@@ -303,12 +307,12 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     logger.info("Embedding %d chunks in batches of %d...", len(all_chunks), BATCH_SIZE)
 
     import time
+
     start_time = time.time()
-    
+
     total_batches = (len(all_chunks) + BATCH_SIZE - 1) // BATCH_SIZE
-    logger.info("Starting bulk embed of %d chunks (%d batches, provider=%s)...",
-                len(all_chunks), total_batches, current_provider)
-    
+    logger.info("Starting bulk embed of %d chunks (%d batches, provider=%s)...", len(all_chunks), total_batches, current_provider)
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold blue]{task.description}"),
@@ -318,11 +322,11 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         TimeRemainingColumn(),
     ) as progress:
         embed_task = progress.add_task("Embedding chunks", total=total_batches)
-        
+
         def on_batch_done(batch_idx: int, count: int):
             progress.advance(embed_task)
             logger.debug("Batch %d/%d done (%d chunks)", batch_idx + 1, total_batches, count)
-        
+
         try:
             embeddings = embed_texts_bulk(
                 all_chunks,
@@ -334,10 +338,10 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 store_batch_size = BATCH_SIZE
                 for i in range(0, len(all_chunks), store_batch_size):
                     store.add_notes(
-                        all_ids[i:i + store_batch_size],
-                        all_chunks[i:i + store_batch_size],
-                        embeddings[i:i + store_batch_size],
-                        all_metadata[i:i + store_batch_size],
+                        all_ids[i : i + store_batch_size],
+                        all_chunks[i : i + store_batch_size],
+                        embeddings[i : i + store_batch_size],
+                        all_metadata[i : i + store_batch_size],
                     )
                 logger.info("Stored %d chunks in ChromaDB", len(all_chunks))
             elif embeddings:
@@ -345,10 +349,9 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         except Exception as e:
             errors.append(f"Bulk embedding failed: {str(e)}")
             logger.error("Bulk embedding failed: %s", e)
-    
+
     elapsed = time.time() - start_time
-    logger.info("Embedding phase complete in %.1fs (%.1f chunks/sec)",
-                elapsed, len(all_chunks) / elapsed if elapsed > 0 else 0)
+    logger.info("Embedding phase complete in %.1fs (%.1f chunks/sec)", elapsed, len(all_chunks) / elapsed if elapsed > 0 else 0)
 
     ingest_state["embed_provider"] = current_provider
     ingest_state["embed_model"] = current_model
@@ -359,8 +362,14 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         errors.append(f"State file error: {str(e)}")
 
     total_time = time.time() - start_time
-    logger.info("Ingest complete in %.1fs: %d ingested, %d skipped, %d chunks, %d errors",
-                total_time, notes_ingested, notes_skipped, chunks_created, len(errors))
+    logger.info(
+        "Ingest complete in %.1fs: %d ingested, %d skipped, %d chunks, %d errors",
+        total_time,
+        notes_ingested,
+        notes_skipped,
+        chunks_created,
+        len(errors),
+    )
 
     return {
         "notes_ingested": notes_ingested,
@@ -412,12 +421,14 @@ def ingest_calendar(
         all_metadata.append(metadata)
 
     import time
+
     start_time = time.time()
-    
+
     total_cal_batches = (len(all_texts) + BATCH_SIZE - 1) // BATCH_SIZE
-    logger.info("Starting bulk embed of %d calendar events (%d batches, provider=%s)...",
-                len(all_texts), total_cal_batches, current_provider)
-    
+    logger.info(
+        "Starting bulk embed of %d calendar events (%d batches, provider=%s)...", len(all_texts), total_cal_batches, current_provider
+    )
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold blue]{task.description}"),
@@ -427,11 +438,11 @@ def ingest_calendar(
         TimeRemainingColumn(),
     ) as progress:
         cal_task = progress.add_task("Embedding calendar", total=total_cal_batches)
-        
+
         def on_cal_batch_done(batch_idx: int, count: int):
             progress.advance(cal_task)
             logger.debug("Calendar batch %d/%d done (%d events)", batch_idx + 1, total_cal_batches, count)
-        
+
         try:
             embeddings = embed_texts_bulk(
                 all_texts,
@@ -442,10 +453,10 @@ def ingest_calendar(
                 store_batch_size = BATCH_SIZE
                 for i in range(0, len(all_texts), store_batch_size):
                     store.add_calendar_events(
-                        all_ids[i:i + store_batch_size],
-                        all_texts[i:i + store_batch_size],
-                        embeddings[i:i + store_batch_size],
-                        all_metadata[i:i + store_batch_size],
+                        all_ids[i : i + store_batch_size],
+                        all_texts[i : i + store_batch_size],
+                        embeddings[i : i + store_batch_size],
+                        all_metadata[i : i + store_batch_size],
                     )
                 events_ingested = len(all_texts)
                 logger.info("Stored %d calendar events in ChromaDB", len(all_texts))
@@ -454,10 +465,9 @@ def ingest_calendar(
         except Exception as e:
             errors.append(f"Bulk calendar embedding failed: {str(e)}")
             logger.error("Bulk calendar embedding failed: %s", e)
-    
+
     elapsed = time.time() - start_time
-    logger.info("Calendar ingest complete in %.1fs: %d events, %d errors",
-                elapsed, events_ingested, len(errors))
+    logger.info("Calendar ingest complete in %.1fs: %d events, %d errors", elapsed, events_ingested, len(errors))
 
     return {
         "events_ingested": events_ingested,
@@ -468,6 +478,7 @@ def ingest_calendar(
 import typer
 
 app = typer.Typer()
+
 
 @app.command()
 def ingest(
