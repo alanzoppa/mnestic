@@ -35,7 +35,7 @@ function scoreToHex(ratio: number): string {
   return lerpColor(GRADIENT_STOPS[idx]!, GRADIENT_STOPS[idx + 1]!, localT)
 }
 
-export default function SearchGraphPage() {
+function SearchGraphContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
@@ -307,5 +307,15 @@ export default function SearchGraphPage() {
       onNodeClick={handleNodeClick}
       dataTestId="graph-container"
     />
+  )
+}
+
+import { Suspense } from 'react'
+
+export default function SearchGraphPage() {
+  return (
+    <Suspense>
+      <SearchGraphContent />
+    </Suspense>
   )
 }
