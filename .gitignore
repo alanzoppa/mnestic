@@ -19,9 +19,10 @@ out/
 *.log
 npm-debug.log*
 
-# Data directories (large files)
+# Data directories (in private personal-notes-data repo)
 notes/
 images/
+data/
 chroma_data/
 
 # Large data files
