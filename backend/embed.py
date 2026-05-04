@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 import logging
 import httpx
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Callable
 
 from tenacity import (
     retry,
@@ -102,6 +104,7 @@ def embed_texts_sync(
     *,
     provider: str | None = None,
 ) -> list[list[float]]:
+    """Embed texts synchronously, one batch at a time. Suitable for small lists."""
     if not texts:
         return []
     if _depth > 50:
@@ -151,6 +154,102 @@ def embed_texts_sync(
                 else:
                     raise
     return results
+
+
+def embed_texts_bulk(
+    texts: list[str],
+    prefix: str = EMBED_PREFIX_DOC,
+    *,
+    provider: str | None = None,
+    max_workers: int | None = None,
+    on_batch_done: Callable[[int, int], None] | None = None,
+) -> list[list[float]]:
+    """Embed large lists concurrently using connection reuse. Suitable for bulk ingest.
+
+    - Creates a single httpx.Client with connection pooling.
+    - Dispatches N batches in parallel via ThreadPoolExecutor.
+    - Reports per-batch timing via optional on_batch_done(start, end, batch_idx, count, latency).
+    """
+    if not texts:
+        return []
+
+    resolved_provider = _get_provider(provider)
+    batch_size = BATCH_SIZE if resolved_provider == "ollama" else OPENROUTER_EMBED_BATCH_SIZE
+    timeout = 120.0 if resolved_provider == "ollama" else 60.0
+
+    # For OpenRouter: 10 connections in parallel is reasonable; for local Ollama, be conservative
+    if max_workers is None:
+        max_workers = 4 if resolved_provider == "ollama" else 10
+
+    # Build batches
+    batches: list[list[str]] = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        batches.append([_prefix_text(t, prefix) for t in batch])
+
+    total = len(texts)
+    logger.info(
+        "Embedding %d texts via %s in %d batches of %d (%d workers)...",
+        total,
+        resolved_provider,
+        len(batches),
+        batch_size,
+        max_workers,
+    )
+
+    results: list[tuple[int, list[list[float]]]] = []
+    errors: list[tuple[int, Exception]] = []
+
+    with httpx.Client(timeout=timeout, limits=httpx.Limits(max_connections=max_workers, max_keepalive_connections=max_workers)) as client:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+            for idx, batch in enumerate(batches):
+                if resolved_provider == "openrouter":
+                    input_type = "search_document" if prefix == EMBED_PREFIX_DOC else "search_query"
+                    future = executor.submit(
+                        _embed_batch_openrouter,
+                        client,
+                        batch,
+                        settings.openrouter_embed_model,
+                        settings.openrouter_api_key,
+                        input_type,
+                    )
+                else:
+                    future = executor.submit(
+                        _embed_batch_ollama,
+                        client,
+                        batch,
+                        settings.ollama_embed_model,
+                    )
+                futures[future] = idx
+
+            for future in as_completed(futures):
+                idx = futures[future]
+                try:
+                    embs = future.result()
+                    results.append((idx, embs))
+                    if on_batch_done:
+                        on_batch_done(idx, len(embs))
+                except Exception as exc:
+                    errors.append((idx, exc))
+                    logger.warning("Batch %d failed: %s", idx, exc)
+
+    if errors:
+        logger.warning("%d of %d batches failed; results may be incomplete", len(errors), len(batches))
+
+    # Reassemble in original order
+    results.sort(key=lambda x: x[0])
+    all_embeddings: list[list[float]] = []
+    for _idx, embs in results:
+        all_embeddings.extend(embs)
+
+    logger.info(
+        "Bulk embed complete: %d/%d texts embedded (%d failed batches)",
+        len(all_embeddings),
+        total,
+        len(errors),
+    )
+    return all_embeddings
 
 
 def embed_query_sync(text: str) -> list[float]:

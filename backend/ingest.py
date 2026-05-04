@@ -12,7 +12,7 @@ from langchain_text_splitters import MarkdownTextSplitter
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, MofNCompleteColumn
 
 from shared import _state_lock, _read_state, _write_state
-from embed import embed_texts_sync, BATCH_SIZE
+from embed import embed_texts_sync, embed_texts_bulk, BATCH_SIZE
 from models import CalendarEvent
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
@@ -290,7 +290,13 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 progress.advance(del_task)
     logger.info("Embedding %d chunks in batches of %d...", len(all_chunks), BATCH_SIZE)
 
+    import time
+    start_time = time.time()
+    
     total_batches = (len(all_chunks) + BATCH_SIZE - 1) // BATCH_SIZE
+    logger.info("Starting bulk embed of %d chunks (%d batches, provider=%s)...",
+                len(all_chunks), total_batches, current_provider)
+    
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold blue]{task.description}"),
@@ -300,20 +306,37 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         TimeRemainingColumn(),
     ) as progress:
         embed_task = progress.add_task("Embedding chunks", total=total_batches)
-        for i in range(0, len(all_chunks), BATCH_SIZE):
-            batch_texts = all_chunks[i:i + BATCH_SIZE]
-            batch_ids = all_ids[i:i + BATCH_SIZE]
-            batch_metadata = all_metadata[i:i + BATCH_SIZE]
-
-            try:
-                embeddings = embed_texts_sync(batch_texts, provider=current_provider)
-                if embeddings:
-                    store.add_notes(batch_ids, batch_texts, embeddings, batch_metadata)
-                    logger.debug("Batch %d: embedded and stored %d chunks", i // BATCH_SIZE, len(batch_ids))
-            except Exception as e:
-                errors.append(f"Embedding batch {i}: {str(e)}")
-                logger.warning("Embedding batch %d failed: %s", i // BATCH_SIZE, e)
+        
+        def on_batch_done(batch_idx: int, count: int):
             progress.advance(embed_task)
+            logger.debug("Batch %d/%d done (%d chunks)", batch_idx + 1, total_batches, count)
+        
+        try:
+            embeddings = embed_texts_bulk(
+                all_chunks,
+                provider=current_provider,
+                on_batch_done=on_batch_done,
+            )
+            if embeddings and len(embeddings) == len(all_chunks):
+                # Store in batches to avoid memory issues with huge lists
+                store_batch_size = BATCH_SIZE
+                for i in range(0, len(all_chunks), store_batch_size):
+                    store.add_notes(
+                        all_ids[i:i + store_batch_size],
+                        all_chunks[i:i + store_batch_size],
+                        embeddings[i:i + store_batch_size],
+                        all_metadata[i:i + store_batch_size],
+                    )
+                logger.info("Stored %d chunks in ChromaDB", len(all_chunks))
+            elif embeddings:
+                logger.warning("Partial embed: got %d embeddings for %d chunks", len(embeddings), len(all_chunks))
+        except Exception as e:
+            errors.append(f"Bulk embedding failed: {str(e)}")
+            logger.error("Bulk embedding failed: %s", e)
+    
+    elapsed = time.time() - start_time
+    logger.info("Embedding phase complete in %.1fs (%.1f chunks/sec)",
+                elapsed, len(all_chunks) / elapsed if elapsed > 0 else 0)
 
     ingest_state["embed_provider"] = current_provider
     ingest_state["last_ingest"] = datetime.utcnow().isoformat() + "Z"
@@ -322,8 +345,9 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     except IOError as e:
         errors.append(f"State file error: {str(e)}")
 
-    logger.info("Ingest complete: %d ingested, %d skipped, %d chunks, %d errors",
-                notes_ingested, notes_skipped, chunks_created, len(errors))
+    total_time = time.time() - start_time
+    logger.info("Ingest complete in %.1fs: %d ingested, %d skipped, %d chunks, %d errors",
+                total_time, notes_ingested, notes_skipped, chunks_created, len(errors))
 
     return {
         "notes_ingested": notes_ingested,
@@ -374,7 +398,13 @@ def ingest_calendar(
         all_ids.append(cal_id)
         all_metadata.append(metadata)
 
+    import time
+    start_time = time.time()
+    
     total_cal_batches = (len(all_texts) + BATCH_SIZE - 1) // BATCH_SIZE
+    logger.info("Starting bulk embed of %d calendar events (%d batches, provider=%s)...",
+                len(all_texts), total_cal_batches, current_provider)
+    
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold blue]{task.description}"),
@@ -384,23 +414,37 @@ def ingest_calendar(
         TimeRemainingColumn(),
     ) as progress:
         cal_task = progress.add_task("Embedding calendar", total=total_cal_batches)
-        for i in range(0, len(all_texts), BATCH_SIZE):
-            batch_texts = all_texts[i:i + BATCH_SIZE]
-            batch_ids = all_ids[i:i + BATCH_SIZE]
-            batch_metadata = all_metadata[i:i + BATCH_SIZE]
-
-            try:
-                embeddings = embed_texts_sync(batch_texts, provider=current_provider)
-                if embeddings:
-                    store.add_calendar_events(batch_ids, batch_texts, embeddings, batch_metadata)
-                    events_ingested += len(batch_ids)
-                    logger.debug("Calendar batch %d: embedded %d events", i // BATCH_SIZE, len(batch_ids))
-            except Exception as e:
-                errors.append(f"Calendar batch {i}: {str(e)}")
-                logger.warning("Calendar batch %d failed: %s", i // BATCH_SIZE, e)
+        
+        def on_cal_batch_done(batch_idx: int, count: int):
             progress.advance(cal_task)
-
-    logger.info("Calendar ingest complete: %d events, %d errors", events_ingested, len(errors))
+            logger.debug("Calendar batch %d/%d done (%d events)", batch_idx + 1, total_cal_batches, count)
+        
+        try:
+            embeddings = embed_texts_bulk(
+                all_texts,
+                provider=current_provider,
+                on_batch_done=on_cal_batch_done,
+            )
+            if embeddings and len(embeddings) == len(all_texts):
+                store_batch_size = BATCH_SIZE
+                for i in range(0, len(all_texts), store_batch_size):
+                    store.add_calendar_events(
+                        all_ids[i:i + store_batch_size],
+                        all_texts[i:i + store_batch_size],
+                        embeddings[i:i + store_batch_size],
+                        all_metadata[i:i + store_batch_size],
+                    )
+                events_ingested = len(all_texts)
+                logger.info("Stored %d calendar events in ChromaDB", len(all_texts))
+            elif embeddings:
+                logger.warning("Partial embed: got %d embeddings for %d events", len(embeddings), len(all_texts))
+        except Exception as e:
+            errors.append(f"Bulk calendar embedding failed: {str(e)}")
+            logger.error("Bulk calendar embedding failed: %s", e)
+    
+    elapsed = time.time() - start_time
+    logger.info("Calendar ingest complete in %.1fs: %d events, %d errors",
+                elapsed, events_ingested, len(errors))
 
     return {
         "events_ingested": events_ingested,

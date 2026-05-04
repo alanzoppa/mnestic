@@ -631,3 +631,4 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 - [ ] Merge duplicate people in registry (e.g., Damen / Damen Turnbull)
 - [ ] Full-text search fallback (for exact token matches that embeddings miss)
 - [x] MCP server (stdio transport) with tools, resources, and prompts
+- [x] Concurrent bulk embedding with connection reuse — `embed_texts_bulk()` uses pooled `httpx.Client` via `ThreadPoolExecutor` (10 workers OpenRouter / 4 workers Ollama); single `embed_texts_sync()` preserved for small-query use

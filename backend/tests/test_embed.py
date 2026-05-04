@@ -3,7 +3,14 @@ import os
 import math
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from embed import _l2_normalize, EMBED_DIM, embed_texts_sync, embed_query_sync, _prefix_text
+from embed import (
+    _l2_normalize,
+    EMBED_DIM,
+    embed_texts_sync,
+    embed_texts_bulk,
+    embed_query_sync,
+    _prefix_text,
+)
 from constants import EMBED_PREFIX_DOC, EMBED_PREFIX_QUERY
 from unittest.mock import patch, MagicMock
 
@@ -302,3 +309,80 @@ def test_embed_query_sync_uses_openrouter():
         assert "openrouter.ai" in call_args[0][0]
         body = call_args[1]["json"]
         assert body["input_type"] == "search_query"
+
+
+def test_embed_texts_bulk_empty():
+    result = embed_texts_bulk([])
+    assert result == []
+
+
+def test_embed_texts_bulk_single_batch():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
+        mock_cls.return_value = mock_client
+
+        result = embed_texts_bulk(["hello"], provider="ollama")
+
+        assert len(result) == 1
+        assert len(result[0]) == EMBED_DIM
+
+
+def test_embed_texts_bulk_concurrent_batches():
+    resp = _make_ollama_response([[0.1] * 1024, [0.2] * 1024])
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.BATCH_SIZE", 2), patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([resp, resp, resp])
+        mock_cls.return_value = mock_client
+
+        result = embed_texts_bulk(["a", "b", "c", "d", "e", "f"], provider="ollama", max_workers=3)
+
+        assert len(result) == 6
+        assert mock_client.post.call_count == 3
+
+
+def test_embed_texts_bulk_calls_on_batch_done():
+    called = []
+
+    def on_done(idx, count):
+        called.append((idx, count))
+
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.BATCH_SIZE", 1), patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([
+            _make_ollama_response([[0.1] * 1024]),
+            _make_ollama_response([[0.2] * 1024]),
+        ])
+        mock_cls.return_value = mock_client
+
+        result = embed_texts_bulk(["a", "b"], provider="ollama", on_batch_done=on_done)
+
+        assert len(result) == 2
+        assert len(called) == 2
+
+
+def test_embed_texts_bulk_reassembles_order():
+    # Use distinguishable vectors: first element differs, and shapes survive normalization
+    resp_a = _make_ollama_response([[1.0] + [0.0] * 1023])
+    resp_b = _make_ollama_response([[0.0] + [1.0] + [0.0] * 1022])
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.BATCH_SIZE", 1), patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([resp_a, resp_b])
+        mock_cls.return_value = mock_client
+
+        result = embed_texts_bulk(["first", "second"], provider="ollama", max_workers=2)
+
+        assert len(result) == 2
+        # After normalization [1,0,0...] stays [1,0,0...] (within floating point)
+        assert result[0][0] == 1.0
+        assert result[0][1] == 0.0
+        assert result[1][0] == 0.0
+        assert result[1][1] == 1.0
+
+
+def test_embed_texts_bulk_skips_failed_batches():
+    success = _make_ollama_response([[0.1] * 1024])
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.BATCH_SIZE", 1), patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([success, Exception("fail"), success])
+        mock_cls.return_value = mock_client
+
+        result = embed_texts_bulk(["a", "b", "c"], provider="ollama", max_workers=3)
+
+        # Only 2 of 3 succeeded
+        assert len(result) == 2
