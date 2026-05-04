@@ -40,6 +40,7 @@ function SearchGraphContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
   const selectedNodeIdRef = useRef<string | null>(null)
+  const lastClickedIdRef = useRef<string | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [inputValue, setInputValue] = useState(initialQuery)
   const [query, setQuery] = useState(initialQuery)
@@ -95,6 +96,9 @@ function SearchGraphContent() {
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
+    // stale zoom-completion callbacks may arrive after a new node has been selected
+    if (lastClickedIdRef.current !== null && node.id === lastClickedIdRef.current) return
+    lastClickedIdRef.current = node.id
     selectedNodeIdRef.current = node.id
     setViewingNode(node)
   }, [])
@@ -102,6 +106,7 @@ function SearchGraphContent() {
   useEffect(() => {
     if (!viewingNode) {
       selectedNodeIdRef.current = null
+      lastClickedIdRef.current = null
     }
   }, [viewingNode])
 

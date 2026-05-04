@@ -103,6 +103,9 @@ export default function ForceGraph3DView({
   const showEmpty = !showLoading && !error && graphData && graphData.nodes.length === 0
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
+    // set highlight state before starting camera animation to avoid stale
+    // animation-completion callbacks reverting to the previously-selected node
+    onNodeClick?.(node)
     if (fgRef.current && node.x !== undefined && node.y !== undefined) {
       const dist = 45
       fgRef.current.cameraPosition(
@@ -111,7 +114,6 @@ export default function ForceGraph3DView({
         2000,
       )
     }
-    onNodeClick?.(node)
   }, [onNodeClick])
 
   return (
