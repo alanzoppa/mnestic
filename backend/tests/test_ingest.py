@@ -69,16 +69,20 @@ def test_make_note_id_evernote():
     assert ":" not in result
 
 
-def test_make_doc_id_deterministic():
+def test_make_doc_id_different_for_different_files():
     id1 = make_doc_id("note1", 0, "file1.md")
     id2 = make_doc_id("note1", 0, "file2.md")
+    assert id1 != id2
+    assert id1.startswith("note1_file_")
+    assert id1.endswith("_chunk_0")
+
+
+def test_make_doc_id_same_for_same_file():
+    id1 = make_doc_id("note1", 0, "file.md")
+    id2 = make_doc_id("note1", 0, "file.md")
     assert id1 == id2
-    assert id1 == "note1_chunk_0"
-
-
-def test_make_doc_id_format():
-    result = make_doc_id("note1", 0, "file.md")
-    assert result == "note1_chunk_0"
+    assert "file_" in id1
+    assert "_chunk_0" in id1
 
 
 def test_get_calendar_context_no_participants():

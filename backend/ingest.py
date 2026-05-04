@@ -41,7 +41,9 @@ def make_note_id(source_id: str) -> str:
 
 
 def make_doc_id(note_id: str, chunk_index: int, filename: str) -> str:
-    return f"{note_id}_chunk_{chunk_index}"
+    # Deduplicate notes: filename hash disambiguates duplicate source_ids in different files
+    filename_hash = hashlib.sha256(filename.encode()).hexdigest()[:8]
+    return f"{note_id}_file_{filename_hash}_chunk_{chunk_index}"
 
 
 _SEXAGESIMAL_REVERSE = {61: "1:1"}
