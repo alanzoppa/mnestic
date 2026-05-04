@@ -76,12 +76,23 @@ async def lifespan(app: FastAPI):
     try:
         state = json.loads(state_file.read_text()) if state_file.exists() else {}
         prev_provider = state.get("embed_provider", "")
+        prev_model = state.get("embed_model", "")
         query_provider = settings.embed_provider_query
+        if query_provider == "ollama":
+            query_model = settings.ollama_embed_model
+        else:
+            query_model = settings.openrouter_embed_model
         if prev_provider and prev_provider != query_provider:
             logger.warning(
                 "Query provider (%s) differs from ingest provider (%s) — "
                 "retrieval quality may be degraded. Set EMBED_PROVIDER_QUERY=%s for best results.",
                 query_provider, prev_provider, prev_provider,
+            )
+        elif prev_model and prev_model != query_model:
+            logger.warning(
+                "Query model (%s) differs from ingest model (%s) — "
+                "retrieval quality may be degraded. Set model to %s for best results.",
+                query_model, prev_model, prev_model,
             )
     except Exception:
         pass

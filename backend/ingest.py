@@ -185,12 +185,22 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
             pass
 
     current_provider = settings.embed_provider_ingest
+    if current_provider == "ollama":
+        current_model = settings.ollama_embed_model
+    else:
+        current_model = settings.openrouter_embed_model
     if not force:
         prev_provider = ingest_state.get("embed_provider", "")
         if prev_provider and prev_provider != current_provider:
             raise ValueError(
                 f"Embedding provider changed from '{prev_provider}' to '{current_provider}'. "
                 "Run with --force to re-ingest with the new provider."
+            )
+        prev_model = ingest_state.get("embed_model", "")
+        if prev_model and prev_model != current_model:
+            raise ValueError(
+                f"Embedding model changed from '{prev_model}' to '{current_model}'. "
+                "Run with --force to re-ingest with the new model."
             )
 
     cal = CalendarProcessor()
@@ -339,6 +349,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 elapsed, len(all_chunks) / elapsed if elapsed > 0 else 0)
 
     ingest_state["embed_provider"] = current_provider
+    ingest_state["embed_model"] = current_model
     ingest_state["last_ingest"] = datetime.utcnow().isoformat() + "Z"
     try:
         _write_state(state_file, ingest_state)

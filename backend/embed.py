@@ -113,7 +113,7 @@ def embed_texts_sync(
     resolved_provider = _get_provider(provider)
 
     results: list[list[float]] = []
-    timeout = 120.0 if resolved_provider == "ollama" else 60.0
+    timeout = 300.0 if resolved_provider == "ollama" else 60.0
     batch_size = BATCH_SIZE if resolved_provider == "ollama" else OPENROUTER_EMBED_BATCH_SIZE
 
     with httpx.Client(timeout=timeout) as client:
@@ -156,6 +156,9 @@ def embed_texts_sync(
     return results
 
 
+MAX_BULK_RETRIES = 3
+
+
 def embed_texts_bulk(
     texts: list[str],
     prefix: str = EMBED_PREFIX_DOC,
@@ -168,6 +171,7 @@ def embed_texts_bulk(
 
     - Creates a single httpx.Client with connection pooling.
     - Dispatches N batches in parallel via ThreadPoolExecutor.
+    - Retries failed batches up to MAX_BULK_RETRIES times, splitting in half each retry.
     - Reports per-batch timing via optional on_batch_done(start, end, batch_idx, count, latency).
     """
     if not texts:
@@ -175,79 +179,100 @@ def embed_texts_bulk(
 
     resolved_provider = _get_provider(provider)
     batch_size = BATCH_SIZE if resolved_provider == "ollama" else OPENROUTER_EMBED_BATCH_SIZE
-    timeout = 120.0 if resolved_provider == "ollama" else 60.0
+    timeout = 300.0 if resolved_provider == "ollama" else 60.0
 
-    # For OpenRouter: 10 connections in parallel is reasonable; for local Ollama, be conservative
     if max_workers is None:
-        max_workers = 4 if resolved_provider == "ollama" else 10
+        max_workers = 2 if resolved_provider == "ollama" else 10
 
-    # Build batches
-    batches: list[list[str]] = []
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i : i + batch_size]
-        batches.append([_prefix_text(t, prefix) for t in batch])
+    prefixed = [_prefix_text(t, prefix) for t in texts]
 
     total = len(texts)
     logger.info(
-        "Embedding %d texts via %s in %d batches of %d (%d workers)...",
+        "Embedding %d texts via %s in batches of %d (%d workers, timeout=%ds)...",
         total,
         resolved_provider,
-        len(batches),
         batch_size,
         max_workers,
+        int(timeout),
     )
 
-    results: list[tuple[int, list[list[float]]]] = []
-    errors: list[tuple[int, Exception]] = []
+    results_dict: dict[int, list[list[float]]] = {}
+    next_result_idx = [0]
+    retry_count = 0
+
+    def _make_batches(text_list: list[str], start_idx: int) -> list[tuple[int, list[str]]]:
+        out = []
+        for i in range(0, len(text_list), batch_size):
+            out.append((start_idx + i, text_list[i : i + batch_size]))
+        return out
 
     with httpx.Client(timeout=timeout, limits=httpx.Limits(max_connections=max_workers, max_keepalive_connections=max_workers)) as client:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {}
-            for idx, batch in enumerate(batches):
-                if resolved_provider == "openrouter":
-                    input_type = "search_document" if prefix == EMBED_PREFIX_DOC else "search_query"
-                    future = executor.submit(
-                        _embed_batch_openrouter,
-                        client,
-                        batch,
-                        settings.openrouter_embed_model,
-                        settings.openrouter_api_key,
-                        input_type,
-                    )
-                else:
-                    future = executor.submit(
-                        _embed_batch_ollama,
-                        client,
-                        batch,
-                        settings.ollama_embed_model,
-                    )
-                futures[future] = idx
+            pending = _make_batches(prefixed, 0)
 
-            for future in as_completed(futures):
-                idx = futures[future]
-                try:
-                    embs = future.result()
-                    results.append((idx, embs))
-                    if on_batch_done:
-                        on_batch_done(idx, len(embs))
-                except Exception as exc:
-                    errors.append((idx, exc))
-                    logger.warning("Batch %d failed: %s", idx, exc)
+            for attempt in range(MAX_BULK_RETRIES + 1):
+                if not pending:
+                    break
 
-    if errors:
-        logger.warning("%d of %d batches failed; results may be incomplete", len(errors), len(batches))
+                futures = {}
+                for orig_idx, batch in pending:
+                    if resolved_provider == "openrouter":
+                        input_type = "search_document" if prefix == EMBED_PREFIX_DOC else "search_query"
+                        future = executor.submit(
+                            _embed_batch_openrouter,
+                            client,
+                            batch,
+                            settings.openrouter_embed_model,
+                            settings.openrouter_api_key,
+                            input_type,
+                        )
+                    else:
+                        future = executor.submit(
+                            _embed_batch_ollama,
+                            client,
+                            batch,
+                            settings.ollama_embed_model,
+                        )
+                    futures[future] = (orig_idx, batch)
+
+                next_pending = []
+                for future in as_completed(futures):
+                    orig_idx, batch = futures[future]
+                    try:
+                        embs = future.result()
+                        for offset, emb in enumerate(embs):
+                            results_dict[orig_idx + offset] = emb
+                        if on_batch_done:
+                            on_batch_done(orig_idx, len(embs))
+                    except Exception as exc:
+                        logger.warning("Batch at %d failed (attempt %d/%d, %d texts): %s", orig_idx, attempt + 1, MAX_BULK_RETRIES + 1, len(batch), exc)
+                        if attempt < MAX_BULK_RETRIES:
+                            mid = (len(batch) + 1) // 2
+                            if mid > 1 and len(batch) > 1:
+                                next_pending.append((orig_idx, batch[:mid]))
+                                next_pending.append((orig_idx + mid, batch[mid:]))
+                            else:
+                                next_pending.append((orig_idx, batch))
+                            retry_count += 1
+                        else:
+                            logger.error("Batch at %d exhausted retries, skipping %d texts", orig_idx, len(batch))
+
+                pending = next_pending
+
+            if pending:
+                logger.warning("%d batches still pending after all retries", len(pending))
 
     # Reassemble in original order
-    results.sort(key=lambda x: x[0])
     all_embeddings: list[list[float]] = []
-    for _idx, embs in results:
-        all_embeddings.extend(embs)
+    for i in range(len(texts)):
+        if i in results_dict:
+            all_embeddings.append(results_dict[i])
 
     logger.info(
-        "Bulk embed complete: %d/%d texts embedded (%d failed batches)",
+        "Bulk embed complete: %d/%d texts embedded (%d retries)",
         len(all_embeddings),
         total,
-        len(errors),
+        retry_count,
     )
     return all_embeddings
 
