@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     """Machine-specific paths loaded from .env with sensible defaults."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(Path(__file__).resolve().parent.parent / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_embed_model: str = "qwen/qwen3-embedding-8b"
     ollama_embed_model: str = "qwen3-embedding"
-    embed_provider_ingest: str = "ollama"
-    embed_provider_query: str = "ollama"
+    embed_provider_ingest: str = "openrouter"
+    embed_provider_query: str = "openrouter"
 
     @field_validator("calendar_export_path", "people_registry_path", "notes_source", mode="before")
     @classmethod

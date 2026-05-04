@@ -219,8 +219,8 @@ EMBED_PROVIDER_QUERY=ollama     # ollama or openrouter
 | `OPENROUTER_API_KEY` | _(empty)_ | API key for OpenRouter embedding provider |
 | `OPENROUTER_EMBED_MODEL` | `qwen/qwen3-embedding-8b` | OpenRouter model slug |
 | `OLLAMA_EMBED_MODEL` | `qwen3-embedding` | Ollama model name |
-| `EMBED_PROVIDER_INGEST` | `ollama` | Provider for bulk ingest embedding |
-| `EMBED_PROVIDER_QUERY` | `ollama` | Provider for search query embedding |
+| `EMBED_PROVIDER_INGEST` | `openrouter` | Provider for bulk ingest embedding |
+| `EMBED_PROVIDER_QUERY` | `openrouter` | Provider for search query embedding |
 
 All path variables support `~` (home dir) expansion. Internal paths (`notes/`, `chroma_data/`, `images/`) are derived deterministically from the repo root — no configuration needed.
 
@@ -238,8 +238,8 @@ All path variables support `~` (home dir) expansion. Internal paths (`notes/`, `
   - Documents: no prefix (raw text)
   - Queries: `Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: ` prefix
 - **Dual provider**:
-  - `EMBED_PROVIDER_INGEST` (default `ollama`): provider for bulk embedding during ingest
-  - `EMBED_PROVIDER_QUERY` (default `ollama`): provider for search-time single-query embedding
+- `EMBED_PROVIDER_INGEST` (default `openrouter`): provider for bulk embedding during ingest
+- `EMBED_PROVIDER_QUERY` (default `openrouter`): provider for search-time single-query embedding
   - Ingest stores the provider name in `.ingest_state.json` and rejects incremental ingest if the provider changes (requires `--force`)
   - Startup warning logged if query provider differs from last ingest provider
 - **ChromaDB**: local persistent at `chroma_data/`
