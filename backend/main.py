@@ -61,7 +61,7 @@ from models import (
 
 from shared import _is_safe_filename, find_note_file, _invalidate_source_id_cache, _sanitize_filename
 from watcher import NoteWatcher
-from config import NOTES_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH
+from config import NOTES_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, settings
 
 note_watcher: NoteWatcher | None = None
 
@@ -71,6 +71,20 @@ async def lifespan(app: FastAPI):
     global note_watcher
     note_watcher = NoteWatcher(NOTES_DIR, store, _invalidate_source_id_cache)
     note_watcher.start()
+    import json
+    state_file = Path(NOTES_DIR) / ".ingest_state.json"
+    try:
+        state = json.loads(state_file.read_text()) if state_file.exists() else {}
+        prev_provider = state.get("embed_provider", "")
+        query_provider = settings.embed_provider_query
+        if prev_provider and prev_provider != query_provider:
+            logger.warning(
+                "Query provider (%s) differs from ingest provider (%s) — "
+                "retrieval quality may be degraded. Set EMBED_PROVIDER_QUERY=%s for best results.",
+                query_provider, prev_provider, prev_provider,
+            )
+    except Exception:
+        pass
     yield
     if note_watcher:
         note_watcher.stop()

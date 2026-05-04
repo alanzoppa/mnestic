@@ -16,6 +16,7 @@ from embed import embed_texts_sync, BATCH_SIZE
 from models import CalendarEvent
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
+from config import settings
 
 logger = logging.getLogger("ingest")
 
@@ -183,6 +184,15 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         except Exception:
             pass
 
+    current_provider = settings.embed_provider_ingest
+    if not force:
+        prev_provider = ingest_state.get("embed_provider", "")
+        if prev_provider and prev_provider != current_provider:
+            raise ValueError(
+                f"Embedding provider changed from '{prev_provider}' to '{current_provider}'. "
+                "Run with --force to re-ingest with the new provider."
+            )
+
     cal = CalendarProcessor()
     cal.load()
     calendar_events = cal.process_events()
@@ -296,7 +306,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
             batch_metadata = all_metadata[i:i + BATCH_SIZE]
 
             try:
-                embeddings = embed_texts_sync(batch_texts)
+                embeddings = embed_texts_sync(batch_texts, provider=current_provider)
                 if embeddings:
                     store.add_notes(batch_ids, batch_texts, embeddings, batch_metadata)
                     logger.debug("Batch %d: embedded and stored %d chunks", i // BATCH_SIZE, len(batch_ids))
@@ -305,6 +315,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
                 logger.warning("Embedding batch %d failed: %s", i // BATCH_SIZE, e)
             progress.advance(embed_task)
 
+    ingest_state["embed_provider"] = current_provider
     ingest_state["last_ingest"] = datetime.utcnow().isoformat() + "Z"
     try:
         _write_state(state_file, ingest_state)
@@ -328,6 +339,7 @@ def ingest_calendar(
     calendar_path: str = CALENDAR_EXPORT_PATH,
     registry_path: str = PEOPLE_REGISTRY_PATH,
 ) -> dict:
+    current_provider = settings.embed_provider_ingest
     cal = CalendarProcessor(calendar_path, registry_path)
     cal.load()
     events = cal.process_events()
@@ -378,7 +390,7 @@ def ingest_calendar(
             batch_metadata = all_metadata[i:i + BATCH_SIZE]
 
             try:
-                embeddings = embed_texts_sync(batch_texts)
+                embeddings = embed_texts_sync(batch_texts, provider=current_provider)
                 if embeddings:
                     store.add_calendar_events(batch_ids, batch_texts, embeddings, batch_metadata)
                     events_ingested += len(batch_ids)

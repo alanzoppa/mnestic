@@ -26,10 +26,24 @@ class Settings(BaseSettings):
     people_registry_path: str = "~/Desktop/notes/people_registry.json"
     notes_source: str = "~/Desktop/notes/Apple Notes"
 
+    # Embedding providers
+    openrouter_api_key: str = ""
+    openrouter_embed_model: str = "qwen/qwen3-embedding-8b"
+    ollama_embed_model: str = "qwen3-embedding"
+    embed_provider_ingest: str = "ollama"
+    embed_provider_query: str = "ollama"
+
     @field_validator("calendar_export_path", "people_registry_path", "notes_source", mode="before")
     @classmethod
     def expand_user(cls, v: str) -> str:
         return os.path.expanduser(v) if v else v
+
+    @field_validator("embed_provider_ingest", "embed_provider_query", mode="before")
+    @classmethod
+    def validate_embed_provider(cls, v: str) -> str:
+        if v not in ("ollama", "openrouter"):
+            raise ValueError(f"embed_provider must be 'ollama' or 'openrouter', got '{v}'")
+        return v
 
     # Internal paths derived deterministically
     @property
@@ -65,3 +79,9 @@ NOTES_DIR = settings.notes_dir
 CHROMA_PERSIST_DIR = settings.chroma_persist_dir
 IMAGES_DIR = settings.images_dir
 DATA_DIR = settings.data_dir
+
+OPENROUTER_API_KEY = settings.openrouter_api_key
+OPENROUTER_EMBED_MODEL = settings.openrouter_embed_model
+OLLAMA_EMBED_MODEL = settings.ollama_embed_model
+EMBED_PROVIDER_INGEST = settings.embed_provider_ingest
+EMBED_PROVIDER_QUERY = settings.embed_provider_query

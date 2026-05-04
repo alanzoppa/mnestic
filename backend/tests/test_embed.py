@@ -3,7 +3,8 @@ import os
 import math
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from embed import _l2_normalize, EMBED_DIM, embed_texts_sync
+from embed import _l2_normalize, EMBED_DIM, embed_texts_sync, embed_query_sync, _prefix_text
+from constants import EMBED_PREFIX_DOC, EMBED_PREFIX_QUERY
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -37,9 +38,17 @@ def test_embed_texts_sync_empty():
     assert result == []
 
 
-def _make_mock_response(embeddings):
+def _make_ollama_response(embeddings):
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"embeddings": embeddings}
+    mock_resp.raise_for_status = MagicMock()
+    return mock_resp
+
+
+def _make_openrouter_response(embeddings):
+    mock_resp = MagicMock()
+    data = [{"object": "embedding", "index": i, "embedding": emb} for i, emb in enumerate(embeddings)]
+    mock_resp.json.return_value = {"data": data, "model": "qwen/qwen3-embedding-8b"}
     mock_resp.raise_for_status = MagicMock()
     return mock_resp
 
@@ -52,88 +61,175 @@ def _make_mock_client(responses):
     return mock_client
 
 
-def test_embed_texts_sync_calls_ollama():
-    with patch("embed.httpx.Client") as mock_cls:
-        mock_client = _make_mock_client([_make_mock_response([[0.1] * 768])])
+def _mock_settings(provider_ingest="ollama", provider_query="ollama"):
+    mock = MagicMock()
+    mock.embed_provider_ingest = provider_ingest
+    mock.embed_provider_query = provider_query
+    mock.ollama_embed_model = "qwen3-embedding"
+    mock.openrouter_embed_model = "qwen/qwen3-embedding-8b"
+    mock.openrouter_api_key = "test-key"
+    return mock
+
+
+def test_ollama_provider_calls_ollama_endpoint():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
         mock_cls.return_value = mock_client
 
-        embed_texts_sync(["hello"])
+        embed_texts_sync(["hello"], provider="ollama")
 
         mock_client.post.assert_called_once()
         call_args = mock_client.post.call_args
         assert call_args[0][0] == "http://localhost:11434/api/embed"
-        assert call_args[1]["json"]["model"] == "nomic-embed-text-v2-moe"
+        assert call_args[1]["json"]["model"] == "qwen3-embedding"
 
 
-def test_embed_texts_sync_prefixes_search_document():
-    with patch("embed.httpx.Client") as mock_cls:
-        mock_client = _make_mock_client([_make_mock_response([[0.1] * 768])])
+def test_ollama_doc_prefix_is_empty():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
+        mock_cls.return_value = mock_client
+
+        embed_texts_sync(["hello"], provider="ollama")
+
+        call_args = mock_client.post.call_args
+        input_field = call_args[1]["json"]["input"]
+        assert input_field[0] == "hello"
+
+
+def test_ollama_query_prefix_uses_instruction():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
+        mock_cls.return_value = mock_client
+
+        embed_texts_sync(["hello"], prefix=EMBED_PREFIX_QUERY, provider="ollama")
+
+        call_args = mock_client.post.call_args
+        input_field = call_args[1]["json"]["input"]
+        assert input_field[0].startswith("Instruct: Retrieve personal notes")
+        assert "hello" in input_field[0]
+
+
+def test_prefix_text_empty_prefix():
+    assert _prefix_text("hello", "") == "hello"
+
+
+def test_prefix_text_nonempty():
+    assert _prefix_text("hello", "Instruct: test\nQuery: ") == "Instruct: test\nQuery: hello"
+
+
+def test_openrouter_provider_calls_openrouter_endpoint():
+    mock_settings = _mock_settings()
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", mock_settings):
+        mock_client = _make_mock_client([_make_openrouter_response([[0.1] * 256])])
+        mock_cls.return_value = mock_client
+
+        embed_texts_sync(["hello"], provider="openrouter")
+
+        mock_client.post.assert_called_once()
+        call_args = mock_client.post.call_args
+        assert call_args[0][0] == "https://openrouter.ai/api/v1/embeddings"
+        body = call_args[1]["json"]
+        assert body["model"] == "qwen/qwen3-embedding-8b"
+        assert body["dimensions"] == EMBED_DIM
+        assert body["input_type"] == "search_document"
+        headers = call_args[1]["headers"]
+        assert headers["Authorization"] == "Bearer test-key"
+
+
+def test_openrouter_query_uses_search_query_type():
+    mock_settings = _mock_settings()
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", mock_settings):
+        mock_client = _make_mock_client([_make_openrouter_response([[0.1] * 256])])
+        mock_cls.return_value = mock_client
+
+        embed_texts_sync(["hello"], prefix=EMBED_PREFIX_QUERY, provider="openrouter")
+
+        body = mock_client.post.call_args[1]["json"]
+        assert body["input_type"] == "search_query"
+
+
+def test_default_provider_uses_config_ingest():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings(provider_ingest="ollama")):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
         mock_cls.return_value = mock_client
 
         embed_texts_sync(["hello"])
 
         call_args = mock_client.post.call_args
-        input_field = call_args[1]["json"]["input"]
-        assert input_field[0].startswith("search_document: ")
+        assert "localhost:11434" in call_args[0][0]
 
 
-def test_embed_texts_sync_prefixes_search_query():
-    with patch("embed.httpx.Client") as mock_cls:
-        mock_client = _make_mock_client([_make_mock_response([[0.1] * 768])])
+def test_default_provider_uses_openrouter_when_configured():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings(provider_ingest="openrouter")):
+        mock_client = _make_mock_client([_make_openrouter_response([[0.1] * 256])])
         mock_cls.return_value = mock_client
 
-        embed_texts_sync(["hello"], prefix="search_query")
+        embed_texts_sync(["hello"])
 
         call_args = mock_client.post.call_args
-        input_field = call_args[1]["json"]["input"]
-        assert input_field[0].startswith("search_query: ")
+        assert "openrouter.ai" in call_args[0][0]
 
 
-def test_embed_texts_sync_truncates_to_256():
-    with patch("embed.httpx.Client") as mock_cls:
-        mock_client = _make_mock_client([_make_mock_response([[0.1] * 768])])
+def test_invalid_provider_raises():
+    with pytest.raises(ValueError, match="provider must be"):
+        embed_texts_sync(["hello"], provider="invalid")
+
+
+def test_embed_texts_sync_truncates_to_embed_dim():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
         mock_cls.return_value = mock_client
 
-        result = embed_texts_sync(["hello"])
+        result = embed_texts_sync(["hello"], provider="ollama")
 
         assert len(result) == 1
         assert len(result[0]) == EMBED_DIM
 
 
-def test_embed_texts_sync_batching():
-    resp = _make_mock_response([[0.1] * 768, [0.2] * 768])
-    with patch("embed.httpx.Client") as mock_cls, patch("embed.BATCH_SIZE", 2):
+def test_openrouter_truncates_to_embed_dim():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([_make_openrouter_response([[0.1] * 4096])])
+        mock_cls.return_value = mock_client
+
+        result = embed_texts_sync(["hello"], provider="openrouter")
+
+        assert len(result) == 1
+        assert len(result[0]) == EMBED_DIM
+
+
+def test_embed_texts_sync_batching_ollama():
+    resp = _make_ollama_response([[0.1] * 1024, [0.2] * 1024])
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.BATCH_SIZE", 2), patch("embed.settings", _mock_settings()):
         mock_client = _make_mock_client([resp, resp])
         mock_cls.return_value = mock_client
 
-        result = embed_texts_sync(["a", "b", "c", "d"])
+        result = embed_texts_sync(["a", "b", "c", "d"], provider="ollama")
 
         assert len(result) == 4
 
 
-def test_embed_texts_sync_retry_splits_batch():
-    success_resp_single = _make_mock_response([[0.1] * 768])
-    with patch("embed.httpx.Client") as mock_cls:
-        mock_client = _make_mock_client([success_resp_single, success_resp_single])
+def test_embed_texts_sync_batching_openrouter():
+    resp = _make_openrouter_response([[0.1] * 256, [0.2] * 256])
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.OPENROUTER_EMBED_BATCH_SIZE", 2), patch("embed.settings", _mock_settings()):
+        mock_client = _make_mock_client([resp, resp])
         mock_cls.return_value = mock_client
-        mock_client.post.side_effect = [Exception("fail"), success_resp_single, success_resp_single]
 
-        result = embed_texts_sync(["hello", "world"])
+        result = embed_texts_sync(["a", "b", "c", "d"], provider="openrouter")
 
-        assert len(result) == 2
+        assert len(result) == 4
 
 
 def test_embed_texts_sync_http_status_error_bisects_batch():
     mock_response = MagicMock()
     mock_response.status_code = 422
     http_error = httpx.HTTPStatusError(message="422", request=MagicMock(), response=mock_response)
-    success_resp = _make_mock_response([[0.1] * 768])
+    success_resp = _make_ollama_response([[0.1] * 1024])
 
-    with patch("embed.httpx.Client") as mock_cls:
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
         mock_client = _make_mock_client([http_error, success_resp, success_resp])
         mock_cls.return_value = mock_client
 
-        result = embed_texts_sync(["hello", "world"])
+        result = embed_texts_sync(["hello", "world"], provider="ollama")
 
         assert len(result) == 2
         assert mock_client.post.call_count == 3
@@ -144,42 +240,22 @@ def test_embed_texts_sync_http_status_error_single_long_text_truncates():
     mock_response = MagicMock()
     mock_response.status_code = 422
     http_error = httpx.HTTPStatusError(message="422", request=MagicMock(), response=mock_response)
-    success_resp = _make_mock_response([[0.1] * 768])
+    success_resp = _make_ollama_response([[0.1] * 1024])
 
-    with patch("embed.httpx.Client") as mock_cls:
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
         mock_client = _make_mock_client([http_error, success_resp])
         mock_cls.return_value = mock_client
 
-        result = embed_texts_sync([long_text])
+        result = embed_texts_sync([long_text], provider="ollama")
 
         assert len(result) == 1
         assert mock_client.post.call_count == 2
         second_call_input = mock_client.post.call_args_list[1][1]["json"]["input"][0]
-        assert len(second_call_input) <= 1900
-
-
-def test_embed_texts_sync_http_status_error_single_short_text_truncates():
-    short_text = "hello world"
-    mock_response = MagicMock()
-    mock_response.status_code = 422
-    http_error = httpx.HTTPStatusError(message="422", request=MagicMock(), response=mock_response)
-    success_resp = _make_mock_response([[0.1] * 768])
-
-    with patch("embed.httpx.Client") as mock_cls:
-        mock_client = _make_mock_client([http_error, success_resp])
-        mock_cls.return_value = mock_client
-
-        result = embed_texts_sync([short_text])
-
-        assert len(result) == 1
-        assert mock_client.post.call_count == 2
-        second_call_input = mock_client.post.call_args_list[1][1]["json"]["input"][0]
-        expected_len = max(len(short_text) // 2, 500)
-        assert len(second_call_input) <= expected_len + len("search_document: ")
+        assert len(second_call_input) <= 1800
 
 
 def test_embed_texts_sync_depth_guard_returns_empty():
-    with patch("embed.httpx.Client") as mock_cls:
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
         mock_client = _make_mock_client([])
         mock_cls.return_value = mock_client
 
@@ -190,13 +266,39 @@ def test_embed_texts_sync_depth_guard_returns_empty():
 
 def test_embed_texts_sync_connect_error_retries():
     from httpx import ConnectError
-    success_resp = _make_mock_response([[0.1] * 768])
+    success_resp = _make_ollama_response([[0.1] * 1024])
 
-    with patch("embed.httpx.Client") as mock_cls:
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
         mock_client = _make_mock_client([ConnectError("connection refused"), success_resp])
         mock_cls.return_value = mock_client
 
-        result = embed_texts_sync(["hello"])
+        result = embed_texts_sync(["hello"], provider="ollama")
 
         assert len(result) == 1
         assert mock_client.post.call_count == 2
+
+
+def test_embed_query_sync_uses_query_provider():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings(provider_query="ollama")):
+        mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
+        mock_cls.return_value = mock_client
+
+        embed_query_sync("test query")
+
+        call_args = mock_client.post.call_args
+        input_field = call_args[1]["json"]["input"]
+        assert input_field[0].startswith("Instruct: Retrieve personal notes")
+        assert "test query" in input_field[0]
+
+
+def test_embed_query_sync_uses_openrouter():
+    with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings(provider_query="openrouter")):
+        mock_client = _make_mock_client([_make_openrouter_response([[0.1] * 256])])
+        mock_cls.return_value = mock_client
+
+        embed_query_sync("test query")
+
+        call_args = mock_client.post.call_args
+        assert "openrouter.ai" in call_args[0][0]
+        body = call_args[1]["json"]
+        assert body["input_type"] == "search_query"

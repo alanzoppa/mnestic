@@ -13,10 +13,11 @@ A private web application to browse ~2,000 markdown notes with YAML frontmatter.
 └─────────────┘     └──────┬───────┘     └──────────┘
                            │
                     ┌──────▼──────┐
-                    │   Ollama    │
-                    │ nomic-embed │
-                    │  -text-v2   │
-                    └─────────────┘
+                  ┌──────▼──────┐
+                  │   Ollama /  │
+                  │ OpenRouter   │
+                  │ qwen3-embed │
+                  └─────────────┘
 ```
 
 ## Directory structure
@@ -51,7 +52,7 @@ notes-browser/
 │   ├── mcp_server.py             MCP server (stdio transport)
 │   ├── utils.py                 Shared helpers (_normalize_meta, etc.)
 │   ├── ingest.py                Ingestion pipeline (notes + calendar)
-│   ├── embed.py                 Ollama embedding client
+│   ├── embed.py                 Dual-provider embedding (Ollama + OpenRouter)
 │   ├── store.py                 ChromaDB operations (2 collections)
 │   ├── schema.py                Frontmatter schema discovery
 │   ├── calendar_data.py         Calendar event processor
@@ -95,18 +96,19 @@ notes-browser/
   — use `.metadata.title`, `.id`, etc. (attribute access) instead of `["metadata"]["title"]`, `["id"]`, etc. (dict access)
   — call `.model_dump()` on models when you need a plain dict (e.g., for JSON serialization)
 - Embedding prefix is handled by `embed_texts_sync()` in `embed.py`
-  — do NOT prepend `search_document:` yourself
+  — documents: no prefix (raw text); queries: `Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: ` prefix
+  — do NOT prepend prefixes yourself; the function handles it
 
 ### File organization
 Each file has one clear responsibility:
 
 | File | Responsibility |
 |------|---------------|
-| `config.py` | Environment + paths |
+| `config.py` | Environment + paths + embedding settings |
 | `constants.py` | Numerical/config constants |
 | `models.py` | All Pydantic models |
 | `store.py` | ChromaDB operations |
-| `embed.py` | Ollama embedding client |
+| `embed.py` | Dual-provider embedding (Ollama + OpenRouter) |
 | `rerank.py` | Cross-encoder reranker |
 | `ingest.py` | Ingestion pipeline |
 | `watcher.py` | File watcher (watchdog) |
@@ -200,6 +202,13 @@ Create a `.env` file in the repo root on first startup (pydantic-settings reads 
 CALENDAR_EXPORT_PATH=~/Downloads/calendar-export.json
 PEOPLE_REGISTRY_PATH=~/Desktop/notes/people_registry.json
 NOTES_SOURCE=~/Desktop/notes/Apple Notes
+
+# Embedding providers
+OPENROUTER_API_KEY=             # Required for EMBED_PROVIDER=openrouter
+OPENROUTER_EMBED_MODEL=qwen/qwen3-embedding-8b
+OLLAMA_EMBED_MODEL=qwen3-embedding
+EMBED_PROVIDER_INGEST=ollama    # ollama or openrouter
+EMBED_PROVIDER_QUERY=ollama     # ollama or openrouter
 ```
 
 | Variable | Default | What it points to |
@@ -207,8 +216,13 @@ NOTES_SOURCE=~/Desktop/notes/Apple Notes
 | `CALENDAR_EXPORT_PATH` | `~/Downloads/calendar-export.json` | Exported Google Calendar JSON |
 | `PEOPLE_REGISTRY_PATH` | `~/Desktop/notes/people_registry.json` | People aliases registry |
 | `NOTES_SOURCE` | `~/Desktop/notes/Apple Notes` | Source notes for `scripts/sync_notes.py` |
+| `OPENROUTER_API_KEY` | _(empty)_ | API key for OpenRouter embedding provider |
+| `OPENROUTER_EMBED_MODEL` | `qwen/qwen3-embedding-8b` | OpenRouter model slug |
+| `OLLAMA_EMBED_MODEL` | `qwen3-embedding` | Ollama model name |
+| `EMBED_PROVIDER_INGEST` | `ollama` | Provider for bulk ingest embedding |
+| `EMBED_PROVIDER_QUERY` | `ollama` | Provider for search query embedding |
 
-All three support `~` (home dir) expansion. Internal paths (`notes/`, `chroma_data/`, `images/`) are derived deterministically from the repo root — no configuration needed.
+All path variables support `~` (home dir) expansion. Internal paths (`notes/`, `chroma_data/`, `images/`) are derived deterministically from the repo root — no configuration needed.
 
 ## Data sources
 
@@ -218,11 +232,18 @@ All three support `~` (home dir) expansion. Internal paths (`notes/`, `chroma_da
 
 ## Embedding model
 
-- **Model**: `nomic-embed-text-v2-moe` via Ollama
-- **Dimensions**: 768 → truncated to 256 (Matryoshka)
-- **Max input**: 512 tokens (~2000 chars approximation)
-- **Prefix convention**: `search_document:` for docs, `search_query:` for queries
+- **Model**: `qwen3-embedding` (8B) via Ollama (local) or OpenRouter (cloud)
+- **Dimensions**: 4096 → truncated to 256 (Matryoshka)
+- **Prefix convention**:
+  - Documents: no prefix (raw text)
+  - Queries: `Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: ` prefix
+- **Dual provider**:
+  - `EMBED_PROVIDER_INGEST` (default `ollama`): provider for bulk embedding during ingest
+  - `EMBED_PROVIDER_QUERY` (default `ollama`): provider for search-time single-query embedding
+  - Ingest stores the provider name in `.ingest_state.json` and rejects incremental ingest if the provider changes (requires `--force`)
+  - Startup warning logged if query provider differs from last ingest provider
 - **ChromaDB**: local persistent at `chroma_data/`
+- **Breaking change**: switching from nomic-embed-text-v2-moe requires `--force` re-ingest
 
 ## Vision model (image captioning)
 
@@ -252,7 +273,7 @@ All three support `~` (home dir) expansion. Internal paths (`notes/`, `chroma_da
 ## How to run
 
 ### Prerequisites
-- Ollama running with `nomic-embed-text-v2-moe` pulled
+- Ollama running with `qwen3-embedding` pulled (`ollama pull qwen3-embedding`)
 - Python 3.11+
 - Node.js 18+
 
@@ -598,6 +619,7 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 
 ## Changelog
 
+- [x] Dual-provider embedding (`qwen3-embedding-8b` via Ollama + OpenRouter) — configurable `EMBED_PROVIDER_INGEST`/`EMBED_PROVIDER_QUERY`, provider consistency guard on ingest, qwen3 prefix convention
 - [x] Cross-encoder reranker (`BAAI/bge-reranker-v2-m3`) — second-stage note ranking via `/search` with `?rerank=true` toggle
 
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3

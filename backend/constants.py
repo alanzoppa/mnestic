@@ -17,8 +17,10 @@ DEFAULT_SIMILAR_THRESHOLD = 0.75
 # Embedding
 EMBED_DIM = 256
 BATCH_SIZE = 50
-EMBED_PREFIX_DOC = "search_document"
-EMBED_PREFIX_QUERY = "search_query"
+EMBED_PREFIX_DOC = ""
+EMBED_PREFIX_QUERY = "Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: "
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_EMBED_BATCH_SIZE = 10
 
 # Reranker
 RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
