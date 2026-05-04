@@ -17,14 +17,18 @@ const navItems = [
   { href: '/search-graph', label: 'Search Graph', icon: GitGraph },
 ];
 
-export default function Nav() {
+interface NavProps {
+  onNavigate?: () => void;
+}
+
+export default function Nav({ onNavigate }: NavProps) {
   const pathname = usePathname();
 
   return (
     <nav className="flex flex-col w-64 min-h-screen bg-zinc-950 border-r border-zinc-800/60">
       {/* Logo / Brand */}
       <div className="p-6 border-b border-zinc-800/60">
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/30 transition-shadow">
             <Zap className="w-6 h-6 text-white" strokeWidth={2} />
           </div>
@@ -46,6 +50,7 @@ export default function Nav() {
               icon={<item.icon className="w-5 h-5" strokeWidth={2} />}
               active={isActive}
               activeClass={item.activeClass}
+              onNavigate={onNavigate}
             >
               {item.label}
             </NavLink>
@@ -72,14 +77,16 @@ interface NavLinkProps {
   icon: ReactNode;
   active?: boolean;
   activeClass?: string;
+  onNavigate?: () => void;
 }
 
-function NavLink({ href, children, icon, active, activeClass }: NavLinkProps) {
+function NavLink({ href, children, icon, active, activeClass, onNavigate }: NavLinkProps) {
   const activeClasses = activeClass ?? 'bg-gradient-to-r from-blue-600/20 to-blue-500/10 text-blue-400 border border-blue-500/30';
   const iconActiveColor = activeClass ? 'text-emerald-400' : 'text-blue-400';
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
         ${active ? activeClasses : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Nav from "@/components/Nav";
+import SidebarLayout from "@/components/SidebarLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import QueryProvider from "@/components/QueryProvider";
@@ -14,15 +14,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <body className="bg-zinc-950 text-zinc-100">
-        <div className="flex min-h-screen">
-          <Nav />
-          <main className="flex-1 p-6 overflow-auto" data-testid="main-content">
-            <ErrorBoundary>
-              <KeyboardShortcuts />
-              <QueryProvider>{children}</QueryProvider>
-            </ErrorBoundary>
-          </main>
-        </div>
+        <SidebarLayout>
+          <ErrorBoundary>
+            <KeyboardShortcuts />
+            <QueryProvider>{children}</QueryProvider>
+          </ErrorBoundary>
+        </SidebarLayout>
       </body>
     </html>
   );

@@ -23,6 +23,47 @@ test.describe("Navigation", () => {
     await expect(nav.getByRole("link", { name: "Graph", exact: true })).toBeVisible();
   });
 
+  test("should show mobile toggle below lg", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto("/");
+    const toggle = page.locator('[data-testid="mobile-nav-toggle"]');
+    await expect(toggle).toBeVisible();
+    // sidebar should be hidden initially
+    await expect(page.locator("nav")).not.toBeInViewport();
+  });
+
+  test("should open and close mobile sidebar", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto("/");
+
+    const toggle = page.locator('[data-testid="mobile-nav-toggle"]');
+    const nav = page.locator("nav");
+
+    // open
+    await toggle.click();
+    await expect(nav).toBeInViewport();
+    await expect(page.locator('[data-testid="mobile-nav-backdrop"]')).toBeVisible();
+
+    // click nav link closes sidebar
+    await nav.getByRole("link", { name: "Search", exact: true }).click();
+    await expect(page).toHaveURL(/\/search/);
+    await expect(nav).not.toBeInViewport();
+  });
+
+  test("should close mobile sidebar on backdrop click", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto("/");
+
+    const toggle = page.locator('[data-testid="mobile-nav-toggle"]');
+    const nav = page.locator("nav");
+
+    await toggle.click();
+    await expect(nav).toBeInViewport();
+
+    await page.locator('[data-testid="mobile-nav-backdrop"]').click();
+    await expect(nav).not.toBeInViewport();
+  });
+
   test("should highlight active page in nav", async ({ page }) => {
     const nav = page.locator("nav");
     
