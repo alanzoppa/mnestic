@@ -83,13 +83,14 @@ function SearchGraphContent() {
   const createNodeObject = useCallback((node: ForceGraphNode): THREE.Object3D => {
     const color = nodeColorMap[node.id] || '#6b7280'
     const geometry = new THREE.SphereGeometry(4.2, 24, 24)
-    const material = new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshPhysicalMaterial({
       color,
-      emissive: new THREE.Color(0x000000),
-      roughness: 0.4,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.85,
+      emissive: new THREE.Color(color),
+      emissiveIntensity: 0.5,
+      roughness: 0.15,
+      metalness: 0.3,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
     })
     return new THREE.Mesh(geometry, material)
   }, [nodeColorMap])
@@ -112,34 +113,21 @@ function SearchGraphContent() {
 
   const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
     const mesh = obj as THREE.Mesh
-    const material = mesh.material as THREE.MeshStandardMaterial
+    const material = mesh.material as THREE.MeshPhysicalMaterial
     if (!material) return
-
-    const NORMAL_OPACITY = 0.85
-    const DIMMED_OPACITY = 0.5
-    const SELECTED_INTENSITY = 0.8
 
     const isSelected = selectedNodeIdRef.current === node.id
     const hasSelection = !!selectedNodeIdRef.current
 
-    const targetIntensity = isSelected ? SELECTED_INTENSITY : 0
-    const targetOpacity = isSelected || !hasSelection ? NORMAL_OPACITY : DIMMED_OPACITY
-    const nodeColor = nodeColorMap[node.id] || '#6b7280'
-    const targetEmissive = isSelected ? new THREE.Color(nodeColor) : new THREE.Color(0x000000)
+    const targetEmissiveIntensity = hasSelection
+      ? (isSelected ? 0.8 : 0.08)
+      : 0.5
 
-    if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.01) {
-      material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
+    if (Math.abs(material.emissiveIntensity - targetEmissiveIntensity) > 0.01) {
+      material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.1
     } else {
-      material.emissiveIntensity = targetIntensity
+      material.emissiveIntensity = targetEmissiveIntensity
     }
-
-    if (Math.abs(material.opacity - targetOpacity) > 0.01) {
-      material.opacity += (targetOpacity - material.opacity) * 0.1
-    } else {
-      material.opacity = targetOpacity
-    }
-
-    material.emissive.lerp(targetEmissive, 0.1)
   }, [nodeColorMap])
 
   const handleSearch = () => {

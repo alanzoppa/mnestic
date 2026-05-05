@@ -28,15 +28,7 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
 }
 
-type TagStyle = { color: string; roughness: number; metalness: number; shape: string }
-
-type MaterialProfile = { roughness: number; metalness: number }
-const MATERIAL_PROFILES: MaterialProfile[] = [
-  { roughness: 0.15, metalness: 0.7 },
-  { roughness: 0.6, metalness: 0.1 },
-  { roughness: 0.3, metalness: 0.4 },
-  { roughness: 0.8, metalness: 0.05 },
-]
+type TagStyle = { color: string; shape: string }
 
 const SHAPES = ['sphere', 'box', 'octahedron', 'dodecahedron', 'icosahedron', 'torus', 'cone', 'tetrahedron'] as const
 
@@ -47,7 +39,6 @@ function assignTagStyles(tags: string[]): Record<string, TagStyle> {
     const hue = (index * GOLDEN_ANGLE) % 360
     styles[tag] = {
       color: hslToHex(hue, 0.72, 0.58),
-      ...MATERIAL_PROFILES[index % MATERIAL_PROFILES.length]!,
       shape: SHAPES[index % SHAPES.length]!,
     }
   })
@@ -97,20 +88,22 @@ function getNodeStyle(node: GraphNode, tagStyles: Record<string, TagStyle>): Tag
   const primaryTag = getPrimaryTag(node.tags ?? [])
   return primaryTag && tagStyles[primaryTag]
     ? tagStyles[primaryTag]
-    : { color: '#6b7280', roughness: 0.4, metalness: 0.2, shape: 'sphere' }
+    : { color: '#6b7280', shape: 'sphere' }
 }
 
 function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>): THREE.Object3D {
-  const { color, roughness, metalness, shape } = getNodeStyle(node, tagStyles)
+  const { color, shape } = getNodeStyle(node, tagStyles)
   const radius = 8
   const geometry = makeGeometry(shape, radius)
-  const material = new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshPhysicalMaterial({
     color,
-    emissive: new THREE.Color(0x000000),
-    roughness,
-    metalness,
-    transparent: true,
-    opacity: 0.9,
+    emissive: new THREE.Color(color),
+    emissiveIntensity: 0.5,
+    roughness: 0.15,
+    metalness: 0.3,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
+    transparent: false,
   })
   return new THREE.Mesh(geometry, material)
 }
@@ -156,23 +149,21 @@ export default function GraphPage() {
 
   const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
     const mesh = obj as THREE.Mesh
-    const material = mesh.material as THREE.MeshStandardMaterial
+    const material = mesh.material as THREE.MeshPhysicalMaterial
     if (!material) return
 
-    const SELECTED_INTENSITY = 0.8
-
     const isSelected = selectedNodeIdRef.current === node.id
+    const hasSelection = selectedNodeIdRef.current !== null
 
-    const targetIntensity = isSelected ? SELECTED_INTENSITY : 0
-    const targetEmissive = isSelected ? new THREE.Color(getNodeStyle(node, tagStyles).color) : new THREE.Color(0x000000)
+    const targetEmissiveIntensity = hasSelection
+      ? (isSelected ? 0.8 : 0.08)
+      : 0.5
 
-    if (Math.abs(material.emissiveIntensity - targetIntensity) > 0.01) {
-      material.emissiveIntensity += (targetIntensity - material.emissiveIntensity) * 0.1
+    if (Math.abs(material.emissiveIntensity - targetEmissiveIntensity) > 0.01) {
+      material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.1
     } else {
-      material.emissiveIntensity = targetIntensity
+      material.emissiveIntensity = targetEmissiveIntensity
     }
-
-    material.emissive.lerp(targetEmissive, 0.1)
   }, [tagStyles])
 
   const headerSlot = (
