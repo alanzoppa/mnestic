@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
-import { type GraphNode } from '@/lib/api'
+import { type GraphNode, type GraphEdge } from '@/lib/api'
 import type { ForceGraphNode } from '@/components/ForceGraph3DView'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
@@ -113,6 +114,9 @@ export default function GraphPage() {
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
+  const [excludedSources, setExcludedSources] = useState<Set<string>>(new Set())
+  const [legendCollapsed, setLegendCollapsed] = useState(false)
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false)
 
   const { data: tagsData } = useQuery({
     queryKey: tagKeys.list,
@@ -124,16 +128,46 @@ export default function GraphPage() {
     queryFn: () => graphApi.get(selectedTag || undefined, threshold),
   })
 
-  const graphData = useMemo(() => {
-    if (!data) return null
-    return { nodes: data.nodes, links: data.edges.map(e => ({ ...e })) }
+  const sourcesInData = useMemo(() => {
+    if (!data) return [] as string[]
+    const sourceSet = new Set<string>()
+    for (const node of data.nodes) {
+      if (node.source) sourceSet.add(node.source)
+    }
+    return Array.from(sourceSet).sort()
   }, [data])
 
+  const graphData = useMemo(() => {
+    if (!data) return null
+    if (excludedSources.size === 0) {
+      return { nodes: data.nodes, links: data.edges.map(e => ({ ...e })) }
+    }
+    const excludedIds = new Set<string>()
+    for (const node of data.nodes) {
+      if (node.source && excludedSources.has(node.source)) {
+        excludedIds.add(node.id)
+      }
+    }
+    const filteredNodes = data.nodes.filter(n => !excludedIds.has(n.id))
+    const filteredEdges = data.edges.filter(e => !excludedIds.has(e.source) && !excludedIds.has(e.target))
+    return { nodes: filteredNodes, links: filteredEdges.map(e => ({ ...e })) }
+  }, [data, excludedSources])
+
   const tagStyles = useMemo(() => {
-    if (!data) return {}
-    const primaryTags = data.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter((t): t is string => Boolean(t))
+    if (!graphData) return {}
+    const primaryTags = graphData.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter((t): t is string => Boolean(t))
     return assignTagStyles(primaryTags)
-  }, [data])
+  }, [graphData])
+
+  const toggleSource = useCallback((source: string) => {
+    setExcludedSources(prev => {
+      const next = new Set(prev)
+      if (next.has(source)) next.delete(source)
+      else next.add(source)
+      return next
+    })
+    setViewingNode(null)
+  }, [])
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
@@ -167,31 +201,75 @@ export default function GraphPage() {
   }, [tagStyles])
 
   const headerSlot = (
-    <div className="p-4 border-b border-zinc-800 flex items-center gap-4 flex-wrap">
-      <h1 className="text-2xl font-bold">Similarity Graph</h1>
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-zinc-400">Tag:</span>
-        <TagAutocomplete
-          tags={tagsData || []}
-          selectedTag={selectedTag}
-          onTagSelect={(tag) => { setSelectedTag(tag); setViewingNode(null) }}
-          data-testid="tag-autocomplete"
-        />
+    <div className="p-4 border-b border-zinc-800">
+      <div className="flex items-center gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">Similarity Graph</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-zinc-400">Tag:</span>
+          <TagAutocomplete
+            tags={tagsData || []}
+            selectedTag={selectedTag}
+            onTagSelect={(tag) => { setSelectedTag(tag); setViewingNode(null) }}
+            data-testid="tag-autocomplete"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="similarity-range" className="text-sm text-zinc-400">Similarity:</label>
+          <input
+            id="similarity-range"
+            type="range"
+            min="0.5"
+            max="0.95"
+            step="0.05"
+            value={threshold}
+            onChange={(e) => { setThreshold(parseFloat(e.target.value)); setViewingNode(null) }}
+            className="w-24"
+          />
+          <span className="text-sm text-zinc-300 w-10">{threshold.toFixed(2)}</span>
+        </div>
+        {sourcesInData.length > 0 && (
+          <button
+            onClick={() => setFiltersCollapsed(c => !c)}
+            className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+            data-testid="source-filter-toggle"
+          >
+            <span>Sources</span>
+            {filtersCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
       </div>
-      <div className="flex items-center gap-2">
-        <label htmlFor="similarity-range" className="text-sm text-zinc-400">Similarity:</label>
-        <input
-          id="similarity-range"
-          type="range"
-          min="0.5"
-          max="0.95"
-          step="0.05"
-          value={threshold}
-          onChange={(e) => { setThreshold(parseFloat(e.target.value)); setViewingNode(null) }}
-          className="w-24"
-        />
-        <span className="text-sm text-zinc-300 w-10">{threshold.toFixed(2)}</span>
-      </div>
+      {sourcesInData.length > 0 && !filtersCollapsed && (
+        <div className="flex flex-wrap gap-2 mt-2" data-testid="source-filters">
+          {sourcesInData.map(source => {
+            const isExcluded = excludedSources.has(source)
+            return (
+              <button
+                key={source}
+                onClick={() => toggleSource(source)}
+                className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                  isExcluded
+                    ? 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'
+                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                }`}
+                data-testid={`source-filter-${source}`}
+                data-active={!isExcluded}
+              >
+                {source}
+              </button>
+            )
+          })}
+          {excludedSources.size > 0 && (
+            <button
+              onClick={() => setExcludedSources(new Set())}
+              className="px-2 py-0.5 rounded text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition-colors flex items-center gap-1"
+              data-testid="source-filter-reset"
+            >
+              <X size={10} />
+              Reset
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 
@@ -231,23 +309,32 @@ export default function GraphPage() {
 
   const legendSlot = (
     <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20 max-h-56 overflow-y-auto" data-testid="graph-legend">
-      <div className="text-xs font-medium text-zinc-300 mb-2">Legend</div>
-      {Object.entries(tagStyles).map(([tag, style]) => (
-        <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1 cursor-pointer hover:text-zinc-200 transition-colors" onClick={() => { setSelectedTag(tag); setViewingNode(null) }}>
-          <ShapeIndicator shape={style.shape} color={style.color} />
-          {tag}
-        </div>
-      ))}
-      <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-        <ShapeIndicator shape="sphere" color="#6b7280" />
-        Other
-      </div>
-      {data && (
+      <button
+        onClick={() => setLegendCollapsed(c => !c)}
+        className="flex items-center gap-1 text-xs font-medium text-zinc-300 mb-0 hover:text-zinc-100 transition-colors w-full text-left"
+        data-testid="legend-collapse-toggle"
+      >
+        <span>Legend</span>
+        {legendCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {!legendCollapsed && (
         <>
-          <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500" data-testid="graph-stats">
-            {data.nodes.length} nodes · {data.edges.length} edges
+          {Object.entries(tagStyles).map(([tag, style]) => (
+            <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1 cursor-pointer hover:text-zinc-200 transition-colors" onClick={() => { setSelectedTag(tag); setViewingNode(null) }}>
+              <ShapeIndicator shape={style.shape} color={style.color} />
+              {tag}
+            </div>
+          ))}
+          <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
+            <ShapeIndicator shape="sphere" color="#6b7280" />
+            Other
           </div>
         </>
+      )}
+      {graphData && (
+        <div className={`mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500 ${legendCollapsed ? '' : ''}`} data-testid="graph-stats">
+          {graphData.nodes.length} nodes · {graphData.links.length} edges
+        </div>
       )}
     </div>
   )

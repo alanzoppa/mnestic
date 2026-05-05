@@ -152,4 +152,61 @@ test.describe("Graph Page", () => {
     const pane = page.locator('[data-testid="graph-details-pane"]');
     await expect(pane).toHaveCSS('opacity', '0');
   });
+
+  test("should show source filter chips", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+    const toggle = page.locator('[data-testid="source-filter-toggle"]');
+    await expect(toggle).toBeVisible();
+  });
+
+  test("should toggle source filter and update node count", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    const evernoteFilter = page.locator('[data-testid="source-filter-Evernote"]');
+    await expect(evernoteFilter).toBeVisible();
+    await expect(evernoteFilter).toHaveAttribute('data-active', 'true');
+
+    const initialStats = await page.locator('[data-testid="graph-stats"]').textContent();
+    expect(initialStats).toContain('nodes');
+
+    await evernoteFilter.click();
+    await expect(evernoteFilter).toHaveAttribute('data-active', 'false');
+
+    const updatedStats = await page.locator('[data-testid="graph-stats"]').textContent();
+    expect(updatedStats).toContain('nodes');
+  });
+
+  test("should collapse and expand legend", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    const legend = page.locator('[data-testid="graph-legend"]');
+    await expect(legend).toBeVisible();
+
+    await expect(legend.locator('text=management')).toBeVisible({ timeout: 5000 });
+
+    const collapseBtn = page.locator('[data-testid="legend-collapse-toggle"]');
+    await collapseBtn.click();
+
+    await expect(legend.locator('text=management')).not.toBeVisible();
+
+    await collapseBtn.click();
+
+    await expect(legend.locator('text=management')).toBeVisible({ timeout: 5000 });
+  });
+
+  test("should collapse and expand source filters", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    const filterSection = page.locator('[data-testid="source-filters"]');
+    await expect(filterSection).toBeVisible();
+
+    const toggle = page.locator('[data-testid="source-filter-toggle"]');
+    await toggle.click();
+
+    await expect(page.locator('[data-testid="source-filters"]')).not.toBeVisible();
+
+    await toggle.click();
+
+    await expect(page.locator('[data-testid="source-filters"]')).toBeVisible();
+  });
 });
