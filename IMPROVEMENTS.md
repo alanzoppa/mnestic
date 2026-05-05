@@ -1,4 +1,4 @@
-# Notes Browser - Potential Improvements List
+# Mnestic - Potential Improvements List
 
 ## UI/UX Improvements
 

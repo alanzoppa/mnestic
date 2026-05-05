@@ -21,6 +21,6 @@ echo ">>> Building frontend..."
 npm run build --prefix "$REPO_ROOT/frontend"
 
 echo ">>> Restarting services..."
-systemctl --user restart notes-browser-backend.service notes-browser-frontend.service
+systemctl --user restart mnestic-backend.service mnestic-frontend.service
 
 echo ">>> Done!"

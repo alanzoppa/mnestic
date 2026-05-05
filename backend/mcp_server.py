@@ -40,7 +40,7 @@ def _note_from_unique(meta: dict, note_id: str) -> dict[str, Any]:
 def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMCP:
     from embed import embed_query_sync
 
-    mcp = FastMCP("notes-browser")
+    mcp = FastMCP("mnestic")
 
     @mcp.tool()
     def search_notes(

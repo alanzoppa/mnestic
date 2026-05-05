@@ -1,5 +1,5 @@
 [project]
-name = "notes-browser-backend"
+name = "mnestic-backend"
 version = "0.1.0"
 description = "Private semantic search for personal markdown notes — FastAPI backend"
 requires-python = ">=3.11"

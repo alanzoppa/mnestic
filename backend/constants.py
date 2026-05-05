@@ -1,4 +1,4 @@
-"""Shared constants for the notes browser backend."""
+"""Shared constants for the mnestic backend."""
 
 
 # Chunking

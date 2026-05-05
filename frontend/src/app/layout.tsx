@@ -6,8 +6,8 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import QueryProvider from "@/components/QueryProvider";
 
 export const metadata: Metadata = {
-  title: "Notes Browser",
-  description: "Private notes browser with semantic search",
+  title: "Mnestic",
+  description: "Private knowledge browser with semantic search",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

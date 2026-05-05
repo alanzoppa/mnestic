@@ -18,9 +18,9 @@ test.describe("Dashboard", () => {
   });
 
   test("should display app title and stats", async ({ page }) => {
-    // Main page heading should be Notes Browser
+    // Main page heading should be Mnestic
     const mainContent = page.locator("main");
-    await expect(mainContent.getByRole('heading', { name: 'Notes Browser' })).toBeVisible();
+    await expect(mainContent.getByRole('heading', { name: 'Mnestic' })).toBeVisible();
 
     // Stats should be visible
     await expect(mainContent.locator("text=Total Notes")).toBeVisible();

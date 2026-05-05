@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
         note_watcher.stop()
 
 
-app = FastAPI(title="Notes Browser API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Mnestic API", version="0.1.0", lifespan=lifespan)
 
 logger = logging.getLogger(__name__)
 

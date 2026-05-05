@@ -3,7 +3,7 @@
 Derive recurring event series from a Google Calendar export JSON.
 
 Usage:
-    cd /Users/alanzoppa/Code/notes-browser
+    cd /path/to/mnestic
     backend/.venv/bin/python scripts/derive_calendar_series.py
 
 Outputs:
@@ -187,7 +187,7 @@ def derive_series(events: list[dict]) -> dict[str, str]:
 
 
 def main():
-    repo_root = Path("/Users/alanzoppa/Code/notes-browser")
+    repo_root = Path(__file__).resolve().parents[1]
     input_path = Path("/Users/alanzoppa/Downloads/calendar-export.json")
     output_path = repo_root / "data" / "series_from_calendar.json"
 

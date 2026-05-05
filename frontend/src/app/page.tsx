@@ -64,7 +64,7 @@ export default function Dashboard() {
         <Card className="relative">
           <CardContent className="p-8">
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              Notes Browser
+              Mnestic
             </h1>
             <p className="text-zinc-500">Search and explore your archived notes with semantic understanding</p>
           </CardContent>

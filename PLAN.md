@@ -1,4 +1,4 @@
-# Notes Browser — Improvement Plan
+# Mnestic — Improvement Plan
 
 ## Overview
 
@@ -259,7 +259,7 @@ NOTES_SOURCE=~/Desktop/notes/Apple Notes
 3. **Create `backend/pyproject.toml`:**
 ```toml
 [project]
-name = "notes-browser-backend"
+name = "mnestic-backend"
 version = "0.1.0"
 description = "Private semantic search for personal markdown notes — FastAPI backend"
 requires-python = ">=3.11"
@@ -658,7 +658,7 @@ Resulting file (keep only the hook):
 'use client'
 import { useLocalStorage } from '@/lib/hooks'
 
-const STORAGE_KEY = 'notes-browser-favorites'
+const STORAGE_KEY = 'mnestic-favorites'
 
 export function useFavorites() {
   const [favorites, setFavorites] = useLocalStorage<string[]>(STORAGE_KEY, [])

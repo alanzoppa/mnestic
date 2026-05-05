@@ -1,4 +1,4 @@
-"""Shared utility helpers for the notes browser backend."""
+"""Shared utility helpers for the mnestic backend."""
 
 from __future__ import annotations
 

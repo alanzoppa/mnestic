@@ -8,8 +8,9 @@ from pathlib import Path
 
 import frontmatter
 
-NOTES_DIR = Path("/Users/alanzoppa/Code/notes-browser/notes")
-OUT_PATH = Path("/Users/alanzoppa/Code/notes-browser/data/series_from_notes.json")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+NOTES_DIR = REPO_ROOT / "notes"
+OUT_PATH = REPO_ROOT / "data" / "series_from_notes.json"
 
 
 # Meeting keywords for single-note fallback detection

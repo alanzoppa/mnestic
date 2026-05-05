@@ -1,4 +1,4 @@
-# Notes Browser — AGENTS.md
+# Mnestic — AGENTS.md
 
 ## What this is
 
@@ -23,7 +23,7 @@ A private web application to browse ~2,000 markdown notes with YAML frontmatter.
 ## Directory structure
 
 ```
-notes-browser/
+mnestic/
 ├── AGENTS.md                    This file
 ├── frontend/                    Next.js app (App Router, Tailwind v4)
 │   ├── src/
@@ -66,8 +66,8 @@ notes-browser/
 │   └── caption_images.py        AI captioning for image-only notes (Kimi k2.5:cloud)
 └── deploy/
     ├── nginx.conf               NGINX reverse proxy config
-    ├── notes-browser-backend.service
-    └── notes-browser-frontend.service
+    ├── mnestic-backend.service
+    └── mnestic-frontend.service
 ```
 
 ## Code Conventions — Backend
@@ -335,7 +335,7 @@ python scripts/caption_images.py --force      # Re-caption notes with existing c
 
 ## MCP Server
 
-The notes browser exposes an MCP (Model Context Protocol) server for LLM tool access. It runs on **stdio transport** (launched by the MCP client, not as an HTTP endpoint).
+Mnestic exposes an MCP (Model Context Protocol) server for LLM tool access. It runs on **stdio transport** (launched by the MCP client, not as an HTTP endpoint).
 
 ### Running
 
@@ -361,10 +361,10 @@ Adjust the `cwd` path to your repo location:
 ```json
 {
   "mcpServers": {
-    "notes-browser": {
+    "mnestic": {
       "command": "python",
       "args": ["mcp_server.py"],
-      "cwd": "/path/to/notes-browser/backend"
+      "cwd": "/path/to/mnestic/backend"
     }
   }
 }

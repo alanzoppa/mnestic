@@ -18,7 +18,7 @@ test.describe("Smoke Tests (Live Backend)", { tag: "@smoke" }, () => {
   test("should load dashboard with stats from live backend", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.locator("h1:has-text('Notes Browser')")).toBeVisible();
+    await expect(page.locator("h1:has-text('Mnestic')")).toBeVisible();
 
     // Wait for stats to load from backend
     await page.waitForResponse((resp) => resp.url().includes("/api/stats"));

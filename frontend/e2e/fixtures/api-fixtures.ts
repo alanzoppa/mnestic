@@ -447,9 +447,9 @@ export const mockNotesSince = {
 
 export const mockWatcherStatus = {
   running: true,
-  notes_dir: "/Users/test/notes-browser/notes",
+  notes_dir: "/Users/test/mnestic/notes",
   recent_events: [
-    { type: "note_changed", path: "/Users/test/notes-browser/notes/test.md", timestamp: "2024-03-15T10:00:00Z" },
+    { type: "note_changed", path: "/Users/test/mnestic/notes/test.md", timestamp: "2024-03-15T10:00:00Z" },
   ],
 };
 

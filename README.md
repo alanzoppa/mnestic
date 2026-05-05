@@ -1,6 +1,6 @@
-# Notes Browser
+# Mnestic
 
-Private notes browser with semantic search for ~2,200 markdown notes with YAML frontmatter (215+ image-only notes AI-captioned).
+Private knowledge browser with semantic search for ~2,200 markdown notes with YAML frontmatter (215+ image-only notes AI-captioned).
 
 ## Features
 
@@ -23,8 +23,8 @@ Private notes browser with semantic search for ~2,200 markdown notes with YAML f
 ### Step 1 — Install dependencies
 
 ```bash
-git clone git@github.com:alanzoppa/notes-browser.git
-cd notes-browser
+git clone git@github.com:alanzoppa/mnestic.git
+cd mnestic
 
 # Backend
 python3 -m venv backend/.venv
@@ -177,7 +177,7 @@ cd frontend && npm run build
 ### Project Structure
 
 ```
-notes-browser/
+mnestic/
 ├── backend/           # FastAPI + ChromaDB
 │   ├── main.py        # API endpoints
 │   ├── ingest.py      # Indexing pipeline
@@ -256,14 +256,14 @@ See `deploy/` directory for NGINX and systemd configurations.
 
 ```bash
 # Copy configs
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/notes-browser
-sudo cp deploy/notes-browser-*.service /etc/systemd/system/
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/mnestic
+sudo cp deploy/mnestic-*.service /etc/systemd/system/
 
 # Enable services
-sudo systemctl enable notes-browser-backend
-sudo systemctl enable notes-browser-frontend
-sudo systemctl start notes-browser-backend
-sudo systemctl start notes-browser-frontend
+sudo systemctl enable mnestic-backend
+sudo systemctl enable mnestic-frontend
+sudo systemctl start mnestic-backend
+sudo systemctl start mnestic-frontend
 ```
 
 ## License

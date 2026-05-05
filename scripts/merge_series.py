@@ -18,7 +18,7 @@ from pathlib import Path
 
 import frontmatter
 
-REPO_ROOT = Path("/Users/alanzoppa/Code/notes-browser")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 CALENDAR_EXPORT_PATH = Path("/Users/alanzoppa/Downloads/calendar-export.json")
 SERIES_FROM_CALENDAR = REPO_ROOT / "data" / "series_from_calendar.json"
 SERIES_FROM_NOTES = REPO_ROOT / "data" / "series_from_notes.json"

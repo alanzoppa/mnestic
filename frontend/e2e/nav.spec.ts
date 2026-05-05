@@ -150,6 +150,6 @@ test.describe("Navigation", () => {
 
     // Navigate to Dashboard
     await nav.getByRole("link", { name: "Dashboard", exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Notes Browser' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Mnestic' })).toBeVisible();
   });
 });

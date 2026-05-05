@@ -1,7 +1,7 @@
 'use client'
 import { useLocalStorage } from '@/lib/hooks'
 
-const STORAGE_KEY = 'notes-browser-favorites'
+const STORAGE_KEY = 'mnestic-favorites'
 
 export function useFavorites() {
   const [favorites, setFavorites] = useLocalStorage<string[]>(STORAGE_KEY, [])
