@@ -4,7 +4,9 @@ set -euo pipefail
 REPO_ROOT="$(git -C "$(dirname "$0")/.." rev-parse --show-toplevel)"
 
 echo ">>> Pulling latest changes..."
-git -C "$REPO_ROOT" pull
+git -C "$REPO_ROOT" stash -q || true
+git -C "$REPO_ROOT" pull --rebase
+git -C "$REPO_ROOT" stash pop -q || true
 
 echo ">>> Installing backend dependencies..."
 "$REPO_ROOT/backend/.venv/bin/pip" install -q -r "$REPO_ROOT/backend/requirements.txt"
