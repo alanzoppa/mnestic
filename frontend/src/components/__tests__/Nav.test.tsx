@@ -82,8 +82,9 @@ describe("Nav Component", () => {
     mockUsePathname.mockReturnValue("/");
     render(<Nav />);
 
-    expect(screen.getByText("Notes")).toBeInTheDocument();
-    expect(screen.getByText("Archive Browser")).toBeInTheDocument();
+    expect(screen.getByAltText("Mnestic")).toBeInTheDocument();
+    expect(screen.getByText("Mnestic")).toBeInTheDocument();
+    expect(screen.getByText("Semantic Browser")).toBeInTheDocument();
   });
 
   it("renders status indicator", () => {

@@ -13,7 +13,7 @@ test.describe("Navigation", () => {
     await page.goto("/");
     const nav = page.locator("nav");
     await expect(nav).toBeVisible();
-    // Use getByRole to avoid matching "Archive Browser" in logo
+    // Use getByRole with exact:true to match only nav links, not the logo brand link
     await expect(nav.getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Search", exact: true })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Browse", exact: true })).toBeVisible();

@@ -63,9 +63,12 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
         <Card className="relative">
           <CardContent className="p-8">
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              Mnestic
-            </h1>
+            <div className="flex items-center gap-4 mb-3">
+              <img src="/mnestic.png" alt="Mnestic" width={48} height={48} className="rounded-xl drop-shadow-[0_0_16px_rgba(59,130,246,0.3)]" />
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+                Mnestic
+              </h1>
+            </div>
             <p className="text-zinc-500">Search and explore your archived notes with semantic understanding</p>
           </CardContent>
         </Card>

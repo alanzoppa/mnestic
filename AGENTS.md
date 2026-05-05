@@ -57,10 +57,10 @@ mnestic/
 │   ├── schema.py                Frontmatter schema discovery
 │   ├── calendar_data.py         Calendar event processor
 │   └── requirements.txt
-├── notes/                       Flat .md files (2260)
-├── images/                      Note images/PDFs (565)
-├── data/                         Processed data (calendar.json etc.)
-├── chroma_data/                 ChromaDB persistent storage
+├── notes/ -> ../personal-notes-data/notes/   Symlink: flat .md files (~2260)
+├── images/ -> ../personal-notes-data/images/ Symlink: note images/PDFs (~565)
+├── data/ -> ../personal-notes-data/data/    Symlink: processed data (series JSON)
+├── chroma_data/                 ChromaDB persistent storage (local, gitignored)
 ├── scripts/
 │   ├── sync_notes.py            Copy + normalize notes from source
 │   └── caption_images.py        AI captioning for image-only notes (Kimi k2.5:cloud)

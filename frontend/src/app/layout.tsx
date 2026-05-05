@@ -8,6 +8,17 @@ import QueryProvider from "@/components/QueryProvider";
 export const metadata: Metadata = {
   title: "Mnestic",
   description: "Private knowledge browser with semantic search",
+  openGraph: {
+    title: "Mnestic",
+    description: "Private knowledge browser with semantic search",
+    images: ["/mnestic.png"],
+  },
+  twitter: {
+    title: "Mnestic",
+    description: "Private knowledge browser with semantic search",
+    card: "summary",
+    images: ["/mnestic.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

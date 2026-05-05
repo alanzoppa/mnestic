@@ -29,12 +29,10 @@ export default function Nav({ onNavigate }: NavProps) {
       {/* Logo / Brand */}
       <div className="p-6 border-b border-zinc-800/60">
         <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/30 transition-shadow">
-            <Zap className="w-6 h-6 text-white" strokeWidth={2} />
-          </div>
+            <img src="/mnestic.png" alt="Mnestic" width={40} height={40} className="rounded-xl drop-shadow-[0_0_12px_rgba(59,130,246,0.3)]" />
           <div>
-            <h1 className="text-lg font-bold text-white">Notes</h1>
-            <p className="text-xs text-zinc-500">Archive Browser</p>
+            <h1 className="text-lg font-bold text-white">Mnestic</h1>
+            <p className="text-xs text-zinc-500">Semantic Browser</p>
           </div>
         </Link>
       </div>
