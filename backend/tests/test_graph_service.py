@@ -135,7 +135,7 @@ def test_note_ids_capped_at_1000(tmp_store):
 
 def test_missing_embeddings(tmp_store):
     mock_store = MagicMock()
-    mock_store._notes.get.return_value = {
+    mock_store.notes.get.return_value = {
         "ids": ["note_1_chunk_0"],
         "metadatas": [{"note_id": "note_1", "title": "Alpha", "tags": "work", "chunk_index": 0}],
         "embeddings": [None],

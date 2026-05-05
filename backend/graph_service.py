@@ -26,7 +26,7 @@ def build_similarity_graph_from_notes(
 
     all_meta = {}
     seen_note_ids = set()
-    batch = store._notes.get(
+    batch = store.notes.get(
         where={"$and": [{"note_id": {"$in": note_ids}}, {"chunk_index": 0}]},
         include=["metadatas", "embeddings"],
     )
@@ -134,7 +134,7 @@ def build_similarity_graph(
         where = {"$and": where_clauses}
 
     if tag and not where:
-        all_notes = store._notes.get(include=["metadatas"])
+        all_notes = store.notes.get(include=["metadatas"])
         filtered_ids = []
         for i, meta in enumerate(all_notes.get("metadatas", [])):
             if not meta:
@@ -155,7 +155,7 @@ def build_similarity_graph(
 
     all_meta = {}
     if sample_ids:
-        batch = store._notes.get(ids=sample_ids, include=["metadatas"])
+        batch = store.notes.get(ids=sample_ids, include=["metadatas"])
         seen_note_ids = set()
         for i, mid in enumerate(batch["ids"]):
             meta = batch["metadatas"][i] if batch["metadatas"] else {}
@@ -166,7 +166,7 @@ def build_similarity_graph(
             seen_note_ids.add(nid)
             all_meta[mid] = meta
     else:
-        all_data = store._notes.get(include=["metadatas"])
+        all_data = store.notes.get(include=["metadatas"])
         seen_note_ids = set()
         for i, mid in enumerate(all_data["ids"]):
             meta = all_data["metadatas"][i] if all_data["metadatas"] else {}
@@ -191,7 +191,7 @@ def build_similarity_graph(
     if not query_ids:
         return {"nodes": [], "edges": []}
 
-    batch_data = store._notes.get(ids=query_ids, include=["embeddings", "metadatas"])
+    batch_data = store.notes.get(ids=query_ids, include=["embeddings", "metadatas"])
     embeddings = batch_data.get("embeddings", [])
     if len(embeddings) == 0 or embeddings[0] is None:
         return {"nodes": [], "edges": []}

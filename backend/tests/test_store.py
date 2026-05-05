@@ -2,6 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from store import NoteStore, _serialize_metadata, _to_chroma_scalar as _flatten_tags, _to_chroma_scalar as _flatten_participants
 from models import NoteResult, NoteMetadata, TagInfo, CoOccurrence, TimelinePeriod, StatsResponse
+from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 
@@ -299,16 +300,19 @@ def test_get_similar_single_db_call(tmp_store):
         embeddings=[embedding, [0.2] * 256, [0.3] * 256],
         metadatas=[{"title": "N1"}, {"title": "N2"}, {"title": "N3"}],
     )
-    original_get = tmp_store._notes.get
+    # notes is a property returning a fresh collection each time; save original.get
+    actual_collection = tmp_store.notes
+    original_get = actual_collection.get
     call_count = [0]
 
     def counting_get(*args, **kwargs):
         call_count[0] += 1
         return original_get(*args, **kwargs)
 
-    tmp_store._notes.get = counting_get
-    similar = tmp_store.get_similar("note1", n=2)
-    tmp_store._notes.get = original_get
+    mock_collection = MagicMock()
+    mock_collection.get = counting_get
+    with patch.object(type(tmp_store), 'notes', new_callable=PropertyMock, return_value=mock_collection):
+        similar = tmp_store.get_similar("note1", n=2)
 
     assert call_count[0] == 1
     assert len(similar) <= 2

@@ -217,7 +217,7 @@ def test_get_calendar_date(app_client):
 def test_get_graph(app_client):
     c, mock_store = app_client
 
-    mock_store._notes.get.return_value = {
+    mock_store.notes.get.return_value = {
         "ids": ["note1", "note2", "note3"],
         "metadatas": [
             {"title": "Note 1", "folder": "Work", "tags": "work,notes", "source": "Apple Notes"},
@@ -238,7 +238,7 @@ def test_get_graph(app_client):
 def test_get_graph_with_tag_filter(app_client):
     c, mock_store = app_client
 
-    mock_store._notes.get.return_value = {
+    mock_store.notes.get.return_value = {
         "ids": ["note1", "note2"],
         "metadatas": [
             {"title": "Note 1", "folder": "Work", "tags": "work,notes", "source": "Apple Notes"},
@@ -260,7 +260,7 @@ def test_get_graph_nodes_have_metadata(app_client):
     """Graph nodes must contain metadata looked up by logical note_id, not chunk id."""
     c, mock_store = app_client
 
-    mock_store._notes.get.return_value = {
+    mock_store.notes.get.return_value = {
         "ids": ["chunk-a", "chunk-b"],
         "metadatas": [
             {"note_id": "logical-1", "title": "Note A", "folder": "Work", "tags": "work", "source": "Apple Notes"},
@@ -297,7 +297,7 @@ def test_find_note_file_path_traversal():
 def test_get_calendar_events_missing_data(app_client):
     """Calendar endpoints gracefully degrade when calendar data is missing."""
     c, mock_store = app_client
-    mock_store._notes.get.return_value = {"ids": [], "metadatas": []}
+    mock_store.notes.get.return_value = {"ids": [], "metadatas": []}
 
     with patch("main.get_calendar") as mock_get_cal:
         mock_get_cal.return_value.process_events.return_value = []

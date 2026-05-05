@@ -113,7 +113,7 @@ def test_get_events_for_date_matches_notes(tmp_store, sample_calendar):
         ],
     )
 
-    date_notes = tmp_store._notes.get(where={"date": "2019-12-09"}, include=["metadatas"])
+    date_notes = tmp_store.notes.get(where={"date": "2019-12-09"}, include=["metadatas"])
     assert len(date_notes["ids"]) == 1
     assert date_notes["metadatas"][0]["title"] == "Note A"
 

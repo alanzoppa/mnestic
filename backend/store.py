@@ -54,10 +54,16 @@ class NoteStore:
             path=persist_dir,
             settings=Settings(anonymized_telemetry=False),
         )
-        self._notes = self._client.get_or_create_collection(
+
+    @property
+    def notes(self):
+        return self._client.get_or_create_collection(
             "notes", metadata={"hnsw:space": "cosine"}
         )
-        self._calendar = self._client.get_or_create_collection(
+
+    @property
+    def calendar(self):
+        return self._client.get_or_create_collection(
             "calendar", metadata={"hnsw:space": "cosine"}
         )
 
@@ -69,7 +75,7 @@ class NoteStore:
         metadatas: list[dict],
     ) -> None:
         metas = [_serialize_metadata(m) for m in metadatas]
-        self._notes.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metas)
+        self.notes.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metas)
 
     def add_calendar_events(
         self,
@@ -79,11 +85,11 @@ class NoteStore:
         metadatas: list[dict],
     ) -> None:
         metas = [_serialize_metadata(m) for m in metadatas]
-        self._calendar.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metas)
+        self.calendar.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metas)
 
     def get_notes_by_tag(self, tag_str: str, n: int = 20, where: dict = None) -> list[NoteResult]:
         tag_set = {t.strip().lower() for t in tag_str.split(",") if t.strip()}
-        all_notes = self._notes.get(where=where, include=["metadatas"])
+        all_notes = self.notes.get(where=where, include=["metadatas"])
         results: list[NoteResult] = []
         seen_note_ids: set[str] = set()
         for i, meta in enumerate(all_notes.get("metadatas", [])):
@@ -107,7 +113,7 @@ class NoteStore:
     def search_notes(
         self, query_embedding: list[float], n: int = 20, where: dict = None
     ) -> list[NoteResult]:
-        results = self._notes.query(
+        results = self.notes.query(
             query_embeddings=[query_embedding],
             n_results=n,
             where=where,
@@ -117,7 +123,7 @@ class NoteStore:
     def search_calendar(
         self, query_embedding: list[float], n: int = 20, where: dict = None
     ) -> list[NoteResult]:
-        results = self._calendar.query(
+        results = self.calendar.query(
             query_embeddings=[query_embedding],
             n_results=n,
             where=where,
@@ -139,7 +145,7 @@ class NoteStore:
 
     def get_note(self, note_id: str) -> NoteResult | None:
         try:
-            result = self._notes.get(ids=[note_id], include=["metadatas", "documents"])
+            result = self.notes.get(ids=[note_id], include=["metadatas", "documents"])
         except Exception:
             return None
         if not result["ids"]:
@@ -154,7 +160,7 @@ class NoteStore:
     def get_note_by_note_id(self, logical_note_id: str) -> NoteResult | None:
         """Look up a note by its logical note_id metadata field, preferring _chunk_0."""
         try:
-            results = self._notes.get(
+            results = self.notes.get(
                 where={"note_id": logical_note_id},
                 include=["metadatas", "documents"],
             )
@@ -181,7 +187,7 @@ class NoteStore:
         """Get all notes, deduplicated by note_id, keeping only _chunk_0."""
         if include is None:
             include = ["metadatas"]
-        all_notes = self._notes.get(include=include)
+        all_notes = self.notes.get(include=include)
         seen_note_ids = set()
         result = {"ids": [], "metadatas": []}
         for i, meta in enumerate(all_notes.get("metadatas", [])):
@@ -203,7 +209,7 @@ class NoteStore:
 
     def list_notes(self, where: dict = None, n: int = 500) -> list[NoteResult]:
         """List all notes, optionally filtered by where. Deduplicated by note_id."""
-        raw = self._notes.get(where=where, include=["metadatas", "documents"])
+        raw = self.notes.get(where=where, include=["metadatas", "documents"])
         if not raw or not raw.get("ids"):
             return []
         seen_note_ids: set[str] = set()
@@ -324,7 +330,7 @@ class NoteStore:
 
     def get_notes_by_date(self, date: str) -> list[NoteListItem]:
         """Query notes matching a specific date, deduplicated by note_id."""
-        raw = self._notes.get(where={"date": date}, include=["metadatas"])
+        raw = self.notes.get(where={"date": date}, include=["metadatas"])
         if not raw or not raw.get("ids"):
             return []
         seen: set[str] = set()
@@ -342,7 +348,7 @@ class NoteStore:
         return notes
 
     def get_note_embedding(self, note_id: str) -> list[float] | None:
-        results = self._notes.get(
+        results = self.notes.get(
             where={"$and": [{"note_id": note_id}, {"chunk_index": 0}]},
             include=["embeddings"],
             limit=1,
@@ -355,7 +361,7 @@ class NoteStore:
     def get_embeddings_for_notes(self, note_ids: list[str]) -> dict[str, list[float]]:
         if not note_ids:
             return {}
-        results = self._notes.get(
+        results = self.notes.get(
             where={"$and": [{"note_id": {"$in": note_ids}}, {"chunk_index": 0}]},
             include=["embeddings", "metadatas"],
         )
@@ -371,7 +377,7 @@ class NoteStore:
         return out
 
     def get_similar(self, note_id: str, n: int = 10) -> list[NoteResult]:
-        result = self._notes.get(ids=[note_id], include=["metadatas", "embeddings"])
+        result = self.notes.get(ids=[note_id], include=["metadatas", "embeddings"])
         if not result.get("ids"):
             return []
         embeddings = result.get("embeddings", [])
@@ -406,7 +412,7 @@ class NoteStore:
 
     def get_folders(self) -> list[str]:
         """Get all unique folder names, sorted alphabetically."""
-        all_notes = self._notes.get(include=["metadatas"])
+        all_notes = self.notes.get(include=["metadatas"])
         folders: set[str] = set()
         for meta in all_notes.get("metadatas", []):
             if not meta:
@@ -456,7 +462,7 @@ class NoteStore:
 
     def get_stats(self) -> StatsResponse:
         unique = self.get_unique_notes(include=["documents", "metadatas"])
-        all_calendar = self._calendar.get(include=[])
+        all_calendar = self.calendar.get(include=[])
         total_notes = len(unique["ids"])
         total_calendar_events = len(all_calendar["ids"])
 
@@ -481,27 +487,21 @@ class NoteStore:
         )
 
     def delete_note_chunks(self, note_id: str) -> int:
-        existing = self._notes.get(
+        existing = self.notes.get(
             where={"note_id": note_id},
             include=["metadatas"],
         )
         if existing["ids"]:
-            self._notes.delete(ids=existing["ids"])
+            self.notes.delete(ids=existing["ids"])
             return len(existing["ids"])
         return 0
 
     def delete_notes(self, ids: list[str]) -> None:
-        self._notes.delete(ids=ids)
+        self.notes.delete(ids=ids)
 
     def delete_calendar_events(self, ids: list[str]) -> None:
-        self._calendar.delete(ids=ids)
+        self.calendar.delete(ids=ids)
 
     def reset(self) -> None:
         self._client.delete_collection("notes")
         self._client.delete_collection("calendar")
-        self._notes = self._client.get_or_create_collection(
-            "notes", metadata={"hnsw:space": "cosine"}
-        )
-        self._calendar = self._client.get_or_create_collection(
-            "calendar", metadata={"hnsw:space": "cosine"}
-        )
