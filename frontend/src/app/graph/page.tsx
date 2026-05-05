@@ -279,11 +279,9 @@ export default function GraphPage() {
     <div className="bg-zinc-950 border-b border-zinc-800">
       <div className="px-4 pt-3 pb-2 flex items-center gap-4 flex-wrap">
         <h1 className="text-lg font-semibold text-zinc-100">Similarity Graph</h1>
-        {graphData && (
-          <span className="text-xs text-zinc-500" data-testid="graph-stats">
-            {graphData.nodes.length} nodes · {graphData.links.length} edges
-          </span>
-        )}
+        <span className="text-xs text-zinc-500 w-36 shrink-0 inline-block tabular-nums" data-testid="graph-stats">
+          {graphData ? `${graphData.nodes.length} nodes · ${graphData.links.length} edges` : '\u00A0'}
+        </span>
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400">Tag:</span>
           <TagAutocomplete
