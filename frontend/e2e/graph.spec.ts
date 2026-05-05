@@ -153,9 +153,9 @@ test.describe("Graph Page", () => {
     await expect(pane).toHaveCSS('opacity', '0');
   });
 
-  test("should show source filter chips", async ({ page }) => {
+  test("should show filter toggle", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
-    const toggle = page.locator('[data-testid="source-filter-toggle"]');
+    const toggle = page.locator('[data-testid="filter-toggle"]');
     await expect(toggle).toBeVisible();
   });
 
@@ -176,6 +176,26 @@ test.describe("Graph Page", () => {
     expect(updatedStats).toContain('nodes');
   });
 
+  test("should toggle structural tag filter", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    const tagFilters = page.locator('[data-testid="tag-filters"]');
+    await expect(tagFilters).toBeVisible();
+
+    const workFilter = page.locator('[data-testid="tag-filter-work"]');
+    await expect(workFilter).toBeVisible();
+    await expect(workFilter).toHaveAttribute('data-active', 'true');
+
+    await workFilter.click();
+    await expect(workFilter).toHaveAttribute('data-active', 'false');
+
+    const resetBtn = page.locator('[data-testid="filter-reset"]');
+    await expect(resetBtn).toBeVisible();
+    await resetBtn.click();
+
+    await expect(workFilter).toHaveAttribute('data-active', 'true');
+  });
+
   test("should collapse and expand legend", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
@@ -194,19 +214,19 @@ test.describe("Graph Page", () => {
     await expect(legend.locator('text=management')).toBeVisible({ timeout: 5000 });
   });
 
-  test("should collapse and expand source filters", async ({ page }) => {
+  test("should collapse and expand filters panel", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
-    const filterSection = page.locator('[data-testid="source-filters"]');
-    await expect(filterSection).toBeVisible();
+    const filterPanel = page.locator('[data-testid="filter-panel"]');
+    await expect(filterPanel).toBeVisible();
 
-    const toggle = page.locator('[data-testid="source-filter-toggle"]');
+    const toggle = page.locator('[data-testid="filter-toggle"]');
     await toggle.click();
 
-    await expect(page.locator('[data-testid="source-filters"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="filter-panel"]')).not.toBeVisible();
 
     await toggle.click();
 
-    await expect(page.locator('[data-testid="source-filters"]')).toBeVisible();
+    await expect(page.locator('[data-testid="filter-panel"]')).toBeVisible();
   });
 });

@@ -115,6 +115,7 @@ export default function GraphPage() {
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
   const [excludedSources, setExcludedSources] = useState<Set<string>>(new Set())
+  const [excludedTags, setExcludedTags] = useState<Set<string>>(new Set())
   const [legendCollapsed, setLegendCollapsed] = useState(false)
   const [filtersCollapsed, setFiltersCollapsed] = useState(false)
 
@@ -137,21 +138,39 @@ export default function GraphPage() {
     return Array.from(sourceSet).sort()
   }, [data])
 
+  const structuralTagsInData = useMemo(() => {
+    if (!data) return [] as string[]
+    const tagSet = new Set<string>()
+    for (const node of data.nodes) {
+      for (const tag of node.tags ?? []) {
+        if (STRUCTURAL_TAGS.includes(tag)) tagSet.add(tag)
+      }
+    }
+    return Array.from(tagSet).sort()
+  }, [data])
+
+  const hasFilters = sourcesInData.length > 0 || structuralTagsInData.length > 0
+  const hasExclusions = excludedSources.size > 0 || excludedTags.size > 0
+
   const graphData = useMemo(() => {
     if (!data) return null
-    if (excludedSources.size === 0) {
+    if (excludedSources.size === 0 && excludedTags.size === 0) {
       return { nodes: data.nodes, links: data.edges.map(e => ({ ...e })) }
     }
     const excludedIds = new Set<string>()
     for (const node of data.nodes) {
       if (node.source && excludedSources.has(node.source)) {
         excludedIds.add(node.id)
+        continue
+      }
+      if ((node.tags ?? []).some(t => excludedTags.has(t))) {
+        excludedIds.add(node.id)
       }
     }
     const filteredNodes = data.nodes.filter(n => !excludedIds.has(n.id))
     const filteredEdges = data.edges.filter(e => !excludedIds.has(e.source) && !excludedIds.has(e.target))
     return { nodes: filteredNodes, links: filteredEdges.map(e => ({ ...e })) }
-  }, [data, excludedSources])
+  }, [data, excludedSources, excludedTags])
 
   const tagStyles = useMemo(() => {
     if (!graphData) return {}
@@ -159,13 +178,28 @@ export default function GraphPage() {
     return assignTagStyles(primaryTags)
   }, [graphData])
 
-  const toggleSource = useCallback((source: string) => {
-    setExcludedSources(prev => {
-      const next = new Set(prev)
-      if (next.has(source)) next.delete(source)
-      else next.add(source)
-      return next
-    })
+  const toggleFilter = useCallback((type: 'source' | 'tag', value: string) => {
+    if (type === 'source') {
+      setExcludedSources(prev => {
+        const next = new Set(prev)
+        if (next.has(value)) next.delete(value)
+        else next.add(value)
+        return next
+      })
+    } else {
+      setExcludedTags(prev => {
+        const next = new Set(prev)
+        if (next.has(value)) next.delete(value)
+        else next.add(value)
+        return next
+      })
+    }
+    setViewingNode(null)
+  }, [])
+
+  const resetFilters = useCallback(() => {
+    setExcludedSources(new Set())
+    setExcludedTags(new Set())
     setViewingNode(null)
   }, [])
 
@@ -227,45 +261,77 @@ export default function GraphPage() {
           />
           <span className="text-sm text-zinc-300 w-10">{threshold.toFixed(2)}</span>
         </div>
-        {sourcesInData.length > 0 && (
+        {hasFilters && (
           <button
             onClick={() => setFiltersCollapsed(c => !c)}
             className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-            data-testid="source-filter-toggle"
+            data-testid="filter-toggle"
           >
-            <span>Sources</span>
+            <span>Filters</span>
             {filtersCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
           </button>
         )}
       </div>
-      {sourcesInData.length > 0 && !filtersCollapsed && (
-        <div className="flex flex-wrap gap-2 mt-2" data-testid="source-filters">
-          {sourcesInData.map(source => {
-            const isExcluded = excludedSources.has(source)
-            return (
-              <button
-                key={source}
-                onClick={() => toggleSource(source)}
-                className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
-                  isExcluded
-                    ? 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'
-                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                }`}
-                data-testid={`source-filter-${source}`}
-                data-active={!isExcluded}
-              >
-                {source}
-              </button>
-            )
-          })}
-          {excludedSources.size > 0 && (
+      {hasFilters && !filtersCollapsed && (
+        <div className="mt-3 space-y-2" data-testid="filter-panel">
+          {sourcesInData.length > 0 && (
+            <div>
+              <div className="text-xs text-zinc-500 mb-1">Sources</div>
+              <div className="flex flex-wrap gap-2">
+                {sourcesInData.map(source => {
+                  const isExcluded = excludedSources.has(source)
+                  return (
+                    <button
+                      key={source}
+                      onClick={() => toggleFilter('source', source)}
+                      className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                        isExcluded
+                          ? 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'
+                          : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                      }`}
+                      data-testid={`source-filter-${source}`}
+                      data-active={!isExcluded}
+                    >
+                      {source}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {structuralTagsInData.length > 0 && (
+            <div>
+              <div className="text-xs text-zinc-500 mb-1">Tags</div>
+              <div className="flex flex-wrap gap-2" data-testid="tag-filters">
+                {structuralTagsInData.map(tag => {
+                  const isExcluded = excludedTags.has(tag)
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggleFilter('tag', tag)}
+                      className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                        isExcluded
+                          ? 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'
+                          : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      }`}
+                      data-testid={`tag-filter-${tag}`}
+                      data-active={!isExcluded}
+                    >
+                      {tag}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {hasExclusions && (
             <button
-              onClick={() => setExcludedSources(new Set())}
+              onClick={resetFilters}
               className="px-2 py-0.5 rounded text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition-colors flex items-center gap-1"
-              data-testid="source-filter-reset"
+              data-testid="filter-reset"
             >
               <X size={10} />
-              Reset
+              Reset filters
             </button>
           )}
         </div>
