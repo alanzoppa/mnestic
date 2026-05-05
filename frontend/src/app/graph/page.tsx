@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
-import { ChevronDown, ChevronRight, X } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
-import { type GraphNode, type GraphEdge } from '@/lib/api'
+import { type GraphNode } from '@/lib/api'
 import type { ForceGraphNode } from '@/components/ForceGraph3DView'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
@@ -109,15 +109,66 @@ function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>):
   return new THREE.Mesh(geometry, material)
 }
 
+function FilterSection({
+  title,
+  count,
+  collapsed,
+  onToggleCollapse,
+  children,
+  hasExclusions,
+  onReset,
+  dataTestId,
+}: {
+  title: string
+  count: number
+  collapsed: boolean
+  onToggleCollapse: () => void
+  children: React.ReactNode
+  hasExclusions: boolean
+  onReset: () => void
+  dataTestId: string
+}) {
+  return (
+    <div data-testid={dataTestId}>
+      <div className="flex items-center justify-between mb-1.5">
+        <button
+          onClick={onToggleCollapse}
+          className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-300 hover:text-zinc-100 transition-colors"
+          data-testid={`${dataTestId}-heading`}
+        >
+          {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+          {title}
+          <span className="text-zinc-600 font-normal normal-case tracking-normal">({count})</span>
+        </button>
+        {hasExclusions && (
+          <button
+            onClick={onReset}
+            className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Unselect all
+          </button>
+        )}
+      </div>
+      {!collapsed && (
+        <div className="flex flex-wrap gap-1.5">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function GraphPage() {
   const selectedNodeIdRef = useRef<string | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
   const [excludedSources, setExcludedSources] = useState<Set<string>>(new Set())
-  const [excludedTags, setExcludedTags] = useState<Set<string>>(new Set())
-  const [legendCollapsed, setLegendCollapsed] = useState(false)
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false)
+  const [excludedStructTags, setExcludedStructTags] = useState<Set<string>>(new Set())
+  const [excludedContentTags, setExcludedContentTags] = useState<Set<string>>(new Set())
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(false)
+  const [structTagsCollapsed, setStructTagsCollapsed] = useState(false)
+  const [contentTagsCollapsed, setContentTagsCollapsed] = useState(false)
 
   const { data: tagsData } = useQuery({
     queryKey: tagKeys.list,
@@ -149,12 +200,24 @@ export default function GraphPage() {
     return Array.from(tagSet).sort()
   }, [data])
 
-  const hasFilters = sourcesInData.length > 0 || structuralTagsInData.length > 0
-  const hasExclusions = excludedSources.size > 0 || excludedTags.size > 0
+  const contentTagsInData = useMemo(() => {
+    if (!data) return [] as string[]
+    const tagSet = new Set<string>()
+    for (const node of data.nodes) {
+      for (const tag of node.tags ?? []) {
+        if (!STRUCTURAL_TAGS.includes(tag)) tagSet.add(tag)
+      }
+    }
+    return Array.from(tagSet).sort()
+  }, [data])
+
+  const contentTagStyles = useMemo(() => {
+    return assignTagStyles(contentTagsInData)
+  }, [contentTagsInData])
 
   const graphData = useMemo(() => {
     if (!data) return null
-    if (excludedSources.size === 0 && excludedTags.size === 0) {
+    if (excludedSources.size === 0 && excludedStructTags.size === 0 && excludedContentTags.size === 0) {
       return { nodes: data.nodes, links: data.edges.map(e => ({ ...e })) }
     }
     const excludedIds = new Set<string>()
@@ -163,45 +226,23 @@ export default function GraphPage() {
         excludedIds.add(node.id)
         continue
       }
-      if ((node.tags ?? []).some(t => excludedTags.has(t))) {
-        excludedIds.add(node.id)
+      for (const tag of node.tags ?? []) {
+        if (excludedStructTags.has(tag) || excludedContentTags.has(tag)) {
+          excludedIds.add(node.id)
+          break
+        }
       }
     }
     const filteredNodes = data.nodes.filter(n => !excludedIds.has(n.id))
     const filteredEdges = data.edges.filter(e => !excludedIds.has(e.source) && !excludedIds.has(e.target))
     return { nodes: filteredNodes, links: filteredEdges.map(e => ({ ...e })) }
-  }, [data, excludedSources, excludedTags])
+  }, [data, excludedSources, excludedStructTags, excludedContentTags])
 
   const tagStyles = useMemo(() => {
     if (!graphData) return {}
     const primaryTags = graphData.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter((t): t is string => Boolean(t))
     return assignTagStyles(primaryTags)
   }, [graphData])
-
-  const toggleFilter = useCallback((type: 'source' | 'tag', value: string) => {
-    if (type === 'source') {
-      setExcludedSources(prev => {
-        const next = new Set(prev)
-        if (next.has(value)) next.delete(value)
-        else next.add(value)
-        return next
-      })
-    } else {
-      setExcludedTags(prev => {
-        const next = new Set(prev)
-        if (next.has(value)) next.delete(value)
-        else next.add(value)
-        return next
-      })
-    }
-    setViewingNode(null)
-  }, [])
-
-  const resetFilters = useCallback(() => {
-    setExcludedSources(new Set())
-    setExcludedTags(new Set())
-    setViewingNode(null)
-  }, [])
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
@@ -235,9 +276,14 @@ export default function GraphPage() {
   }, [tagStyles])
 
   const headerSlot = (
-    <div className="p-4 border-b border-zinc-800">
-      <div className="flex items-center gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold">Similarity Graph</h1>
+    <div className="bg-zinc-950 border-b border-zinc-800">
+      <div className="px-4 pt-3 pb-2 flex items-center gap-4 flex-wrap">
+        <h1 className="text-lg font-semibold text-zinc-100">Similarity Graph</h1>
+        {graphData && (
+          <span className="text-xs text-zinc-500" data-testid="graph-stats">
+            {graphData.nodes.length} nodes · {graphData.links.length} edges
+          </span>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400">Tag:</span>
           <TagAutocomplete
@@ -261,81 +307,134 @@ export default function GraphPage() {
           />
           <span className="text-sm text-zinc-300 w-10">{threshold.toFixed(2)}</span>
         </div>
-        {hasFilters && (
-          <button
-            onClick={() => setFiltersCollapsed(c => !c)}
-            className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-            data-testid="filter-toggle"
+      </div>
+      <div className="px-4 pb-3 space-y-2.5" data-testid="filter-panel">
+        {sourcesInData.length > 0 && (
+          <FilterSection
+            title="Sources"
+            count={sourcesInData.length}
+            collapsed={sourcesCollapsed}
+            onToggleCollapse={() => setSourcesCollapsed(c => !c)}
+            hasExclusions={excludedSources.size > 0}
+            onReset={() => { setExcludedSources(new Set()); setViewingNode(null) }}
+            dataTestId="filter-sources"
           >
-            <span>Filters</span>
-            {filtersCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-          </button>
+            {sourcesInData.map(source => {
+              const isExcluded = excludedSources.has(source)
+              return (
+                <button
+                  key={source}
+                  onClick={() => {
+                    setExcludedSources(prev => {
+                      const next = new Set(prev)
+                      if (next.has(source)) next.delete(source)
+                      else next.add(source)
+                      return next
+                    })
+                    setViewingNode(null)
+                  }}
+                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                    isExcluded
+                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
+                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                  }`}
+                  data-testid={`source-filter-${source}`}
+                  data-active={!isExcluded}
+                >
+                  {source}
+                </button>
+              )
+            })}
+          </FilterSection>
+        )}
+        {structuralTagsInData.length > 0 && (
+          <FilterSection
+            title="Structural Tags"
+            count={structuralTagsInData.length}
+            collapsed={structTagsCollapsed}
+            onToggleCollapse={() => setStructTagsCollapsed(c => !c)}
+            hasExclusions={excludedStructTags.size > 0}
+            onReset={() => { setExcludedStructTags(new Set()); setViewingNode(null) }}
+            dataTestId="filter-structural-tags"
+          >
+            {structuralTagsInData.map(tag => {
+              const isExcluded = excludedStructTags.has(tag)
+              return (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    setExcludedStructTags(prev => {
+                      const next = new Set(prev)
+                      if (next.has(tag)) next.delete(tag)
+                      else next.add(tag)
+                      return next
+                    })
+                    setViewingNode(null)
+                  }}
+                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                    isExcluded
+                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
+                      : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                  }`}
+                  data-testid={`structural-tag-filter-${tag}`}
+                  data-active={!isExcluded}
+                >
+                  {tag}
+                </button>
+              )
+            })}
+          </FilterSection>
+        )}
+        {contentTagsInData.length > 0 && (
+          <FilterSection
+            title="Tags"
+            count={contentTagsInData.length}
+            collapsed={contentTagsCollapsed}
+            onToggleCollapse={() => setContentTagsCollapsed(c => !c)}
+            hasExclusions={excludedContentTags.size > 0}
+            onReset={() => { setExcludedContentTags(new Set()); setViewingNode(null) }}
+            dataTestId="filter-tags"
+          >
+            {contentTagsInData.map(tag => {
+              const isExcluded = excludedContentTags.has(tag)
+              const style = contentTagStyles[tag]
+              const color = style?.color ?? '#6b7280'
+              const shape = style?.shape ?? 'sphere'
+              return (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    setExcludedContentTags(prev => {
+                      const next = new Set(prev)
+                      if (next.has(tag)) next.delete(tag)
+                      else next.add(tag)
+                      return next
+                    })
+                    setViewingNode(null)
+                  }}
+                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors inline-flex items-center gap-1 ${
+                    isExcluded
+                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
+                      : 'border-current/20'
+                  }`}
+                  style={!isExcluded ? { color, backgroundColor: `${color}15`, borderColor: `${color}30` } : undefined}
+                  data-testid={`content-tag-filter-${tag}`}
+                  data-active={!isExcluded}
+                >
+                  <ShapeIndicator shape={shape} color={isExcluded ? '#52525b' : color} />
+                  {tag}
+                </button>
+              )
+            })}
+            <button
+              className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-default"
+            >
+              <ShapeIndicator shape="sphere" color="#6b7280" />
+              Other
+            </button>
+          </FilterSection>
         )}
       </div>
-      {hasFilters && !filtersCollapsed && (
-        <div className="mt-3 space-y-2" data-testid="filter-panel">
-          {sourcesInData.length > 0 && (
-            <div>
-              <div className="text-xs text-zinc-500 mb-1">Sources</div>
-              <div className="flex flex-wrap gap-2">
-                {sourcesInData.map(source => {
-                  const isExcluded = excludedSources.has(source)
-                  return (
-                    <button
-                      key={source}
-                      onClick={() => toggleFilter('source', source)}
-                      className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
-                        isExcluded
-                          ? 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'
-                          : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                      }`}
-                      data-testid={`source-filter-${source}`}
-                      data-active={!isExcluded}
-                    >
-                      {source}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-          {structuralTagsInData.length > 0 && (
-            <div>
-              <div className="text-xs text-zinc-500 mb-1">Tags</div>
-              <div className="flex flex-wrap gap-2" data-testid="tag-filters">
-                {structuralTagsInData.map(tag => {
-                  const isExcluded = excludedTags.has(tag)
-                  return (
-                    <button
-                      key={tag}
-                      onClick={() => toggleFilter('tag', tag)}
-                      className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
-                        isExcluded
-                          ? 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'
-                          : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                      }`}
-                      data-testid={`tag-filter-${tag}`}
-                      data-active={!isExcluded}
-                    >
-                      {tag}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-          {hasExclusions && (
-            <button
-              onClick={resetFilters}
-              className="px-2 py-0.5 rounded text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition-colors flex items-center gap-1"
-              data-testid="filter-reset"
-            >
-              <X size={10} />
-              Reset filters
-            </button>
-          )}
-        </div>
-      )}
     </div>
   )
 
@@ -373,38 +472,6 @@ export default function GraphPage() {
     </div>
   )
 
-  const legendSlot = (
-    <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20 max-h-56 overflow-y-auto" data-testid="graph-legend">
-      <button
-        onClick={() => setLegendCollapsed(c => !c)}
-        className="flex items-center gap-1 text-xs font-medium text-zinc-300 mb-0 hover:text-zinc-100 transition-colors w-full text-left"
-        data-testid="legend-collapse-toggle"
-      >
-        <span>Legend</span>
-        {legendCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-      </button>
-      {!legendCollapsed && (
-        <>
-          {Object.entries(tagStyles).map(([tag, style]) => (
-            <div key={tag} className="flex items-center gap-2 text-xs text-zinc-400 mb-1 cursor-pointer hover:text-zinc-200 transition-colors" onClick={() => { setSelectedTag(tag); setViewingNode(null) }}>
-              <ShapeIndicator shape={style.shape} color={style.color} />
-              {tag}
-            </div>
-          ))}
-          <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-            <ShapeIndicator shape="sphere" color="#6b7280" />
-            Other
-          </div>
-        </>
-      )}
-      {graphData && (
-        <div className={`mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500 ${legendCollapsed ? '' : ''}`} data-testid="graph-stats">
-          {graphData.nodes.length} nodes · {graphData.links.length} edges
-        </div>
-      )}
-    </div>
-  )
-
   return (
     <ForceGraph3DView
       graphData={graphData}
@@ -412,7 +479,6 @@ export default function GraphPage() {
       error={error}
       headerSlot={headerSlot}
       detailPaneSlot={detailPaneSlot}
-      legendSlot={legendSlot}
       nodeObjectFn={(node) => createNodeObject(node, tagStyles)}
       nodePositionUpdateFn={nodePositionUpdate}
       nodeLabelFn={(node) => node.title}

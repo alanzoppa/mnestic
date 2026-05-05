@@ -573,14 +573,14 @@ await page.locator('[data-testid^="calendar-day-"]').first().click();
 | Calendar events container | `calendar-events-{YYYY-MM-DD}` |
 | Calendar event item | `calendar-event-{event-id}` |
 | Graph container | `graph-container` |
-| Graph legend | `graph-legend` |
-| Graph legend collapse toggle | `legend-collapse-toggle` |
 | Graph stats | `graph-stats` |
-| Graph filter toggle | `filter-toggle` |
 | Graph filter panel | `filter-panel` |
+| Graph Sources section | `filter-sources`, heading `filter-sources-heading` |
 | Graph source filter chip | `source-filter-{source}` |
-| Graph tag filter chip | `tag-filter-{tag}` |
-| Graph filter reset | `filter-reset` |
+| Graph Structural Tags section | `filter-structural-tags`, heading `filter-structural-tags-heading` |
+| Graph structural tag filter chip | `structural-tag-filter-{tag}` |
+| Graph Tags section | `filter-tags`, heading `filter-tags-heading` |
+| Graph content tag filter chip | `content-tag-filter-{tag}` |
 | Tag autocomplete menu | `tag-autocomplete-menu` |
 | Tag autocomplete item | `tag-autocomplete-item` |
 | Clear tag filter button | `clear-tag-filter` |
