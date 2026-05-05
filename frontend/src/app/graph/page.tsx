@@ -166,9 +166,9 @@ export default function GraphPage() {
   const [excludedSources, setExcludedSources] = useState<Set<string>>(new Set())
   const [excludedStructTags, setExcludedStructTags] = useState<Set<string>>(new Set())
   const [excludedContentTags, setExcludedContentTags] = useState<Set<string>>(new Set())
-  const [sourcesCollapsed, setSourcesCollapsed] = useState(false)
-  const [structTagsCollapsed, setStructTagsCollapsed] = useState(false)
-  const [contentTagsCollapsed, setContentTagsCollapsed] = useState(false)
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(true)
+  const [structTagsCollapsed, setStructTagsCollapsed] = useState(true)
+  const [contentTagsCollapsed, setContentTagsCollapsed] = useState(true)
 
   const { data: tagsData } = useQuery({
     queryKey: tagKeys.list,

@@ -46,21 +46,22 @@ test.describe("Graph Page", () => {
     await expect(page.locator('[data-testid="graph-stats"]')).toContainText("edges");
   });
 
-  test("should display filter sections with tags", async ({ page }) => {
+  test("should display collapsed filter sections", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
     await expect(page.locator('[data-testid="filter-sources"]')).toBeVisible();
     await expect(page.locator('[data-testid="filter-structural-tags"]')).toBeVisible();
     await expect(page.locator('[data-testid="filter-tags"]')).toBeVisible();
 
-    await expect(page.locator('[data-testid="source-filter-Evernote"]')).toBeVisible();
-    await expect(page.locator('[data-testid="structural-tag-filter-work"]')).toBeVisible();
-    await expect(page.locator('[data-testid="content-tag-filter-management"]')).toBeVisible();
+    await expect(page.locator('[data-testid="filter-sources-heading"]')).toContainText("Sources");
+    await expect(page.locator('[data-testid="filter-structural-tags-heading"]')).toContainText("Structural Tags");
+    await expect(page.locator('[data-testid="filter-tags-heading"]')).toContainText("Tags");
   });
 
   test("should toggle source filter and update node count", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    await page.locator('[data-testid="filter-sources-heading"]').click();
     const evernoteFilter = page.locator('[data-testid="source-filter-Evernote"]');
     await expect(evernoteFilter).toBeVisible();
     await expect(evernoteFilter).toHaveAttribute('data-active', 'true');
@@ -75,6 +76,7 @@ test.describe("Graph Page", () => {
   test("should toggle structural tag filter", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    await page.locator('[data-testid="filter-structural-tags-heading"]').click();
     const workFilter = page.locator('[data-testid="structural-tag-filter-work"]');
     await expect(workFilter).toBeVisible();
     await expect(workFilter).toHaveAttribute('data-active', 'true');
@@ -86,6 +88,7 @@ test.describe("Graph Page", () => {
   test("should toggle content tag filter", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    await page.locator('[data-testid="filter-tags-heading"]').click();
     const mgmtFilter = page.locator('[data-testid="content-tag-filter-management"]');
     await expect(mgmtFilter).toBeVisible();
     await expect(mgmtFilter).toHaveAttribute('data-active', 'true');
@@ -97,6 +100,7 @@ test.describe("Graph Page", () => {
   test("should unselect all sources and restore", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    await page.locator('[data-testid="filter-sources-heading"]').click();
     const evernoteFilter = page.locator('[data-testid="source-filter-Evernote"]');
     await expect(evernoteFilter).toHaveAttribute('data-active', 'true');
 
@@ -113,48 +117,45 @@ test.describe("Graph Page", () => {
   test("should collapse and expand source filter section", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    const heading = page.locator('[data-testid="filter-sources-heading"]');
+    await heading.click();
     const sourceChips = page.locator('[data-testid="source-filter-Evernote"]');
     await expect(sourceChips).toBeVisible();
 
-    const heading = page.locator('[data-testid="filter-sources-heading"]');
     await heading.click();
-
     await expect(sourceChips).not.toBeVisible();
 
     await heading.click();
-
     await expect(sourceChips).toBeVisible();
   });
 
   test("should collapse and expand structural tags section", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    const heading = page.locator('[data-testid="filter-structural-tags-heading"]');
+    await heading.click();
     const tagChips = page.locator('[data-testid="structural-tag-filter-work"]');
     await expect(tagChips).toBeVisible();
 
-    const heading = page.locator('[data-testid="filter-structural-tags-heading"]');
     await heading.click();
-
     await expect(tagChips).not.toBeVisible();
 
     await heading.click();
-
     await expect(tagChips).toBeVisible();
   });
 
   test("should collapse and expand content tags section", async ({ page }) => {
     await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
 
+    const heading = page.locator('[data-testid="filter-tags-heading"]');
+    await heading.click();
     const tagChips = page.locator('[data-testid="content-tag-filter-management"]');
     await expect(tagChips).toBeVisible();
 
-    const heading = page.locator('[data-testid="filter-tags-heading"]');
     await heading.click();
-
     await expect(tagChips).not.toBeVisible();
 
     await heading.click();
-
     await expect(tagChips).toBeVisible();
   });
 
