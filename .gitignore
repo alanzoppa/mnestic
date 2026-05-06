@@ -20,9 +20,9 @@ out/
 npm-debug.log*
 
 # Data directories (in private personal-notes-data repo)
-notes/
-images/
-data/
+/notes
+/images
+/data
 chroma_data/
 
 # Large data files
@@ -56,3 +56,5 @@ logs/
 # Test artifacts
 playwright-report/
 test-results/
+
+# External

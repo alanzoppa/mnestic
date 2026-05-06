@@ -143,7 +143,7 @@ export default function TagsPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-zinc-500">Total Tags</p>
-            <p className="text-3xl font-bold mt-1 bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent">
+            <p className="text-3xl font-bold mt-1 text-zinc-100">
               {tags.length}
             </p>
           </CardContent>

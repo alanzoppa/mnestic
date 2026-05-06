@@ -28,7 +28,7 @@ export function Input({
           </div>
         )}
         <input
-          className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all ${icon ? 'pl-10' : ''} ${error ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : ''} ${className}`}
+          className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all ${icon ? 'pl-10' : ''} ${error ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : ''} ${className}`}
           {...props}
         />
       </div>
@@ -61,7 +61,7 @@ export function Select({
       )}
       <div className="relative">
         <select
-          className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer pr-10 ${error ? 'border-red-500/50' : ''} ${className}`}
+          className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus-visible:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer pr-10 ${error ? 'border-red-500/50' : ''} ${className}`}
           {...props}
         >
           {options.map((opt) => (

@@ -638,3 +638,14 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 - [ ] Full-text search fallback (for exact token matches that embeddings miss)
 - [x] MCP server (stdio transport) with tools, resources, and prompts
 - [x] Concurrent bulk embedding with connection reuse — `embed_texts_bulk()` uses pooled `httpx.Client` via `ThreadPoolExecutor` (10 workers OpenRouter / 4 workers Ollama); single `embed_texts_sync()` preserved for small-query use
+
+## Design Context
+
+PRODUCT.md and DESIGN.md define the visual system. Read them before any UI work.
+
+- **Register**: product (design serves the task)
+- **North Star**: "The Dark Workspace" — solid opaque surfaces, no glassmorphism
+- **Accent**: Blue (#3b82f6) for active/current/interactive. Emerald (#10b981) for folders/content. Purple (#8b5cf6) for calendar.
+- **Hierarchy**: Weight (700→600→400→500) and size, never gradient text
+- **Cards**: Opaque bg, border-shift hover (no blur, no shadow, no sheen)
+- **Absolute bans**: gradient text (`bg-clip-text`), side-stripe borders >1px, glassmorphism, hero-metric template, decorative glow

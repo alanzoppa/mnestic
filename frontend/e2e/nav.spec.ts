@@ -66,16 +66,15 @@ test.describe("Navigation", () => {
 
   test("should highlight active page in nav", async ({ page }) => {
     const nav = page.locator("nav");
-    
+
     await page.goto("/");
-    // Active state uses gradient background with blue colors
-    await expect(nav.getByRole("link", { name: "Dashboard", exact: true })).toHaveClass(/from-blue-600/);
+    await expect(nav.getByRole("link", { name: "Dashboard", exact: true })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/search");
-    await expect(nav.getByRole("link", { name: "Search", exact: true })).toHaveClass(/from-blue-600/);
+    await expect(nav.getByRole("link", { name: "Search", exact: true })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/browse");
-    await expect(nav.getByRole("link", { name: "Browse", exact: true })).toHaveClass(/from-blue-600/);
+    await expect(nav.getByRole("link", { name: "Browse", exact: true })).toHaveAttribute("aria-current", "page");
   });
 
   test("should navigate to Search page", async ({ page }) => {

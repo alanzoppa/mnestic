@@ -114,7 +114,7 @@ export default function TimelinePage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6">
+      <div className="max-w-7xl space-y-6" data-testid="timeline-page">
       <SectionHeader
         title="Timeline"
         description="Visualize note activity over time"
@@ -141,7 +141,7 @@ export default function TimelinePage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-zinc-500">Total Notes</p>
-            <p className="text-3xl font-bold mt-1 bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent">
+            <p className="text-3xl font-bold mt-1 text-zinc-100">
               {totalCount.toLocaleString()}
             </p>
           </CardContent>
@@ -288,7 +288,7 @@ export default function TimelinePage() {
                   <div className="flex-1">
                     <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                        className="h-full bg-blue-500 rounded-full transition-all duration-500"
                         style={{ 
                           width: `${maxCount > 0 ? (period.count / maxCount) * 100 : 0}%` 
                         }}

@@ -6,7 +6,7 @@ import { ReactNode } from 'react';
 import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph, Plus } from 'lucide-react';
 
 const navItems = [
-  { href: '/create', label: 'New Note', icon: Plus, activeClass: 'bg-gradient-to-r from-emerald-600/20 to-emerald-500/10 text-emerald-400 border border-emerald-500/30' },
+  { href: '/create', label: 'New Note', icon: Plus, activeClass: 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/25' },
   { href: '/', label: 'Dashboard', icon: LayoutGrid },
   { href: '/search', label: 'Search', icon: Search },
   { href: '/browse', label: 'Browse', icon: BookOpen },
@@ -29,7 +29,7 @@ export default function Nav({ onNavigate }: NavProps) {
       {/* Logo / Brand */}
       <div className="p-6 border-b border-zinc-800/60">
         <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
-            <img src="/mnestic.png" alt="Mnestic" width={40} height={40} className="rounded-xl drop-shadow-[0_0_12px_rgba(59,130,246,0.3)]" />
+            <img src="/mnestic.png" alt="Mnestic" width={40} height={40} className="rounded-xl" />
           <div>
             <h1 className="text-lg font-bold text-white">Mnestic</h1>
             <p className="text-xs text-zinc-500">Semantic Browser</p>
@@ -60,7 +60,7 @@ export default function Nav({ onNavigate }: NavProps) {
       <div className="p-4 border-t border-zinc-800/60">
         <div className="card p-3">
           <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>System Ready</span>
           </div>
         </div>
@@ -79,12 +79,13 @@ interface NavLinkProps {
 }
 
 function NavLink({ href, children, icon, active, activeClass, onNavigate }: NavLinkProps) {
-  const activeClasses = activeClass ?? 'bg-gradient-to-r from-blue-600/20 to-blue-500/10 text-blue-400 border border-blue-500/30';
+  const activeClasses = activeClass ?? 'bg-blue-600/15 text-blue-400 border border-blue-500/25';
   const iconActiveColor = activeClass ? 'text-emerald-400' : 'text-blue-400';
   return (
     <Link
       href={href}
       onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
         ${active ? activeClasses : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}

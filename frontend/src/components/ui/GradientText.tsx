@@ -13,14 +13,9 @@ export function GradientText({
   children,
   as: Tag = 'span',
   className = '',
-  from = 'from-white',
-  via = 'via-zinc-200',
-  to = 'to-zinc-400',
 }: GradientTextProps) {
   return (
-    <Tag
-      className={`bg-gradient-to-r ${from} ${via} ${to} bg-clip-text text-transparent ${className}`}
-    >
+    <Tag className={`text-zinc-100 ${className}`}>
       {children}
     </Tag>
   )

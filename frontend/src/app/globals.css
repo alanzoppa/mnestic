@@ -18,15 +18,15 @@
   }
 
   mark {
-    background-color: rgba(234, 179, 8, 0.15);
-    color: #fde047;
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
     border-radius: 0.125rem;
     padding-left: 0.125rem;
     padding-right: 0.125rem;
   }
 
   a {
-    color: #60a5fa;
+    color: #93c5fd;
     transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   
@@ -86,42 +86,22 @@
   /* Enhanced card component with gradient border effect - using direct CSS */
   .card {
     position: relative;
-    background-color: rgba(24, 24, 27, 0.8);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(63, 63, 70, 0.6);
+    background-color: #18181b;
+    border: 1px solid #2d2d33;
     border-radius: 0.75rem;
-  }
-
-  .card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 0.75rem;
-    pointer-events: none;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%, transparent 100%);
+    transition: border-color 200ms ease;
   }
 
   .card-hover {
     position: relative;
-    background-color: rgba(24, 24, 27, 0.8);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(63, 63, 70, 0.6);
+    background-color: #18181b;
+    border: 1px solid #2d2d33;
     border-radius: 0.75rem;
-    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 200ms ease;
   }
 
   .card-hover:hover {
-    border-color: rgba(82, 82, 91, 0.8);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  }
-
-  .card-hover::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 0.75rem;
-    pointer-events: none;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%, transparent 100%);
+    border-color: #3f3f46;
   }
 
   /* Markdown body enhancements */
@@ -151,7 +131,7 @@
   
   .markdown-body p { 
     margin-bottom: 1rem;
-    color: #9ca3af;
+    color: #d4d4d8;
     line-height: 1.625;
   }
   
@@ -160,7 +140,7 @@
     list-style-position: outside;
     padding-left: 1.5rem;
     margin-bottom: 1rem;
-    color: #9ca3af;
+    color: #d4d4d8;
   }
 
   .markdown-body ul ul {
@@ -182,7 +162,7 @@
     list-style-position: outside;
     padding-left: 1.5rem;
     margin-bottom: 1rem;
-    color: #9ca3af;
+    color: #d4d4d8;
   }
 
   .markdown-body ol li {
@@ -234,7 +214,7 @@
     padding-right: 1rem;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
-    color: #a1a1aa;
+    color: #d4d4d8;
   }
   
   .markdown-body img { 
@@ -247,40 +227,24 @@
 }
 
 @layer utilities {
-  /* Gradient text */
-  .text-gradient {
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    background-image: linear-gradient(to right, #60a5fa, #c084fc);
+  *:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
   }
 
-  /* Glow effects */
-  .glow-blue {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-  }
-
-  .glow-purple {
-    box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
-  }
-
-  /* Animated gradient border */
-  .gradient-border {
-    position: relative;
-  }
-
-  .gradient-border::before {
-    content: '';
+  .skip-to-content {
     position: absolute;
-    inset: -1px;
-    border-radius: 0.75rem;
-    opacity: 0;
-    transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
-    z-index: -1;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 0 0 0.5rem 0;
   }
-
-  .gradient-border:hover::before {
-    opacity: 1;
+  .skip-to-content:focus {
+    left: 0;
   }
 }

@@ -175,7 +175,7 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="max-w-7xl space-y-6" data-testid="browse-page">
       <SectionHeader
         title="Browse Notes"
         description={`${filtered.length.toLocaleString()} of ${allResults.length.toLocaleString()} notes`}
@@ -193,6 +193,7 @@ export default function BrowsePage() {
                 icon={
                   <Search className="w-5 h-5" />
                 }
+                data-testid="browse-search"
               />
             </div>
             
@@ -229,8 +230,8 @@ export default function BrowsePage() {
                   <div className="space-y-1">
                     <button
                       onClick={() => { setSourceFilter(''); setCurrentPage(1) }}
-                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-                        !sourceFilter ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-zinc-800/50 text-zinc-400'
+                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
+                        !folderFilter ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
                       }`}
                     >
                       <span>All Sources</span>
@@ -240,9 +241,9 @@ export default function BrowsePage() {
                       <button
                         key={source}
                         onClick={() => { setSourceFilter(source); setCurrentPage(1) }}
-                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-                          sourceFilter === source ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-zinc-800/50 text-zinc-400'
-                        }`}
+                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
+                        sourceFilter === source ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'hover:bg-zinc-800/50 text-zinc-400 border-transparent'
+                      }`}
                       >
                         <span>{source}</span>
                         <span className="text-xs text-zinc-500">{count}</span>
@@ -267,9 +268,9 @@ export default function BrowsePage() {
                       <button
                         key={folder}
                         onClick={() => { setFolderFilter(folder); setCurrentPage(1) }}
-                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-                          folderFilter === folder ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-zinc-800/50 text-zinc-400'
-                        }`}
+                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
+                        folderFilter === folder ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
+                      }`}
                       >
                         <span className="truncate">{folder}</span>
                         <span className="text-xs text-zinc-500 ml-2">{count}</span>
@@ -354,7 +355,7 @@ export default function BrowsePage() {
       )}
 
       {/* Results Grid */}
-      <div className="grid gap-4">
+      <div className="grid gap-4" data-testid="browse-results">
         {pageResults.map((result) => {
           const meta = result.metadata || {}
           const noteId = result.note_id || meta?.note_id || result.id
@@ -402,10 +403,10 @@ export default function BrowsePage() {
                     <button
                       key={page}
                       onClick={() => goToPage(page)}
-                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors border ${
                         page === currentPage
-                          ? 'bg-blue-600 text-white'
-                          : 'hover:bg-zinc-800 text-zinc-400'
+                          ? 'bg-blue-500/12 text-blue-400 border-blue-500/20'
+                          : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
                       }`}
                     >
                       {page}

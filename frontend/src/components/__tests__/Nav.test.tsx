@@ -40,7 +40,7 @@ describe("Nav Component", () => {
     // New design uses bg-blue-500/20 and text-blue-400 for active state
     const activeLink = container.querySelector(".text-blue-400");
     expect(activeLink).toHaveTextContent("Search");
-    expect(activeLink).toHaveClass("border-blue-500/30");
+    expect(activeLink).toHaveClass("border-blue-500/25");
   });
 
   it("does not highlight non-active pages", () => {

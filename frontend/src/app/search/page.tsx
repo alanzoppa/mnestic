@@ -241,10 +241,10 @@ export default function SearchPage() {
                           onClick={() => setFilters(prev => ({ ...prev, source }))}
                           data-testid={`filter-source-${source || 'all'}`}
                           data-active={filters.source === source}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
                             filters.source === source
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                              ? 'bg-blue-500/12 text-blue-400 border-blue-500/20'
+                              : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
                           }`}
                         >
                           {source || 'All'}

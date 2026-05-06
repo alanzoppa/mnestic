@@ -21,7 +21,7 @@ export function StatCard({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-zinc-500">{label}</p>
-          <p className="mt-2 text-3xl font-bold bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent">
+          <p className="mt-2 text-2xl font-bold text-zinc-100">
             {value}
           </p>
           {trend && (
@@ -35,7 +35,7 @@ export function StatCard({
           )}
         </div>
         {icon && (
-          <div className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl text-blue-400">
+          <div className="p-3 bg-zinc-800 rounded-lg text-blue-400">
             {icon}
           </div>
         )}

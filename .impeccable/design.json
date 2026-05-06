@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-06T00:00:00Z",
+  "title": "Design System: Mnestic",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Workspace Blue", "canonical": "oklch(63% 0.22 260)", "tonalRamp": ["#1e3a5f", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#eff6ff"] },
+      "semantic-folder": { "role": "secondary", "displayName": "Folder Emerald", "canonical": "oklch(65% 0.19 160)", "tonalRamp": ["#064e3b", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#ecfdf5"] },
+      "semantic-calendar": { "role": "tertiary", "displayName": "Calendar Purple", "canonical": "oklch(55% 0.22 290)", "tonalRamp": ["#3b0764", "#6b21a8", "#7c3aed", "#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#f5f3ff"] },
+      "surface-primary": { "role": "neutral", "displayName": "Deep Surface", "canonical": "oklch(18% 0.01 260)", "tonalRamp": ["#09090b", "#18181b", "#27272a", "#2d2d33", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"] },
+      "text-primary": { "role": "neutral", "displayName": "Primary Text", "canonical": "oklch(90% 0.005 260)", "tonalRamp": ["#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#fafafa"] }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Body", "purpose": "Default body text, descriptions, metadata. Capped at 65-75ch for prose." },
+      "title": { "displayName": "Title", "purpose": "Page headings and section leaders." },
+      "label": { "displayName": "Label", "purpose": "Badge text, section headers, axis labels, category labels." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 10px 15px -3px rgba(0,0,0,0.5)", "purpose": "Modals, lightboxes, and mobile sidebar backdrop." },
+      { "name": "image-thumb", "value": "0 10px 15px -3px rgba(0,0,0,0.3)", "purpose": "Image thumbnails in markdown and galleries." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for all state transitions." },
+      { "name": "ease-out-quick", "value": "cubic-bezier(0, 0, 0.2, 1)", "purpose": "Fast exit transitions (150ms-200ms)." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Color/text/border transitions." },
+      { "name": "duration-medium", "value": "200ms", "purpose": "Button, chip, badge state changes." },
+      { "name": "duration-slow", "value": "300ms", "purpose": "Sidebar slide, detail pane fade." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button. Blue background, white text.",
+      "html": "<button class=\"ds-btn-primary\">Search Notes</button>",
+      "css": ".ds-btn-primary { background: #3b82f6; color: #ffffff; padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background: #60a5fa; } .ds-btn-primary:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary action. Elevated surface background with border.",
+      "html": "<button class=\"ds-btn-secondary\">Filters</button>",
+      "css": ".ds-btn-secondary { background: #1c1c20; color: #e4e4e7; padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #3f3f46; cursor: pointer; transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary:hover { background: #27272a; } .ds-btn-secondary:focus-visible { outline: 2px solid #3f3f46; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary/minimal action. Transparent until hover.",
+      "html": "<button class=\"ds-btn-ghost\">Back</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #71717a; padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-ghost:hover { background: rgba(39, 39, 42, 0.5); color: #e4e4e7; } .ds-btn-ghost:focus-visible { outline: 2px solid #3f3f46; outline-offset: 2px; }"
+    },
+    {
+      "name": "Active Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-active",
+      "description": "Selected filter state. Blue tint background.",
+      "html": "<button class=\"ds-chip ds-chip-active\" data-active=\"true\">work</button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; font-size: 0.75rem; font-weight: 500; padding: 0.125rem 0.5rem; border-radius: 0.375rem; border: 1px solid transparent; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; } .ds-chip-active { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); } .ds-chip-active:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Inactive Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-inactive",
+      "description": "Available filter option. Neutral surface.",
+      "html": "<button class=\"ds-chip ds-chip-inactive\">personal</button>",
+      "css": ".ds-chip-inactive { background: #1c1c20; color: #71717a; border-color: #3f3f46; } .ds-chip-inactive:hover { background: #27272a; color: #a1a1aa; } .ds-chip-inactive:focus-visible { outline: 2px solid #3f3f46; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Default container. Opaque, no blur, flat at rest.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Section Title</div><div class=\"ds-card-content\">Card content goes here.</div></div>",
+      "css": ".ds-card { position: relative; background: #18181b; border: 1px solid #2d2d33; border-radius: 0.75rem; transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-card:hover { border-color: #3f3f46; } .ds-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #2d2d33; font-size: 1.125rem; font-weight: 600; color: #e4e4e7; } .ds-card-content { padding: 1.25rem; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "description": "Primary search field. Dark background, blue focus ring.",
+      "html": "<div class=\"ds-input-wrap\"><label class=\"ds-input-label\" for=\"search\">Search</label><input class=\"ds-input\" id=\"search\" placeholder=\"Enter your search query...\" /></div>",
+      "css": ".ds-input-wrap { display: flex; flex-direction: column; } .ds-input-label { font-size: 0.875rem; font-weight: 500; color: #a1a1aa; margin-bottom: 0.375rem; } .ds-input { background: rgba(27, 27, 30, 0.8); border: 1px solid #2d2d33; border-radius: 0.5rem; padding: 0.625rem 1rem; color: #f4f4f5; font-size: 0.875rem; transition: border-color 200ms, box-shadow 200ms; } .ds-input::placeholder { color: #71717a; } .ds-input:focus { outline: none; border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "description": "Sidebar nav link. Active state uses solid tint + full border.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-active\" href=\"/search\">Search</a><a class=\"ds-nav-item\" href=\"/browse\">Browse</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 0.25rem; } .ds-nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: #71717a; text-decoration: none; border: 1px solid transparent; transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-item:hover { color: #a1a1aa; background: rgba(39, 39, 42, 0.3); } .ds-nav-active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.25); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Dark Workspace",
+    "overview": "A personal knowledge browser that feels like opening a well-organized desk drawer, not launching a SaaS product. Dark surfaces provide comfortable reading in any lighting. One accent carries intent. Two semantic colors carry category meaning. Everything else gets out of the way. The system is deliberately restrained, Obsidian-sharp in its efficiency and Notion-warm in its readability. It rejects the modern dark mode aesthetic of blurred glass, gradient text, and hero metrics.",
+    "keyCharacteristics": [
+      "Restrained color: one accent (blue) + two semantic colors (emerald for folders/content, purple for calendar)",
+      "Solid surfaces: opaque backgrounds, no backdrop blur or glass sheen",
+      "Weight-based hierarchy: bold for headings, regular for body, no gradient text anywhere",
+      "Consistent vocabulary: filter chips, active states, and navigation follow one pattern across all pages",
+      "High contrast body text: zinc-200 on zinc-950, not gray-400"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Blue (#3b82f6) is the single interaction accent. It marks active states, primary actions, and focus rings. Its rarity is the point. If blue appears, something is clickable, selected, or current.", "section": "colors" },
+      { "name": "The No Decoration Rule", "body": "Emerald and purple encode category meaning (folder vs calendar). They never appear as background gradients, text gradients, or glow effects. Badge backgrounds use 12% opacity fills, not full saturation.", "section": "colors" },
+      { "name": "The Weight Hierarchy Rule", "body": "Title (700) → Heading (600) → Body (400) → Label (500). Each step has a weight change of ≥100. Never use gradient text, color transitions, or text-shadow to create hierarchy.", "section": "typography" },
+      { "name": "The Flat Surface Rule", "body": "Cards are flat at rest. Elevation is communicated through brightness steps and border color, never through shadow, blur, or transparent layering.", "section": "elevation" }
+    ],
+    "dos": [
+      "Use solid opaque surfaces for all cards and containers",
+      "Use Workspace Blue (#3b82f6) exclusively for interactive accent",
+      "Create hierarchy through font weight and size contrast, not color gradients",
+      "Ensure all body text meets WCAG AAA contrast (zinc-200 on zinc-950)",
+      "Use the same filter chip pattern everywhere",
+      "Add skip-to-content links and aria-current on active navigation",
+      "Add focus-visible outlines on all interactive elements"
+    ],
+    "donts": [
+      "Use backdrop-filter: blur(), ::before sheen gradients, or semi-transparent card backgrounds",
+      "Use background-clip: text with gradients on any text element",
+      "Use border-left or border-right wider than 1px as colored accent stripes",
+      "Use hero-metric layouts (large number + small label + gradient/glow accent)",
+      "Use decorative glow on logos, icons, or active elements",
+      "Use more than three semantic colors for meaningful encoding",
+      "Use different active-state styles for the same interaction across pages",
+      "Use #000 or #fff — tint every neutral toward the workspace palette"
+    ]
+  }
+}

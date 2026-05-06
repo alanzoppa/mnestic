@@ -78,7 +78,7 @@ export default function CalendarDatePage() {
       </Button>
 
       <h1
-        className="text-2xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent"
+        className="text-2xl font-bold text-zinc-100"
         data-testid="date-title"
       >
         {formattedDate}

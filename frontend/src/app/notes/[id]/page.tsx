@@ -411,12 +411,13 @@ export default function NotePage() {
                   />
                   {attachments.length === 1 ? (
                     // Single image: full width with proper aspect ratio
-                    <div
+                    <button
                       onClick={() => {
                         setGalleryIndex(0)
                         setGalleryOpen(true)
                       }}
-                      className="cursor-zoom-in group"
+                      className="cursor-zoom-in group block w-full text-left"
+                      aria-label={`Open image gallery: ${attachments[0]?.src.split('/').pop() || 'image'}`}
                     >
                       <div className="rounded-lg border border-zinc-800 overflow-hidden bg-zinc-950 group-hover:border-zinc-700 transition-colors min-h-[200px] relative">
                         <img
@@ -432,7 +433,7 @@ export default function NotePage() {
                       <p className="text-xs text-zinc-500 mt-2 truncate group-hover:text-zinc-400">
                         {attachments[0]!.src.split('/').pop() || 'image-1'}
                       </p>
-                    </div>
+                    </button>
                   ) : (
                     // Multiple images: grid layout
                     <div className="grid grid-cols-2 gap-3">
@@ -484,7 +485,7 @@ export default function NotePage() {
                 <CardContent>
                   <div className="space-y-3">
                     {note.calendar_events.map((event) => (
-                      <div key={event.id} className="text-sm border-l-2 border-blue-500/30 pl-3">
+                      <div key={event.id} className="text-sm bg-blue-500/5 border border-blue-500/20 rounded-lg pl-3 py-2">
                         <div className="font-medium text-zinc-200">{event.summary}</div>
                         {event.start && (
                           <div className="text-zinc-500 text-xs mt-1">

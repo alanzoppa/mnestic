@@ -16,12 +16,27 @@ const badgeStyles = tv({
       sm: 'px-2 py-0.5 rounded text-xs',
       md: 'px-2.5 py-0.5 rounded-full text-xs',
     },
+    active: {
+      true: '',
+      false: '',
+    },
   },
   defaultVariants: {
     variant: 'zinc',
     size: 'md',
+    active: false,
   },
 });
+
+const activeBgMap: Record<string, string> = {
+  blue: 'bg-blue-500/25',
+  green: 'bg-emerald-500/25',
+  purple: 'bg-purple-500/25',
+  amber: 'bg-amber-500/25',
+  pink: 'bg-pink-500/25',
+  zinc: 'bg-zinc-700',
+  red: 'bg-red-500/25',
+};
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -29,6 +44,8 @@ interface BadgeProps {
   size?: 'sm' | 'md';
   className?: string;
   'data-testid'?: string;
+  'data-active'?: 'true' | 'false';
+  onClick?: React.MouseEventHandler<HTMLSpanElement>;
 }
 
 export function Badge({
@@ -37,9 +54,24 @@ export function Badge({
   size = 'md',
   className = '',
   'data-testid': dataTestId = 'badge',
+  'data-active': dataActive,
+  onClick,
 }: BadgeProps) {
+  const isActive = dataActive === 'true';
+  const activeClass = isActive ? activeBgMap[variant] : '';
+  const interactiveClass = onClick
+    ? 'cursor-pointer hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500'
+    : '';
+
   return (
-    <span className={badgeStyles({ variant, size, className })} data-testid={dataTestId}>
+    <span
+      className={badgeStyles({ variant, size, className }) + (activeClass ? ` ${activeClass}` : '') + (interactiveClass ? ` ${interactiveClass}` : '')}
+      data-testid={dataTestId}
+      data-active={dataActive}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       {children}
     </span>
   );

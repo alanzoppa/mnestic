@@ -17,7 +17,7 @@ export function Textarea({
         </label>
       )}
       <textarea
-        className={`w-full bg-zinc-900/80 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition-all resize-none ${error ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : ''} ${className}`}
+        className={`w-full bg-zinc-900/80 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus-visible:outline-none focus:ring-blue-500 focus:border-blue-500 transition-all resize-none ${error ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : ''} ${className}`}
         {...props}
       />
       {error && (

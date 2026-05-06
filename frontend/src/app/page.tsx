@@ -17,6 +17,8 @@ import { DonutChart } from '@/components/charts/PieCharts';
 import { SkeletonStatCards } from '@/components/ui/Skeleton';
 import { CalendarHeatmap } from '@/components/CalendarHeatmap';
 
+import { SectionHeader } from '@/components/ui/SectionHeader';
+
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
@@ -59,20 +61,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl space-y-8">
       {/* Header */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
-        <Card className="relative">
-          <CardContent className="p-8">
-            <div className="flex items-center gap-4 mb-3">
-              <img src="/mnestic.png" alt="Mnestic" width={48} height={48} className="rounded-xl drop-shadow-[0_0_16px_rgba(59,130,246,0.3)]" />
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-                Mnestic
-              </h1>
-            </div>
-            <p className="text-zinc-500">Search and explore your archived notes with semantic understanding</p>
-          </CardContent>
-        </Card>
-      </div>
+      <SectionHeader title="Mnestic" description="Your private knowledge archive" />
 
       {/* Stats Grid */}
       {stats ? (
