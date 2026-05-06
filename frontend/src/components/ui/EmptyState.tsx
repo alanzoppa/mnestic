@@ -11,14 +11,26 @@ interface EmptyStateProps {
   };
 }
 
-export function EmptyState({ icon = <Search className="w-16 h-16 mx-auto mb-4 text-zinc-500" />, title, subtitle, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      {icon}
-      <p className="text-xl font-medium text-zinc-300">{title}</p>
-      {subtitle && <p className="text-sm text-zinc-500 mt-2">{subtitle}</p>}
+    <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
+      <div className="relative mb-6">
+        {/* Warm glow behind icon */}
+        <div className="absolute inset-0 blur-2xl opacity-20 bg-blue-500/30 rounded-full scale-[2]" />
+        <div className="relative w-16 h-16 flex items-center justify-center rounded-2xl bg-zinc-900/80 border border-zinc-800/60 text-zinc-400">
+          {icon || <Search className="w-7 h-7" strokeWidth={1.5} />}
+        </div>
+      </div>
+      <h3 className="text-2xl font-extrabold text-zinc-100 tracking-tight mb-2">
+        {title}
+      </h3>
+      {subtitle && (
+        <p className="text-sm text-zinc-400 font-normal leading-relaxed max-w-sm mx-auto mb-6">
+          {subtitle}
+        </p>
+      )}
       {action && (
-        <Button variant="secondary" onClick={action.onClick} className="mt-4">
+        <Button variant="secondary" onClick={action.onClick}>
           {action.label}
         </Button>
       )}

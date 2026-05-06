@@ -28,10 +28,10 @@ export default function Nav({ onNavigate }: NavProps) {
       {/* Logo / Brand */}
       <div className="p-6 border-b border-zinc-800/60">
         <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
-            <img src="/mnestic.png" alt="Mnestic" width={40} height={40} className="rounded-xl" />
+            <img src="/mnestic.png" alt="Mnestic" width={40} height={40} className="rounded-xl transition-transform duration-200 group-hover:scale-105" />
           <div>
-            <h1 className="text-lg font-bold text-white">Mnestic</h1>
-            <p className="text-xs text-zinc-500">Semantic Browser</p>
+            <h1 className="text-xl font-extrabold text-white tracking-tight">Mnestic</h1>
+            <p className="text-xs text-zinc-500 font-medium">Semantic Browser</p>
           </div>
         </Link>
       </div>
@@ -39,7 +39,7 @@ export default function Nav({ onNavigate }: NavProps) {
       {/* New Note CTA */}
       <div className="px-3 pt-4 pb-2">
         <Link href="/create" onClick={onNavigate}
-          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all duration-200 shadow-sm shadow-blue-900/20 active:scale-[0.98]">
           <Plus className="w-4 h-4" />
           New Note
         </Link>
@@ -65,11 +65,9 @@ export default function Nav({ onNavigate }: NavProps) {
 
       {/* Footer / Status */}
       <div className="p-4 border-t border-zinc-800/60">
-        <div className="card p-3">
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>System Ready</span>
-          </div>
+        <div className="flex items-center gap-2.5 text-xs text-zinc-500 px-3 py-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" />
+          <span className="font-medium">System Ready</span>
         </div>
       </div>
     </nav>
@@ -91,10 +89,16 @@ function NavLink({ href, children, icon, active, onNavigate }: NavLinkProps) {
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-        ${active ? 'bg-blue-600/15 text-blue-400 border border-blue-500/25' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}
+        relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+        ${active 
+          ? 'bg-zinc-900/80 text-zinc-100 font-semibold' 
+          : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/60'}
       `}
     >
+      {/* Active indicator — left edge accent bar */}
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-blue-500 rounded-r-full" />
+      )}
       <span className={active ? 'text-blue-400' : 'text-zinc-500'}>{icon}</span>
       {children}
     </Link>

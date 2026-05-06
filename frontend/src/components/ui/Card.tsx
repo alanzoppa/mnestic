@@ -5,13 +5,25 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   hover?: boolean;
+  elevated?: boolean;
+  topBorder?: 'blue' | 'emerald' | 'purple' | 'amber';
   onClick?: MouseEventHandler<HTMLDivElement>;
   'data-testid'?: string;
 }
 
-export function Card({ children, className = '', hover = false, onClick, 'data-testid': dataTestId }: CardProps) {
+export function Card({ 
+  children, 
+  className = '', 
+  hover = false, 
+  elevated = false,
+  topBorder,
+  onClick, 
+  'data-testid': dataTestId 
+}: CardProps) {
   const baseClasses = hover ? 'card-hover' : 'card';
   const cursorClass = onClick ? 'cursor-pointer' : '';
+  const elevatedClass = elevated ? 'shadow-lg shadow-black/20' : '';
+  const borderClass = topBorder ? `border-t-${topBorder}` : '';
 
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> | undefined = onClick ? (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -22,7 +34,7 @@ export function Card({ children, className = '', hover = false, onClick, 'data-t
 
   return (
     <div 
-      className={twMerge(baseClasses, cursorClass, className)}
+      className={twMerge(baseClasses, cursorClass, elevatedClass, borderClass, className)}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role={onClick ? 'button' : undefined}
@@ -54,7 +66,7 @@ interface CardTitleProps {
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
   return (
-    <h3 className={`text-lg font-semibold text-zinc-100 ${className}`}>
+    <h3 className={`text-lg font-semibold text-zinc-100 tracking-tight ${className}`}>
       {children}
     </h3>
   );

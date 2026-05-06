@@ -61,7 +61,11 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <SectionHeader title="Mnestic" description="Your private knowledge archive" />
+      <SectionHeader 
+        title="Mnestic" 
+        description="Your private knowledge archive" 
+        accent 
+      />
 
       {/* Stats Grid */}
       {stats ? (
@@ -69,22 +73,26 @@ export default function Dashboard() {
           <StatCard
             value={stats.total_notes.toLocaleString()}
             label="Total Notes"
-            icon={<FileText className="w-6 h-6" />}
+            icon={<FileText className="w-6 h-6 text-zinc-600" />}
+            delay={0}
           />
           <StatCard
             value={stats.total_tags.toLocaleString()}
             label="Unique Tags"
-            icon={<Tag className="w-6 h-6" />}
+            icon={<Tag className="w-6 h-6 text-zinc-600" />}
+            delay={80}
           />
           <StatCard
             value={stats.total_calendar_events.toLocaleString()}
             label="Calendar Events"
-            icon={<Calendar className="w-6 h-6" />}
+            icon={<Calendar className="w-6 h-6 text-zinc-600" />}
+            delay={160}
           />
           <StatCard
             value={stats.date_range[0] ? `${stats.date_range[0]?.slice(0, 4)}–${stats.date_range[1]?.slice(0, 4)}` : 'N/A'}
             label="Date Range"
-            icon={<Clock className="w-6 h-6" />}
+            icon={<Clock className="w-6 h-6 text-zinc-600" />}
+            delay={240}
           />
         </StatsGrid>
       ) : (
@@ -94,7 +102,7 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Calendar Heatmap */}
-        <Card hover>
+        <Card hover topBorder="emerald" className="animate-fade-up delay-320">
           <CardHeader>
             <CardTitle>Activity Calendar</CardTitle>
           </CardHeader>
@@ -104,7 +112,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Tag Distribution */}
-        <Card hover>
+        <Card hover topBorder="purple" className="animate-fade-up delay-400">
           <CardHeader>
             <CardTitle>Top Tags Distribution</CardTitle>
           </CardHeader>
@@ -126,7 +134,7 @@ export default function Dashboard() {
 
       {/* Quick Actions & Index Management */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+        <Card className="animate-fade-up delay-480">
           <CardHeader>
             <CardTitle>Explore</CardTitle>
           </CardHeader>
@@ -134,26 +142,30 @@ export default function Dashboard() {
             <p className="text-sm text-zinc-500">Navigate through your notes using different views</p>
             <div className="grid grid-cols-2 gap-3">
               <Link href="/search">
-                <Button variant="secondary" className="w-full justify-start">
-                  <Search className="w-4 h-4 mr-2" />
+                <Button variant="secondary" className="w-full justify-start group">
+                  <span className="w-1 h-4 rounded-full bg-blue-500 mr-2 group-hover:bg-blue-400 transition-colors" />
+                  <Search className="w-4 h-4 mr-2 text-zinc-400" />
                   Advanced Search
                 </Button>
               </Link>
               <Link href="/browse">
-                <Button variant="secondary" className="w-full justify-start">
-                  <FolderOpen className="w-4 h-4 mr-2" />
+                <Button variant="secondary" className="w-full justify-start group">
+                  <span className="w-1 h-4 rounded-full bg-emerald-500 mr-2 group-hover:bg-emerald-400 transition-colors" />
+                  <FolderOpen className="w-4 h-4 mr-2 text-zinc-400" />
                   Browse All
                 </Button>
               </Link>
               <Link href="/tags">
-                <Button variant="secondary" className="w-full justify-start">
-                  <Tag className="w-4 h-4 mr-2" />
+                <Button variant="secondary" className="w-full justify-start group">
+                  <span className="w-1 h-4 rounded-full bg-purple-500 mr-2 group-hover:bg-purple-400 transition-colors" />
+                  <Tag className="w-4 h-4 mr-2 text-zinc-400" />
                   Tags
                 </Button>
               </Link>
               <Link href="/graph">
-                <Button variant="secondary" className="w-full justify-start">
-                  <Zap className="w-4 h-4 mr-2" />
+                <Button variant="secondary" className="w-full justify-start group">
+                  <span className="w-1 h-4 rounded-full bg-amber-500 mr-2 group-hover:bg-amber-400 transition-colors" />
+                  <Zap className="w-4 h-4 mr-2 text-zinc-400" />
                   Graph
                 </Button>
               </Link>
@@ -161,7 +173,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="animate-fade-up delay-560">
           <CardHeader>
             <CardTitle>Index Management</CardTitle>
           </CardHeader>
@@ -187,7 +199,7 @@ export default function Dashboard() {
             </div>
 
             {ingestResult && (
-              <div className="mt-3 p-3 bg-zinc-950/50 border border-zinc-800 rounded-lg">
+              <div className="mt-4 p-3 bg-zinc-900/60 border border-zinc-800/80 rounded-lg animate-fade-in">
                 <p className="text-sm text-zinc-400">{ingestResult}</p>
               </div>
             )}

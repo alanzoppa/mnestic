@@ -179,6 +179,7 @@ export default function BrowsePage() {
       <SectionHeader
         title="Browse Notes"
         description={`${filtered.length.toLocaleString()} of ${allResults.length.toLocaleString()} notes`}
+        accent
       />
 
       {/* Search & Filter Controls */}
@@ -429,15 +430,11 @@ export default function BrowsePage() {
       )}
 
       {filtered.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <EmptyState
-              title="No notes found"
-              subtitle="Try adjusting your filters"
-              action={activeFiltersCount > 0 ? { label: 'Clear Filters', onClick: clearFilters } : undefined}
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No notes found"
+          subtitle="Try adjusting your filters"
+          action={activeFiltersCount > 0 ? { label: 'Clear Filters', onClick: clearFilters } : undefined}
+        />
       )}
     </div>
   )

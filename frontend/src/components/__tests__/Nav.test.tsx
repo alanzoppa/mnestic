@@ -37,10 +37,10 @@ describe("Nav Component", () => {
     mockUsePathname.mockReturnValue("/search");
     const { container } = render(<Nav />);
 
-    // New design uses bg-blue-500/20 and text-blue-400 for active state
-    const activeLink = container.querySelector(".text-blue-400");
+    // Active link uses font-semibold + bg-zinc-900/80 + text-zinc-100
+    const activeLink = container.querySelector(".font-semibold.text-zinc-100");
     expect(activeLink).toHaveTextContent("Search");
-    expect(activeLink).toHaveClass("border-blue-500/25");
+    expect(activeLink).toHaveClass("bg-zinc-900/80");
   });
 
   it("does not highlight non-active pages", () => {
@@ -49,7 +49,7 @@ describe("Nav Component", () => {
 
     const links = container.querySelectorAll("a");
     const nonActiveLinks = Array.from(links).filter(
-      (link) => !link.classList.contains("text-blue-400")
+      (link) => !link.classList.contains("bg-zinc-900/80")
     );
 
     // Dashboard should be active, others should not
@@ -74,8 +74,8 @@ describe("Nav Component", () => {
     render(<Nav />);
 
     const searchLink = screen.getByText("Search").closest("a");
-    expect(searchLink).toHaveClass("hover:text-zinc-200");
-    expect(searchLink).toHaveClass("hover:bg-zinc-900/50");
+    expect(searchLink).toHaveClass("hover:text-zinc-100");
+    expect(searchLink).toHaveClass("hover:bg-zinc-900/60");
   });
 
   it("renders the logo and brand", () => {

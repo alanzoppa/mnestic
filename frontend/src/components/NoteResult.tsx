@@ -46,9 +46,12 @@ export function NoteResult({
     <>
       {/* Meta line */}
       <div className="flex items-center gap-2 mb-2">
-        <Badge variant={type === 'calendar' ? 'purple' : 'blue'}>
-          {source || (type === 'calendar' ? 'Calendar' : 'Unknown')}
-        </Badge>
+        <div className="flex items-center">
+          <div className={`w-[2px] h-3.5 rounded-full mr-1.5 ${type === 'calendar' ? 'bg-purple-500' : 'bg-blue-500'}`} />
+          <Badge variant={type === 'calendar' ? 'purple' : 'blue'}>
+            {source || (type === 'calendar' ? 'Calendar' : 'Unknown')}
+          </Badge>
+        </div>
         {folder && (
           <>
             <span className="text-zinc-600">·</span>
@@ -69,7 +72,7 @@ export function NoteResult({
       </div>
 
       {/* Title */}
-      <h3 className="font-semibold text-zinc-100 text-lg group-hover:text-blue-400 transition-colors">
+      <h3 className="font-bold text-zinc-100 text-lg group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-200">
         {highlightQuery ? (
           <HighlightText text={title || 'Untitled'} query={highlightQuery} />
         ) : (
@@ -79,14 +82,14 @@ export function NoteResult({
 
       {/* Date */}
       {created && (
-        <p className="text-sm text-zinc-500 mt-1">
+        <p className="text-sm text-zinc-400 mt-1.5 font-medium">
           {formatCreatedDate(created)}
         </p>
       )}
 
       {/* Snippet */}
       {snippet && (
-        <p className="text-sm text-zinc-400 mt-3 line-clamp-2">
+        <p className="text-sm text-zinc-400 mt-3 line-clamp-2 leading-relaxed">
           {highlightQuery ? (
             <HighlightText text={snippet} query={highlightQuery} />
           ) : (
@@ -97,7 +100,7 @@ export function NoteResult({
 
       {/* Tags */}
       {displayTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-4">
+        <div className="flex flex-wrap gap-2 mt-4">
           {displayTags.slice(0, 6).map((tag) => (
             <Badge key={tag} variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'} size="sm">
               {tag}

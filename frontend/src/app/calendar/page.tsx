@@ -63,15 +63,11 @@ export default function CalendarPage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <SectionHeader title="Calendar" description="Error loading calendar" />
-        <Card>
-          <CardContent className="p-12 text-center">
-            <EmptyState
-              title="Failed to load calendar"
-              subtitle={(error as Error)?.message || 'An unexpected error occurred'}
-            />
-          </CardContent>
-        </Card>
+        <SectionHeader title="Calendar" description="Error loading calendar" accent />
+        <EmptyState
+          title="Failed to load calendar"
+          subtitle={(error as Error)?.message || 'An unexpected error occurred'}
+        />
       </div>
     );
   }
@@ -81,6 +77,7 @@ export default function CalendarPage() {
       <SectionHeader
         title="Calendar"
         description={`${rawEvents.length} events in ${format(currentDate, "MMMM yyyy")}`}
+        accent
         action={
           <div className="flex items-center gap-3">
             <Input
@@ -124,7 +121,7 @@ export default function CalendarPage() {
       )}
 
       {!loading && (
-        <Card>
+        <Card className="animate-fade-up delay-0">
           <div className="grid grid-cols-7 bg-zinc-800/50 rounded-t-xl">
             {DAYS.map((day) => (
               <div key={day} className="p-2 text-center text-sm font-medium text-zinc-400">

@@ -7,6 +7,7 @@ interface StatCardProps {
   icon?: ReactNode;
   trend?: { value: number; positive: boolean };
   className?: string;
+  delay?: 0 | 80 | 160 | 240;
 }
 
 export function StatCard({
@@ -15,27 +16,28 @@ export function StatCard({
   icon,
   trend,
   className = '',
+  delay = 0,
 }: StatCardProps) {
   return (
-    <div className={`card-hover p-5 ${className}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-zinc-500">{label}</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-100">
+    <div className={`card-hover p-5 animate-fade-up delay-${delay} ${className}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</p>
+          <p className="mt-1.5 text-3xl sm:text-4xl font-extrabold text-zinc-100 tracking-tight leading-none">
             {value}
           </p>
           {trend && (
-            <div className={`mt-2 flex items-center gap-1 text-sm ${trend.positive ? 'text-emerald-400' : 'text-red-400'}`}>
+            <div className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${trend.positive ? 'text-emerald-400' : 'text-red-400'}`}>
               <TrendingUp
-                className={`w-4 h-4 ${!trend.positive ? 'rotate-180' : ''}`}
-                strokeWidth={2}
+                className={`w-3.5 h-3.5 ${!trend.positive ? 'rotate-180' : ''}`}
+                strokeWidth={2.5}
               />
               <span>{trend.value}%</span>
             </div>
           )}
         </div>
         {icon && (
-          <div className="p-3 bg-zinc-800 rounded-lg text-blue-400">
+          <div className="flex-shrink-0 text-zinc-600">
             {icon}
           </div>
         )}

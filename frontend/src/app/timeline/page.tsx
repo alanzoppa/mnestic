@@ -120,6 +120,7 @@ export default function TimelinePage() {
       <SectionHeader
         title="Timeline"
         description="Visualize note activity over time"
+        accent
         action={
           <div className="flex gap-3">
             <Select
@@ -140,14 +141,14 @@ export default function TimelinePage() {
 
       {/* Stats Cards */}
       <StatsGrid columns={4}>
-        <StatCard value={totalCount.toLocaleString()} label="Total Notes" icon={<FileText className="w-6 h-6" />} />
-        <StatCard value={data.length.toLocaleString()} label="Periods" icon={<BarChart3 className="w-6 h-6" />} />
-        <StatCard value={avgPerPeriod.toLocaleString()} label="Avg per Period" icon={<TrendingUp className="w-6 h-6" />} />
-        <StatCard value={maxCount.toLocaleString()} label="Peak Period" icon={<Zap className="w-6 h-6" />} />
+        <StatCard value={totalCount.toLocaleString()} label="Total Notes" icon={<FileText className="w-6 h-6" />} delay={0} />
+        <StatCard value={data.length.toLocaleString()} label="Periods" icon={<BarChart3 className="w-6 h-6" />} delay={80} />
+        <StatCard value={avgPerPeriod.toLocaleString()} label="Avg per Period" icon={<TrendingUp className="w-6 h-6" />} delay={160} />
+        <StatCard value={maxCount.toLocaleString()} label="Peak Period" icon={<Zap className="w-6 h-6" />} delay={240} />
       </StatsGrid>
 
       {/* Main Chart */}
-      <Card hover>
+      <Card hover className="animate-fade-up delay-0">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Activity Over Time</CardTitle>
@@ -255,7 +256,7 @@ export default function TimelinePage() {
       </Card>
 
       {/* Recent Activity Mini-Chart */}
-      <Card>
+      <Card className="animate-fade-up delay-80">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>

@@ -248,7 +248,7 @@ export default function NotePage() {
         {/* Main content */}
         <div className="note-main space-y-6">
           {/* Header Card */}
-          <Card className="relative z-10">
+          <Card className="relative z-10 animate-fade-up delay-0">
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
@@ -261,7 +261,7 @@ export default function NotePage() {
                   </div>
 
                   {/* Metadata badges */}
-                  <div className="flex flex-wrap gap-3 mb-3">
+                  <div className="flex flex-wrap gap-3 mb-4">
                     {meta.folder && (
                       <Badge variant="zinc">{meta.folder}</Badge>
                     )}
@@ -274,7 +274,7 @@ export default function NotePage() {
                   </div>
 
                   {/* Dates */}
-                  <div className="text-sm text-zinc-500 space-y-1">
+                  <div className="text-sm text-zinc-400 space-y-1 font-medium">
                     {meta.created && (
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
@@ -308,7 +308,7 @@ export default function NotePage() {
           </Card>
 
           {/* Note Content */}
-          <Card>
+          <Card className="animate-fade-up delay-80">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">
                 {editing ? 'Editing' : 'Content'}
@@ -385,7 +385,7 @@ export default function NotePage() {
         <div className="note-sidebar">
           <div className="sticky top-6 space-y-6">
             {/* Table of Contents */}
-            <Card>
+            <Card className="animate-fade-up delay-0">
               <CardContent className="p-5">
                 <TableOfContents content={content} />
               </CardContent>
@@ -393,7 +393,7 @@ export default function NotePage() {
 
             {/* Attachments */}
             {attachments.length > 0 && (
-              <Card>
+              <Card className="animate-fade-up delay-80">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <Paperclip className="w-4 h-4" />
@@ -475,7 +475,7 @@ export default function NotePage() {
 
             {/* Calendar Events */}
             {note.calendar_events && note.calendar_events.length > 0 && (
-              <Card>
+              <Card className="animate-fade-up delay-160">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -485,7 +485,8 @@ export default function NotePage() {
                 <CardContent>
                   <div className="space-y-3">
                     {note.calendar_events.map((event) => (
-                      <div key={event.id} className="text-sm bg-blue-500/5 border border-blue-500/20 rounded-lg pl-3 py-2">
+                      <div key={event.id} className="text-sm bg-blue-500/[0.04] border-l-2 border-blue-500/40 pl-3 py-2.5 hover:bg-blue-500/[0.08] transition-colors"
+                      >
                         <div className="font-medium text-zinc-200">{event.summary}</div>
                         {event.start && (
                           <div className="text-zinc-500 text-xs mt-1">
@@ -504,7 +505,7 @@ export default function NotePage() {
 
             {/* Similar Notes */}
             {note.similar_notes && note.similar_notes.length > 0 && (
-              <Card>
+              <Card className="animate-fade-up delay-240">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <Zap className="w-4 h-4" />
@@ -518,7 +519,7 @@ export default function NotePage() {
                         key={n.id}
                         href={`/notes/${encodeURIComponent(n.note_id || n.id)}`}
                         style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '0.5rem' }}
-                        className="text-sm font-medium py-1.5 text-zinc-300 hover:text-zinc-100 transition-colors group no-underline"
+                        className="text-sm font-medium py-1.5 text-zinc-300 hover:text-white transition-colors group no-underline"
                       >
                         <span className="break-words min-w-0">{n.title}</span>
                         <span className="shrink-0 text-zinc-500 text-xs group-hover:text-zinc-400 flex items-baseline gap-2">

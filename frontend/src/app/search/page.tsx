@@ -155,6 +155,7 @@ export default function SearchPage() {
       <SectionHeader
         title="Search Notes"
         description={searched ? `Found ${results.length.toLocaleString()} results` : 'Find notes with semantic search'}
+        accent
       />
 
       {/* Search Form */}
@@ -312,7 +313,7 @@ export default function SearchPage() {
           )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Result Type Distribution */}
-            <Card>
+            <Card topBorder="blue" className="animate-fade-up delay-80">
               <CardHeader>
                 <CardTitle>Result Types</CardTitle>
               </CardHeader>
@@ -331,7 +332,7 @@ export default function SearchPage() {
             </Card>
 
             {/* Top Tags in Results */}
-            <Card>
+            <Card topBorder="purple" className="animate-fade-up delay-160">
               <CardHeader>
                 <CardTitle>Top Tags in Results</CardTitle>
               </CardHeader>
@@ -445,15 +446,11 @@ export default function SearchPage() {
 
       {/* Empty State */}
       {searched && !loading && results.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <EmptyState
-              title="No results found"
-              subtitle="Try adjusting your search query or filters"
-              action={activeFiltersCount > 0 ? { label: 'Clear Filters', onClick: clearFilters } : undefined}
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No results found"
+          subtitle="Try adjusting your search query or filters"
+          action={activeFiltersCount > 0 ? { label: 'Clear Filters', onClick: clearFilters } : undefined}
+        />
       )}
     </div>
   )

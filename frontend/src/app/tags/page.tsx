@@ -137,14 +137,15 @@ export default function TagsPage() {
       <SectionHeader
         title="Tag Explorer"
         description={`Browse and filter through ${tags.length.toLocaleString()} unique tags`}
+        accent
       />
 
       {/* Stats Cards */}
       <StatsGrid columns={4}>
-        <StatCard value={tags.length.toLocaleString()} label="Total Tags" icon={<Tag className="w-6 h-6" />} />
-        <StatCard value={structuralCount.toLocaleString()} label="Structural Tags" icon={<Tag className="w-6 h-6" />} />
-        <StatCard value={contentCount.toLocaleString()} label="Content Tags" icon={<FolderOpen className="w-6 h-6" />} />
-        <StatCard value={coOccurrence.length.toLocaleString()} label="Tag Pairs" icon={<Zap className="w-6 h-6" />} />
+        <StatCard value={tags.length.toLocaleString()} label="Total Tags" icon={<Tag className="w-6 h-6" />} delay={0} />
+        <StatCard value={structuralCount.toLocaleString()} label="Structural Tags" icon={<Tag className="w-6 h-6" />} delay={80} />
+        <StatCard value={contentCount.toLocaleString()} label="Content Tags" icon={<FolderOpen className="w-6 h-6" />} delay={160} />
+        <StatCard value={coOccurrence.length.toLocaleString()} label="Tag Pairs" icon={<Zap className="w-6 h-6" />} delay={240} />
       </StatsGrid>
 
       {/* Filters */}
@@ -182,7 +183,7 @@ export default function TagsPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tag Distribution Bar Chart */}
-        <Card hover>
+        <Card topBorder="blue" hover className="animate-fade-up delay-0">
           <CardHeader>
             <CardTitle>Top 15 Tags by Usage</CardTitle>
           </CardHeader>
@@ -220,7 +221,7 @@ export default function TagsPage() {
         </Card>
 
         {/* Category Distribution */}
-        <Card hover>
+        <Card topBorder="purple" hover className="animate-fade-up delay-80">
           <CardHeader>
             <CardTitle>Tag Categories</CardTitle>
           </CardHeader>
@@ -235,7 +236,7 @@ export default function TagsPage() {
       </div>
 
       {/* Tag Cloud */}
-      <Card data-testid="tag-cloud-card">
+      <Card topBorder="emerald" className="animate-fade-up delay-160" data-testid="tag-cloud-card">
         <CardHeader>
           <CardTitle data-testid="tag-cloud-title">Tag Cloud</CardTitle>
         </CardHeader>
