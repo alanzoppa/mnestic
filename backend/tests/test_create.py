@@ -45,14 +45,17 @@ def app_client():
         yield client, mock_store
 
 
-def test_create_note_success(app_client):
+def test_create_note_success(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
         id="manual_abc123_chunk_0",
         metadata=NoteMetadata(title="New Note", note_id="manual_abc123", source_id="manual_abc123", folder="Notes", source="Manual", tags="test", created="2024-01-01T00:00:00Z"),
         document="content here"
     )
-    res = c.post("/api/notes", json={"title": "New Note", "content": "content here", "folder": "Notes", "tags": ["test"]})
+    notes_dir = str(tmp_path / "notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    with patch("main.NOTES_DIR", notes_dir):
+        res = c.post("/api/notes", json={"title": "New Note", "content": "content here", "folder": "Notes", "tags": ["test"]})
     assert res.status_code == 201
     data = res.json()
     assert data["id"].startswith("manual_")
@@ -71,41 +74,50 @@ def test_create_note_missing_title(app_client):
     assert res.status_code == 422
 
 
-def test_create_note_defaults(app_client):
+def test_create_note_defaults(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
         id="manual_abc123_chunk_0",
         metadata=NoteMetadata(title="Just Title", note_id="manual_abc123", source_id="manual_abc123", folder="Notes", source="Manual", created="2024-01-01T00:00:00Z"),
         document=""
     )
-    res = c.post("/api/notes", json={"title": "Just Title"})
+    notes_dir = str(tmp_path / "notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    with patch("main.NOTES_DIR", notes_dir):
+        res = c.post("/api/notes", json={"title": "Just Title"})
     assert res.status_code == 201
     data = res.json()
     assert data["metadata"]["folder"] == "Notes"
     assert data["metadata"]["source"] == "Manual"
 
 
-def test_create_note_with_series(app_client):
+def test_create_note_with_series(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
         id="manual_abc123_chunk_0",
         metadata=NoteMetadata(title="Meeting", note_id="manual_abc123", source_id="manual_abc123", folder="Notes", source="Manual", series="weekly_sync", created="2024-01-01T00:00:00Z"),
         document="notes"
     )
-    res = c.post("/api/notes", json={"title": "Meeting", "series": "weekly_sync"})
+    notes_dir = str(tmp_path / "notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    with patch("main.NOTES_DIR", notes_dir):
+        res = c.post("/api/notes", json={"title": "Meeting", "series": "weekly_sync"})
     assert res.status_code == 201
     data = res.json()
     assert data["metadata"]["series"] == "weekly_sync"
 
 
-def test_create_note_with_participants(app_client):
+def test_create_note_with_participants(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
         id="manual_abc123_chunk_0",
         metadata=NoteMetadata(title="1:1", note_id="manual_abc123", source_id="manual_abc123", folder="Notes", source="Manual", participants=["Alice"], created="2024-01-01T00:00:00Z"),
         document="talked about stuff"
     )
-    res = c.post("/api/notes", json={"title": "1:1", "participants": ["Alice"]})
+    notes_dir = str(tmp_path / "notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    with patch("main.NOTES_DIR", notes_dir):
+        res = c.post("/api/notes", json={"title": "1:1", "participants": ["Alice"]})
     assert res.status_code == 201
     data = res.json()
     assert "Alice" in data["metadata"]["participants"]
@@ -128,14 +140,17 @@ def test_create_note_written_to_disk(app_client, tmp_path):
     assert "Disk" in md_files[0]
 
 
-def test_create_note_reingests(app_client):
+def test_create_note_reingests(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
         id="manual_abc123_chunk_0",
         metadata=NoteMetadata(title="Reingest Test", note_id="manual_abc123", source_id="manual_abc123", folder="Notes", source="Manual", created="2024-01-01T00:00:00Z"),
         document="body"
     )
-    res = c.post("/api/notes", json={"title": "Reingest Test", "content": "body"})
+    notes_dir = str(tmp_path / "notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    with patch("main.NOTES_DIR", notes_dir):
+        res = c.post("/api/notes", json={"title": "Reingest Test", "content": "body"})
     assert res.status_code == 201
     mock_store.delete_note_chunks.assert_called()
     mock_store.add_notes.assert_called()

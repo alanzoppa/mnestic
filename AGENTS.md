@@ -430,7 +430,25 @@ Playwright's config lookup is sensitive to working directory. The config file pa
 - `mock` — Runs against mocked API responses (fast, no backend required)
 - `live` — Runs against live backend at `127.0.0.1:8000` (tagged with `@smoke`)
 
-### Running Tests
+### Backend tests — never write to the real notes directory
+
+When testing `POST /api/notes` or any endpoint that writes to disk, always patch `main.NOTES_DIR` to use `tmp_path`:
+
+```python
+def test_create_note_something(app_client, tmp_path):
+    c, mock_store = app_client
+    notes_dir = str(tmp_path / "notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    with patch("main.NOTES_DIR", notes_dir):
+        res = c.post("/api/notes", json={"title": "Something", "content": "body"})
+    assert res.status_code == 201
+```
+
+Never use `NOTES_DIR` without patching it in tests. Failing to do so will cause fake notes to be created in the real `notes/` directory, which the watcher will ingest into ChromaDB and pollute search results.
+
+### Frontend e2e tests — always use mock project for write endpoints
+
+When testing note creation endpoints in Playwright, always run with `--project=mock` to avoid writing real notes to disk. The mock project stubs API responses and never touches the real backend store.
 
 **Green means green. Period.** Do not commit or push if any test fails. Do not rationalize, explain away, or dismiss test failures. Fix the failure first, then re-run the full suite until it is completely green. No exceptions.
 
