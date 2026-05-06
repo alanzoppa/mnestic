@@ -55,7 +55,6 @@ export default function Nav({ onNavigate }: NavProps) {
               href={item.href}
               icon={<item.icon className="w-5 h-5" strokeWidth={2} />}
               active={isActive}
-              activeClass={item.activeClass}
               onNavigate={onNavigate}
             >
               {item.label}
@@ -82,13 +81,10 @@ interface NavLinkProps {
   children: ReactNode;
   icon: ReactNode;
   active?: boolean;
-  activeClass?: string;
   onNavigate?: () => void;
 }
 
-function NavLink({ href, children, icon, active, activeClass, onNavigate }: NavLinkProps) {
-  const activeClasses = activeClass ?? 'bg-blue-600/15 text-blue-400 border border-blue-500/25';
-  const iconActiveColor = activeClass ? 'text-emerald-400' : 'text-blue-400';
+function NavLink({ href, children, icon, active, onNavigate }: NavLinkProps) {
   return (
     <Link
       href={href}
@@ -96,10 +92,10 @@ function NavLink({ href, children, icon, active, activeClass, onNavigate }: NavL
       aria-current={active ? 'page' : undefined}
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-        ${active ? activeClasses : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}
+        ${active ? 'bg-blue-600/15 text-blue-400 border border-blue-500/25' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}
       `}
     >
-      <span className={active ? iconActiveColor : 'text-zinc-500'}>{icon}</span>
+      <span className={active ? 'text-blue-400' : 'text-zinc-500'}>{icon}</span>
       {children}
     </Link>
   );
