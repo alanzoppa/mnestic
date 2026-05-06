@@ -24,7 +24,7 @@ export default function TagPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title={`#${tag}`} description="Loading..." />
         <div className="space-y-3">
           {Array.from({ length: 5 }, (_, i) => (
@@ -36,7 +36,7 @@ export default function TagPage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6" data-testid="tag-detail-page">
+    <div className="space-y-6" data-testid="tag-detail-page">
       <Button variant="ghost" size="sm" onClick={() => router.push('/tags')}>
         <ArrowLeft className="w-4 h-4 mr-1" /> Back to Tags
       </Button>

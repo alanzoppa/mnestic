@@ -6,6 +6,7 @@ import { type TimelinePeriod } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { timelineKeys, timelineApi } from '@/lib/queries';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { StatCard, StatsGrid } from '@/components/ui/StatCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +25,7 @@ import {
   Area,
 } from 'recharts';
 import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles';
+import { FileText, BarChart3, TrendingUp, Zap } from 'lucide-react';
 import { parse, format, isValid } from 'date-fns';
 
 const TAGS = [
@@ -102,7 +104,7 @@ export default function TimelinePage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title="Timeline" description="Error loading timeline data" />
         <Card>
           <CardContent className="p-12 text-center">
@@ -114,7 +116,7 @@ export default function TimelinePage() {
   }
 
   return (
-      <div className="max-w-7xl space-y-6" data-testid="timeline-page">
+      <div className="space-y-8" data-testid="timeline-page">
       <SectionHeader
         title="Timeline"
         description="Visualize note activity over time"
@@ -137,34 +139,12 @@ export default function TimelinePage() {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Total Notes</p>
-            <p className="text-3xl font-bold mt-1 text-zinc-100">
-              {totalCount.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Periods</p>
-            <p className="text-3xl font-bold mt-1 text-blue-400">{data.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Avg per Period</p>
-            <p className="text-3xl font-bold mt-1 text-emerald-400">{avgPerPeriod}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Peak Period</p>
-            <p className="text-3xl font-bold mt-1 text-purple-400">{maxCount}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <StatsGrid columns={4}>
+        <StatCard value={totalCount.toLocaleString()} label="Total Notes" icon={<FileText className="w-6 h-6" />} />
+        <StatCard value={data.length.toLocaleString()} label="Periods" icon={<BarChart3 className="w-6 h-6" />} />
+        <StatCard value={avgPerPeriod.toLocaleString()} label="Avg per Period" icon={<TrendingUp className="w-6 h-6" />} />
+        <StatCard value={maxCount.toLocaleString()} label="Peak Period" icon={<Zap className="w-6 h-6" />} />
+      </StatsGrid>
 
       {/* Main Chart */}
       <Card hover>

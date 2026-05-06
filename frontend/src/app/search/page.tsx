@@ -151,7 +151,7 @@ export default function SearchPage() {
   const popularTags = allTags.slice(0, 15)
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="space-y-6">
       <SectionHeader
         title="Search Notes"
         description={searched ? `Found ${results.length.toLocaleString()} results` : 'Find notes with semantic search'}
@@ -306,7 +306,7 @@ export default function SearchPage() {
       {searched && results.length > 0 && (
         <>
           {searchMutation.isError && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
               Search failed: {searchMutation.error?.message || 'Unknown error'}
             </div>
           )}

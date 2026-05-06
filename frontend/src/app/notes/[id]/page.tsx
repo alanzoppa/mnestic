@@ -249,7 +249,7 @@ export default function NotePage() {
         <div className="note-main space-y-6">
           {/* Header Card */}
           <Card className="relative z-10">
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -261,7 +261,7 @@ export default function NotePage() {
                   </div>
 
                   {/* Metadata badges */}
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <div className="flex flex-wrap gap-3 mb-3">
                     {meta.folder && (
                       <Badge variant="zinc">{meta.folder}</Badge>
                     )}
@@ -386,7 +386,7 @@ export default function NotePage() {
           <div className="sticky top-6 space-y-6">
             {/* Table of Contents */}
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-5">
                 <TableOfContents content={content} />
               </CardContent>
             </Card>

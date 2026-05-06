@@ -147,7 +147,7 @@ export default function BrowsePage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title="Browse Notes" description="Error loading notes" />
         <Card>
           <CardContent className="p-12 text-center">
@@ -163,7 +163,7 @@ export default function BrowsePage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title="Browse Notes" description="Loading..." />
         <SkeletonNoteCard />
         <SkeletonNoteCard />
@@ -175,142 +175,140 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6" data-testid="browse-page">
+    <div className="space-y-6" data-testid="browse-page">
       <SectionHeader
         title="Browse Notes"
         description={`${filtered.length.toLocaleString()} of ${allResults.length.toLocaleString()} notes`}
       />
 
       {/* Search & Filter Controls */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-wrap gap-3 mb-4">
-            <div className="flex-1 min-w-[280px]">
-              <Input
-                placeholder="Search in notes..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-                icon={
-                  <Search className="w-5 h-5" />
-                }
-                data-testid="browse-search"
-              />
-            </div>
-            
-            <Button
-              variant="secondary"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
-            </Button>
-            
-            <Button
-              variant={showFavoritesOnly ? 'primary' : 'secondary'}
-              onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setCurrentPage(1) }}
-            >
-              <Star className={`w-4 h-4 mr-2 ${showFavoritesOnly ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-              Favorites{showFavoritesOnly && ` (${favorites.length})`}
-            </Button>
-            
-            {activeFiltersCount > 0 && (
-              <Button variant="ghost" onClick={clearFilters}>
-                Clear
-              </Button>
-            )}
-          </div>
+      <div className="flex flex-wrap gap-3">
+        <div className="flex-1 min-w-[280px]">
+          <Input
+            placeholder="Search in notes..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            icon={
+              <Search className="w-5 h-5" />
+            }
+            data-testid="browse-search"
+          />
+        </div>
+        
+        <Button
+          variant="secondary"
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <Filter className="w-4 h-4 mr-2" />
+          Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+        </Button>
+        
+        <Button
+          variant={showFavoritesOnly ? 'primary' : 'secondary'}
+          onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setCurrentPage(1) }}
+        >
+          <Star className={`w-4 h-4 mr-2 ${showFavoritesOnly ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+          Favorites{showFavoritesOnly && ` (${favorites.length})`}
+        </Button>
+        
+        {activeFiltersCount > 0 && (
+          <Button variant="ghost" onClick={clearFilters}>
+            Clear
+          </Button>
+        )}
+      </div>
 
-          {/* Facets Panel */}
-          {showFilters && (
-            <div className="pt-4 border-t border-zinc-800 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Source Facet */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
-                  <div className="space-y-1">
+      {/* Facets Panel */}
+      {showFilters && (
+        <Card>
+          <CardContent className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Source Facet */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => { setSourceFilter(''); setCurrentPage(1) }}
+                    className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
+                      !folderFilter ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
+                    }`}
+                  >
+                    <span>All Sources</span>
+                    <span className="text-xs text-zinc-500">{allResults.length}</span>
+                  </button>
+                  {facets.sources.map(([source, count]) => (
                     <button
-                      onClick={() => { setSourceFilter(''); setCurrentPage(1) }}
-                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
-                        !folderFilter ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
-                      }`}
+                      key={source}
+                      onClick={() => { setSourceFilter(source); setCurrentPage(1) }}
+                    className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
+                      sourceFilter === source ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'hover:bg-zinc-800/50 text-zinc-400 border-transparent'
+                    }`}
                     >
-                      <span>All Sources</span>
-                      <span className="text-xs text-zinc-500">{allResults.length}</span>
+                      <span>{source}</span>
+                      <span className="text-xs text-zinc-500">{count}</span>
                     </button>
-                    {facets.sources.map(([source, count]) => (
-                      <button
-                        key={source}
-                        onClick={() => { setSourceFilter(source); setCurrentPage(1) }}
-                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
-                        sourceFilter === source ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'hover:bg-zinc-800/50 text-zinc-400 border-transparent'
-                      }`}
-                      >
-                        <span>{source}</span>
-                        <span className="text-xs text-zinc-500">{count}</span>
-                      </button>
-                    ))}
-                  </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* Folder Facet */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-2">Folder</label>
-                  <div className="space-y-1 max-h-64 overflow-y-auto">
+              {/* Folder Facet */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Folder</label>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  <button
+                    onClick={() => { setFolderFilter(''); setCurrentPage(1) }}
+                    className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                      !folderFilter ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-zinc-800/50 text-zinc-400'
+                    }`}
+                  >
+                    <span>All Folders</span>
+                  </button>
+                  {facets.folders.map(([folder, count]) => (
                     <button
-                      onClick={() => { setFolderFilter(''); setCurrentPage(1) }}
-                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-                        !folderFilter ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-zinc-800/50 text-zinc-400'
-                      }`}
+                      key={folder}
+                      onClick={() => { setFolderFilter(folder); setCurrentPage(1) }}
+                    className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
+                      folderFilter === folder ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
+                    }`}
                     >
-                      <span>All Folders</span>
+                      <span className="truncate">{folder}</span>
+                      <span className="text-xs text-zinc-500 ml-2">{count}</span>
                     </button>
-                    {facets.folders.map(([folder, count]) => (
-                      <button
-                        key={folder}
-                        onClick={() => { setFolderFilter(folder); setCurrentPage(1) }}
-                      className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm transition-colors border ${
-                        folderFilter === folder ? 'bg-blue-500/12 text-blue-400 border-blue-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
-                      }`}
-                      >
-                        <span className="truncate">{folder}</span>
-                        <span className="text-xs text-zinc-500 ml-2">{count}</span>
-                      </button>
-                    ))}
-                  </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* Tags Facet */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-2">Popular Tags</label>
-                  <div className="flex flex-wrap gap-2">
+              {/* Tags Facet */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Popular Tags</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => { setTagFilter(''); setCurrentPage(1) }}
+                    className={`transition-all ${!tagFilter ? 'ring-2 ring-purple-500/50' : ''}`}
+                  >
+                    <Badge variant="zinc">All</Badge>
+                  </button>
+                  {facets.tags.map(([tag, count]) => (
                     <button
-                      onClick={() => { setTagFilter(''); setCurrentPage(1) }}
-                      className={`transition-all ${!tagFilter ? 'ring-2 ring-purple-500/50' : ''}`}
+                      key={tag}
+                      onClick={() => { setTagFilter(tag); setCurrentPage(1) }}
+                      className={`transition-all ${tagFilter === tag ? 'ring-2 ring-purple-500/50' : ''}`}
                     >
-                      <Badge variant="zinc">All</Badge>
-                    </button>
-                    {facets.tags.map(([tag, count]) => (
-                      <button
-                        key={tag}
-                        onClick={() => { setTagFilter(tag); setCurrentPage(1) }}
-                        className={`transition-all ${tagFilter === tag ? 'ring-2 ring-purple-500/50' : ''}`}
+                      <Badge 
+                        variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'}
+                        className="cursor-pointer"
                       >
-                        <Badge 
-                          variant={STRUCTURAL_TAGS.includes(tag) ? 'blue' : 'green'}
-                          className="cursor-pointer"
-                        >
-                          {tag}
-                          <span className="ml-1.5 opacity-60">({count})</span>
-                        </Badge>
-                      </button>
-                    ))}
-                  </div>
+                        {tag}
+                        <span className="ml-1.5 opacity-60">({count})</span>
+                      </Badge>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active Filters Display */}
       {activeFiltersCount > 0 && (
@@ -385,7 +383,7 @@ export default function BrowsePage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <Button
                 variant="secondary"

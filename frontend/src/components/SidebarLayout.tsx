@@ -69,7 +69,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
       {/* main content */}
       <main
-        className="flex-1 p-6 pt-16 lg:pt-6 overflow-auto"
+        className="flex-1 p-6 pt-16 lg:pt-6 overflow-auto max-w-7xl mx-auto w-full"
         data-testid="main-content"
       >
         {children}

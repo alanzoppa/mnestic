@@ -59,7 +59,7 @@ export default function Dashboard() {
   }));
 
   return (
-    <div className="max-w-7xl space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <SectionHeader title="Mnestic" description="Your private knowledge archive" />
 
@@ -166,7 +166,7 @@ export default function Dashboard() {
             <CardTitle>Index Management</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-zinc-500 mb-4">Update the search index with new or modified notes</p>
+            <p className="text-sm text-zinc-500 mb-3">Update the search index with new or modified notes</p>
             <div className="flex gap-3">
               <Button
                 variant="secondary"
@@ -187,7 +187,7 @@ export default function Dashboard() {
             </div>
 
             {ingestResult && (
-              <div className="mt-4 p-3 bg-zinc-950/50 border border-zinc-800 rounded-lg">
+              <div className="mt-3 p-3 bg-zinc-950/50 border border-zinc-800 rounded-lg">
                 <p className="text-sm text-zinc-400">{ingestResult}</p>
               </div>
             )}

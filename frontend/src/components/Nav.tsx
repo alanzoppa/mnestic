@@ -6,7 +6,6 @@ import { ReactNode } from 'react';
 import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph, Plus } from 'lucide-react';
 
 const navItems = [
-  { href: '/create', label: 'New Note', icon: Plus, activeClass: 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/25' },
   { href: '/', label: 'Dashboard', icon: LayoutGrid },
   { href: '/search', label: 'Search', icon: Search },
   { href: '/browse', label: 'Browse', icon: BookOpen },
@@ -34,6 +33,15 @@ export default function Nav({ onNavigate }: NavProps) {
             <h1 className="text-lg font-bold text-white">Mnestic</h1>
             <p className="text-xs text-zinc-500">Semantic Browser</p>
           </div>
+        </Link>
+      </div>
+
+      {/* New Note CTA */}
+      <div className="px-3 pt-4 pb-2">
+        <Link href="/create" onClick={onNavigate}
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">
+          <Plus className="w-4 h-4" />
+          New Note
         </Link>
       </div>
 

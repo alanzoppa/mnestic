@@ -62,7 +62,7 @@ export default function CalendarPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title="Calendar" description="Error loading calendar" />
         <Card>
           <CardContent className="p-12 text-center">
@@ -77,7 +77,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="space-y-6">
       <SectionHeader
         title="Calendar"
         description={`${rawEvents.length} events in ${format(currentDate, "MMMM yyyy")}`}

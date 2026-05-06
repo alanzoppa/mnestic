@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Search, AlertTriangle } from 'lucide-react'
+import { Search, AlertTriangle, Tag, FolderOpen, Zap } from 'lucide-react'
 import { type TagInfo, type CoOccurrence } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { tagKeys, tagsApi } from '@/lib/queries'
@@ -17,6 +17,7 @@ import { SkeletonStatCards, SkeletonChart } from '@/components/ui/Skeleton'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { TOOLTIP_STYLE, CARTESIAN_GRID, X_AXIS_DARK, Y_AXIS_DARK } from '@/lib/chart-styles'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { StatCard, StatsGrid } from '@/components/ui/StatCard'
 
 const TAG_CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -103,7 +104,7 @@ export default function TagsPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title="Tags" description="Error loading tags" />
         <Card>
           <CardContent className="p-12 text-center">
@@ -120,7 +121,7 @@ export default function TagsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl space-y-6">
+      <div className="space-y-6">
         <SectionHeader title="Tag Explorer" description="Loading..." />
         <SkeletonStatCards count={4} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -132,41 +133,19 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="space-y-8">
       <SectionHeader
         title="Tag Explorer"
         description={`Browse and filter through ${tags.length.toLocaleString()} unique tags`}
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Total Tags</p>
-            <p className="text-3xl font-bold mt-1 text-zinc-100">
-              {tags.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Structural Tags</p>
-            <p className="text-3xl font-bold mt-1 text-blue-400">{structuralCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Content Tags</p>
-            <p className="text-3xl font-bold mt-1 text-emerald-400">{contentCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-zinc-500">Tag Pairs</p>
-            <p className="text-3xl font-bold mt-1 text-purple-400">{coOccurrence.length}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <StatsGrid columns={4}>
+        <StatCard value={tags.length.toLocaleString()} label="Total Tags" icon={<Tag className="w-6 h-6" />} />
+        <StatCard value={structuralCount.toLocaleString()} label="Structural Tags" icon={<Tag className="w-6 h-6" />} />
+        <StatCard value={contentCount.toLocaleString()} label="Content Tags" icon={<FolderOpen className="w-6 h-6" />} />
+        <StatCard value={coOccurrence.length.toLocaleString()} label="Tag Pairs" icon={<Zap className="w-6 h-6" />} />
+      </StatsGrid>
 
       {/* Filters */}
       <Card>
