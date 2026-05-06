@@ -143,11 +143,11 @@ export default function CalendarPage() {
                   key={idx}
                   hover
                   onClick={() => router.push(`/calendar/${dateStr}`)}
-                  className="min-h-24 cursor-pointer rounded-none group"
+                  className={`min-h-24 cursor-pointer rounded-none group ${dayEvents.length > 0 ? 'hover:animate-pulse-glow' : ''}`}
                   data-testid={`calendar-day-${dateStr}`}
                 >
                   <CardContent className="p-2">
-                    <div className="font-medium text-sm mb-1">{day.getDate()}</div>
+                    <div className={`font-medium text-sm mb-1 ${dayEvents.length > 0 ? 'transition-transform duration-200 group-hover:scale-110' : ''}`}>{day.getDate()}</div>
                     <div className="space-y-1" data-testid={`calendar-events-${dateStr}`}>
                       {dayEvents.slice(0, 3).map((event) => (
                         <Badge

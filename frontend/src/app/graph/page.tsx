@@ -169,6 +169,7 @@ export default function GraphPage() {
   const [sourcesCollapsed, setSourcesCollapsed] = useState(true)
   const [structTagsCollapsed, setStructTagsCollapsed] = useState(true)
   const [contentTagsCollapsed, setContentTagsCollapsed] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
 
   const { data: tagsData } = useQuery({
     queryKey: tagKeys.list,
@@ -255,6 +256,12 @@ export default function GraphPage() {
       selectedNodeIdRef.current = null
     }
   }, [viewingNode])
+
+  useEffect(() => {
+    if (graphData && graphData.nodes.length > 0 && !hasLoaded) {
+      setHasLoaded(true)
+    }
+  }, [graphData, hasLoaded])
 
   const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
     const mesh = obj as THREE.Mesh
@@ -471,16 +478,18 @@ export default function GraphPage() {
   )
 
   return (
-    <ForceGraph3DView
-      graphData={graphData}
-      isLoading={isLoading}
-      error={error}
-      headerSlot={headerSlot}
-      detailPaneSlot={detailPaneSlot}
-      nodeObjectFn={(node) => createNodeObject(node, tagStyles)}
-      nodePositionUpdateFn={nodePositionUpdate}
-      nodeLabelFn={(node) => node.title}
-      onNodeClick={handleNodeClick}
-    />
+    <div className={hasLoaded ? 'animate-scale-in' : ''}>
+      <ForceGraph3DView
+        graphData={graphData}
+        isLoading={isLoading}
+        error={error}
+        headerSlot={headerSlot}
+        detailPaneSlot={detailPaneSlot}
+        nodeObjectFn={(node) => createNodeObject(node, tagStyles)}
+        nodePositionUpdateFn={nodePositionUpdate}
+        nodeLabelFn={(node) => node.title}
+        onNodeClick={handleNodeClick}
+      />
+    </div>
   )
 }

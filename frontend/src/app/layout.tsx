@@ -4,7 +4,9 @@ import "./globals.css";
 import SidebarLayout from "@/components/SidebarLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { KonamiDetector } from "@/components/KonamiDetector";
 import QueryProvider from "@/components/QueryProvider";
+import { PageTransition } from "@/components/PageTransition";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -35,7 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SidebarLayout>
           <ErrorBoundary>
             <KeyboardShortcuts />
-            <QueryProvider>{children}</QueryProvider>
+            <KonamiDetector />
+            <PageTransition>
+              <QueryProvider>{children}</QueryProvider>
+            </PageTransition>
           </ErrorBoundary>
         </SidebarLayout>
       </body>

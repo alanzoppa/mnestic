@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph, Plus } from 'lucide-react';
 
 const navItems = [
@@ -96,9 +97,13 @@ function NavLink({ href, children, icon, active, onNavigate }: NavLinkProps) {
       `}
     >
       {/* Active indicator — left edge accent bar */}
-      {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-blue-500 rounded-r-full" />
-      )}
+      <motion.span
+        layoutId="active-nav-indicator"
+        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-blue-500 rounded-r-full"
+        initial={false}
+        animate={{ opacity: active ? 1 : 0 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      />
       <span className={active ? 'text-blue-400' : 'text-zinc-500'}>{icon}</span>
       {children}
     </Link>

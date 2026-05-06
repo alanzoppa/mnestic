@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCombobox } from 'downshift'
 import { Search, Tag, FileText } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useDebouncedValue } from '@/lib/hooks'
 
 interface AutocompleteSuggestion {
@@ -99,44 +100,58 @@ export function SearchAutocomplete({
         </div>
       </div>
 
+      {/* downshift requires getMenuProps to be called on a rendered element every render */}
       <div
         {...getMenuProps({}, { suppressRefError: true })}
-        className={`absolute z-50 w-full mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl ${
-          (!isOpen || debouncedQuery.length === 0 || visibleSuggestions.length === 0) ? 'hidden' : ''
-        }`}
+        className="absolute z-50 w-full"
       >
-        {isOpen && debouncedQuery.length > 0 && visibleSuggestions.length > 0 && visibleSuggestions.map((suggestion, i) => (
-          <div
-            key={`${suggestion.type}-${suggestion.type === 'note' ? suggestion.subtext : suggestion.text}`}
-            {...getItemProps({ item: suggestion, index: i })}
-            className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
-              i === highlightedIndex
-                ? 'bg-zinc-800 text-zinc-100'
-                : 'text-zinc-300 hover:bg-zinc-800/50'
-            }`}
-          >
-            <span className="shrink-0">
-              {suggestion.type === 'tag' && (
-                <Tag className="w-4 h-4 text-purple-400" strokeWidth={2} />
-              )}
-              {suggestion.type === 'note' && (
-                <FileText className="w-4 h-4 text-blue-400" strokeWidth={2} />
-              )}
-              {suggestion.type === 'action' && (
-                <Search className="w-4 h-4 text-emerald-400" strokeWidth={2} />
-              )}
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="font-medium truncate block">{suggestion.text}</span>
-              {suggestion.subtext && (
-                <span className="text-xs text-zinc-500 truncate block">{suggestion.subtext}</span>
-              )}
-            </span>
-            {suggestion.type === 'tag' && (
-              <span className="text-xs text-zinc-600 shrink-0">tag</span>
-            )}
-          </div>
-        ))}
+        <AnimatePresence>
+          {isOpen && debouncedQuery.length > 0 && visibleSuggestions.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+              className="mt-1 max-h-80 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
+            >
+              {visibleSuggestions.map((suggestion, i) => (
+                <motion.div
+                  key={`${suggestion.type}-${suggestion.type === 'note' ? suggestion.subtext : suggestion.text}`}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.15, delay: i * 0.03, ease: [0.25, 1, 0.5, 1] }}
+                  {...getItemProps({ item: suggestion, index: i })}
+                  className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
+                    i === highlightedIndex
+                      ? 'bg-zinc-800 text-zinc-100'
+                      : 'text-zinc-300 hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <span className="shrink-0">
+                    {suggestion.type === 'tag' && (
+                      <Tag className="w-4 h-4 text-purple-400" strokeWidth={2} />
+                    )}
+                    {suggestion.type === 'note' && (
+                      <FileText className="w-4 h-4 text-blue-400" strokeWidth={2} />
+                    )}
+                    {suggestion.type === 'action' && (
+                      <Search className="w-4 h-4 text-emerald-400" strokeWidth={2} />
+                    )}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="font-medium truncate block">{suggestion.text}</span>
+                    {suggestion.subtext && (
+                      <span className="text-xs text-zinc-500 truncate block">{suggestion.subtext}</span>
+                    )}
+                  </span>
+                  {suggestion.type === 'tag' && (
+                    <span className="text-xs text-zinc-600 shrink-0">tag</span>
+                  )}
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

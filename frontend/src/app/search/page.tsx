@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Filter, ChevronRight, GitGraph } from 'lucide-react'
+import { Filter, ChevronRight, GitGraph, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   tagKeys, tagsApi,
   schemaKeys, schemaApi,
@@ -195,6 +196,7 @@ export default function SearchPage() {
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+                <ChevronDown className={`w-4 h-4 ml-2 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${showFilters ? 'rotate-180' : ''}`} />
               </Button>
 
               <DateRangePicker
@@ -228,9 +230,18 @@ export default function SearchPage() {
             </div>
 
             {/* Expanded Filters */}
-            {showFilters && (
-              <div className="mt-6 pt-6 border-t border-zinc-800 space-y-6" data-testid="filter-panel">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  data-testid="filter-panel"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] as const }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-6 pt-6 border-t border-zinc-800 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Source */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-2">Source</label>
@@ -298,8 +309,10 @@ export default function SearchPage() {
                   </div>
                 )}
               </div>
-            )}
-          </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </form>
         </CardContent>
       </Card>
 

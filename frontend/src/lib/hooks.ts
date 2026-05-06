@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useDebounce, useDebouncedCallback } from 'use-debounce'
 
 export { useDebounce, useDebouncedCallback }
@@ -32,4 +32,39 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
   }, [key])
 
   return [storedValue, setValue]
+}
+
+export function useCountUp(target: number, duration: number = 800): number {
+  const [value, setValue] = useState(target)
+
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return target
+  }
+
+  useEffect(() => {
+    let startTime: number | null = null
+    let rafId: number | null = null
+
+    const easeOutExpo = (t: number): number => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t))
+
+    const animate = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = easeOutExpo(progress)
+      setValue(Math.floor(eased * target))
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(animate)
+      }
+    }
+
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+    }
+  }, [target, duration])
+
+  return value
 }

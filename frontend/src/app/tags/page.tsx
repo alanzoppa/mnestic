@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, AlertTriangle, Tag, FolderOpen, Zap } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { type TagInfo, type CoOccurrence } from '@/lib/api'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { tagKeys, tagsApi } from '@/lib/queries'
@@ -242,25 +243,31 @@ export default function TagsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3 items-center justify-center py-6" data-testid="tag-cloud">
-            {filteredTags.slice(0, 60).map((tag) => (
-              <button
-                key={tag.name}
-                data-testid={`tag-${tag.name}`}
-                onClick={() => router.push(`/tags/${tag.name}`)}
-                className="transition-all duration-200 hover:scale-110 group"
-                style={{
-                  fontSize: `${Math.max(12, Math.min(32, 12 + (tag.count / maxTagCount) * 20))}px`
-                }}
-              >
-                <Badge
-                  variant={STRUCTURAL_TAGS.includes(tag.name) ? 'blue' : 'green'}
-                  className="cursor-pointer group-hover:shadow-lg group-hover:shadow-blue-500/20"
+            <AnimatePresence>
+              {filteredTags.slice(0, 60).map((tag, i) => (
+                <motion.button
+                  key={tag.name}
+                  data-testid={`tag-${tag.name}`}
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.02 }}
+                  onClick={() => router.push(`/tags/${tag.name}`)}
+                  className="transition-all duration-200 hover:scale-110 group"
+                  style={{
+                    fontSize: `${Math.max(12, Math.min(32, 12 + (tag.count / maxTagCount) * 20))}px`
+                  }}
                 >
-                  {tag.name}
-                  <span className="ml-1.5 opacity-60">({tag.count})</span>
-                </Badge>
-              </button>
-            ))}
+                  <Badge
+                    variant={STRUCTURAL_TAGS.includes(tag.name) ? 'blue' : 'green'}
+                    className="cursor-pointer group-hover:shadow-lg group-hover:shadow-blue-500/20"
+                  >
+                    {tag.name}
+                    <span className="ml-1.5 opacity-60">({tag.count})</span>
+                  </Badge>
+                </motion.button>
+              ))}
+            </AnimatePresence>
           </div>
 
           <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-zinc-800" data-testid="tag-legend">

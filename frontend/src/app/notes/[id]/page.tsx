@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
@@ -106,6 +106,7 @@ export default function NotePage() {
   const { isFav, toggle } = useFavorites()
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIndex, setGalleryIndex] = useState(0)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle')
   const [showEmbeddings, setShowEmbeddings] = useState(false)
   const [expandedSimilar, setExpandedSimilar] = useState<Set<string>>(new Set())
 
@@ -175,17 +176,32 @@ export default function NotePage() {
   });
   const allPeople = peopleData ?? [];
 
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
   // Mutations
   const updateMutation = useMutation({
     mutationFn: notesMutations.update,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.detail(id) });
-      setEditing(false);
       setEditSaving(false);
+      saveTimerRef.current = setTimeout(() => {
+        setSaveStatus('success');
+        saveTimerRef.current = setTimeout(() => {
+          setSaveStatus('idle');
+          setEditing(false);
+        }, 1500);
+      }, 500);
     },
     onError: (e: any) => {
       setEditError(e?.message || 'Failed to save');
       setEditSaving(false);
+      setSaveStatus('idle');
     },
   });
 
@@ -198,6 +214,7 @@ export default function NotePage() {
   const handleSaveEdit = async () => {
     if (!note) return
     const nid = note.metadata?.note_id || note.id
+    setSaveStatus('saving')
     setEditSaving(true)
     setEditError(null)
     updateMutation.mutate({ id: nid, data: { content: editDraft } })
@@ -321,12 +338,24 @@ export default function NotePage() {
                       disabled={editSaving}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
                     >
-                      {editSaving ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check className="w-4 h-4" />
+                      {saveStatus === 'saving' && (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Saving...
+                        </>
                       )}
-                      Save
+                      {saveStatus === 'success' && (
+                        <>
+                          <Check className="w-4 h-4 text-green-400 animate-save-morph" />
+                          Saved
+                        </>
+                      )}
+                      {saveStatus === 'idle' && (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Save
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={handleCancelEdit}

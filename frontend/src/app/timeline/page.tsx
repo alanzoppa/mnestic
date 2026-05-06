@@ -196,6 +196,9 @@ export default function TimelinePage() {
                     fill="url(#barGradient)" 
                     radius={[4, 4, 0, 0]}
                     className="cursor-pointer"
+                    isAnimationActive={true}
+                    animationDuration={600}
+                    animationEasing="ease-out"
                   />
                 </BarChart>
               ) : chartType === 'line' ? (

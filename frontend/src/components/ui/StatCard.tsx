@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { useCountUp } from '@/lib/hooks';
 
 interface StatCardProps {
   value: string | number;
@@ -8,6 +9,11 @@ interface StatCardProps {
   trend?: { value: number; positive: boolean };
   className?: string;
   delay?: 0 | 80 | 160 | 240;
+}
+
+function AnimatedValue({ value }: { value: number }) {
+  const animated = useCountUp(value, 800);
+  return <>{animated}</>;
 }
 
 export function StatCard({
@@ -24,7 +30,7 @@ export function StatCard({
         <div className="min-w-0">
           <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</p>
           <p className="mt-1.5 text-3xl sm:text-4xl font-extrabold text-zinc-100 tracking-tight leading-none">
-            {value}
+            {typeof value === 'number' ? <AnimatedValue value={value} /> : value}
           </p>
           {trend && (
             <div className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${trend.positive ? 'text-emerald-400' : 'text-red-400'}`}>
