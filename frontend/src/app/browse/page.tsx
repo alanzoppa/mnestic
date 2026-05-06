@@ -120,9 +120,9 @@ export default function BrowsePage() {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const aDate = a.metadata?.created || ''
-      const bDate = b.metadata?.created || ''
-      return bDate.localeCompare(aDate)
+      const aDate = new Date(a.metadata?.created || 0)
+      const bDate = new Date(b.metadata?.created || 0)
+      return bDate.getTime() - aDate.getTime()
     })
   }, [filtered])
 

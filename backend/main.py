@@ -6,6 +6,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from dateutil import parser as dateutil_parser
 from pathlib import Path
 from typing import Any, Optional
 
@@ -15,7 +16,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from constants import MAX_FILENAME_LEN, MAX_FILENAME_ATTEMPTS, MAX_GRAPH_NODES, MAX_GRAPH_WHERE_IDS, SNIPPET_MAX_LEN, DEFAULT_SIMILAR_N, DEFAULT_SIMILAR_THRESHOLD, RERANK_MAX_CANDIDATES
+from constants import (
+    MAX_FILENAME_LEN,
+    MAX_FILENAME_ATTEMPTS,
+    MAX_GRAPH_NODES,
+    MAX_GRAPH_WHERE_IDS,
+    SNIPPET_MAX_LEN,
+    DEFAULT_SIMILAR_N,
+    DEFAULT_SIMILAR_THRESHOLD,
+    RERANK_MAX_CANDIDATES,
+)
 from embed import embed_texts_sync
 from embed import embed_query_sync
 from store import NoteStore
@@ -66,12 +76,20 @@ from config import NOTES_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, settings
 note_watcher: NoteWatcher | None = None
 
 
+def _parse_date(date_str: str) -> float:
+    try:
+        return dateutil_parser.parse(date_str).timestamp()
+    except (ValueError, TypeError):
+        return 0.0
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global note_watcher
     note_watcher = NoteWatcher(NOTES_DIR, store, _invalidate_source_id_cache)
     note_watcher.start()
     import json
+
     state_file = Path(NOTES_DIR) / ".ingest_state.json"
     try:
         state = json.loads(state_file.read_text()) if state_file.exists() else {}
@@ -86,13 +104,16 @@ async def lifespan(app: FastAPI):
             logger.warning(
                 "Query provider (%s) differs from ingest provider (%s) — "
                 "retrieval quality may be degraded. Set EMBED_PROVIDER_QUERY=%s for best results.",
-                query_provider, prev_provider, prev_provider,
+                query_provider,
+                prev_provider,
+                prev_provider,
             )
         elif prev_model and prev_model != query_model:
             logger.warning(
-                "Query model (%s) differs from ingest model (%s) — "
-                "retrieval quality may be degraded. Set model to %s for best results.",
-                query_model, prev_model, prev_model,
+                "Query model (%s) differs from ingest model (%s) — retrieval quality may be degraded. Set model to %s for best results.",
+                query_model,
+                prev_model,
+                prev_model,
             )
     except Exception:
         pass
@@ -116,6 +137,7 @@ def get_calendar():
     global calendar_processor
     if calendar_processor is None:
         from calendar_data import CalendarProcessor
+
         calendar_processor = CalendarProcessor()
         try:
             calendar_processor.load()
@@ -155,52 +177,53 @@ async def search(body: SearchRequest) -> dict:
             note_results = store.search_notes(query_embedding, n=n_results, where=where)
             if tag_filter:
                 tag_set = {t.strip().lower() for t in tag_filter.split(",") if t.strip()}
-                note_results = [
-                    r for r in note_results
-                    if tag_set & {t.strip().lower() for t in r.metadata.tags if t.strip()}
-                ]
+                note_results = [r for r in note_results if tag_set & {t.strip().lower() for t in r.metadata.tags if t.strip()}]
                 if not should_rerank:
-                    note_results = note_results[:body.n]
+                    note_results = note_results[: body.n]
         else:
             note_results = store.list_notes(where=where, n=0)
-            note_results.sort(key=lambda r: r.metadata.created or "", reverse=True)
+            note_results.sort(key=lambda r: _parse_date(r.metadata.created or ""), reverse=True)
             if filters.date_gte:
                 note_results = [r for r in note_results if r.metadata.created and r.metadata.created >= filters.date_gte]
             if filters.date_lte:
                 note_results = [r for r in note_results if not r.metadata.created or r.metadata.created <= filters.date_lte]
-            note_results = note_results[:body.n]
+            note_results = note_results[: body.n]
     else:
         note_results = store.get_notes_by_tag(tag_filter, n=body.n, where=where)
 
     note_candidates: list[dict] = []
     for r in note_results:
         meta = r.metadata.model_dump()
-        note_candidates.append({
-            "id": r.id,
-            "title": meta.get("title", ""),
-            "snippet": r.document[:SNIPPET_MAX_LEN] if r.document else "",
-            "metadata": meta,
-            "score": r.score,
-            "type": "note",
-        })
+        note_candidates.append(
+            {
+                "id": r.id,
+                "title": meta.get("title", ""),
+                "snippet": r.document[:SNIPPET_MAX_LEN] if r.document else "",
+                "metadata": meta,
+                "score": r.score,
+                "type": "note",
+            }
+        )
 
     if should_rerank and note_candidates:
         note_candidates = reranker.rerank(body.query, note_candidates)
-        note_candidates = note_candidates[:body.n]
+        note_candidates = note_candidates[: body.n]
 
     calendar_results: list[dict] = []
     if body.include_calendar and query_embedding is not None:
         calendar_results_raw = store.search_calendar(query_embedding, n=body.n)
         for r in calendar_results_raw:
             rmeta = r.metadata.model_dump()
-            calendar_results.append({
-                "id": r.id,
-                "title": rmeta.get("summary", ""),
-                "snippet": r.document[:SNIPPET_MAX_LEN] if r.document else "",
-                "metadata": rmeta,
-                "score": 1 - r.distance if r.distance is not None else 0.0,
-                "type": "calendar",
-            })
+            calendar_results.append(
+                {
+                    "id": r.id,
+                    "title": rmeta.get("summary", ""),
+                    "snippet": r.document[:SNIPPET_MAX_LEN] if r.document else "",
+                    "metadata": rmeta,
+                    "score": 1 - r.distance if r.distance is not None else 0.0,
+                    "type": "calendar",
+                }
+            )
 
     all_results = note_candidates + calendar_results
     seen_note_ids: dict[str, dict] = {}
@@ -306,13 +329,15 @@ async def get_note(note_id: str) -> dict:
         if s_note_id == logical_note_id:
             continue
         meta = entry["metadata"]
-        similar_notes.append({
-            "id": entry["id"],
-            "note_id": s_note_id,
-            "title": meta.get("title", ""),
-            "score": entry["score"],
-            "created": meta.get("created", ""),
-        })
+        similar_notes.append(
+            {
+                "id": entry["id"],
+                "note_id": s_note_id,
+                "title": meta.get("title", ""),
+                "score": entry["score"],
+                "created": meta.get("created", ""),
+            }
+        )
 
     current_embedding = store.get_note_embedding(logical_note_id) or []
     similar_nids = [sn["note_id"] for sn in similar_notes if sn["note_id"]]
@@ -332,9 +357,7 @@ async def get_note(note_id: str) -> dict:
 
 def _reingest_note(note_id: str, md_path: str) -> None:
     post = frontmatter.load(md_path)
-    chunks, metadatas, ids = build_note_chunks(
-        note_id, post.metadata, post.content, os.path.basename(md_path)
-    )
+    chunks, metadatas, ids = build_note_chunks(note_id, post.metadata, post.content, os.path.basename(md_path))
     embeddings = embed_texts_sync(chunks)
     if embeddings:
         store.delete_note_chunks(note_id)
@@ -442,12 +465,14 @@ async def get_people(q: Optional[str] = None) -> dict:
                 alias_lower = alias.lower()
                 if alias_lower in store_lookup:
                     freq = max(freq, store_lookup[alias_lower].frequency)
-            people.append(PersonWithFrequency(
-                name=name,
-                aliases=info.get("aliases", []),
-                context=info.get("context", ""),
-                frequency=freq,
-            ))
+            people.append(
+                PersonWithFrequency(
+                    name=name,
+                    aliases=info.get("aliases", []),
+                    context=info.get("context", ""),
+                    frequency=freq,
+                )
+            )
         return {"people": people}
     except Exception:
         return {"people": []}
@@ -495,13 +520,15 @@ async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) 
         if nid == query_note_id:
             continue
         meta = entry["metadata"]
-        notes.append({
-            "id": entry["id"],
-            "note_id": nid,
-            "title": meta.get("title", ""),
-            "score": entry["score"],
-            "created": meta.get("created", ""),
-        })
+        notes.append(
+            {
+                "id": entry["id"],
+                "note_id": nid,
+                "title": meta.get("title", ""),
+                "score": entry["score"],
+                "created": meta.get("created", ""),
+            }
+        )
     return {"notes": notes}
 
 
@@ -514,15 +541,17 @@ async def search_similar_text(body: SimilarTextRequest) -> dict:
     items = []
     for r in results:
         meta = r.metadata.model_dump()
-        items.append({
-            "id": r.id,
-            "note_id": meta.get("note_id") or r.id,
-            "title": meta.get("title", ""),
-            "snippet": r.document[:SNIPPET_MAX_LEN] if r.document else "",
-            "metadata": meta,
-            "score": r.score if r.score else (1 - r.distance if r.distance is not None else 0.0),
-            "type": "note",
-        })
+        items.append(
+            {
+                "id": r.id,
+                "note_id": meta.get("note_id") or r.id,
+                "title": meta.get("title", ""),
+                "snippet": r.document[:SNIPPET_MAX_LEN] if r.document else "",
+                "metadata": meta,
+                "score": r.score if r.score else (1 - r.distance if r.distance is not None else 0.0),
+                "type": "note",
+            }
+        )
     return {"results": items}
 
 
@@ -592,9 +621,7 @@ async def get_stats() -> dict:
 
 
 @app.get("/api/calendar", response_model=CalendarEventsResponse)
-async def get_calendar_events(
-    start_date: Optional[str] = None, end_date: Optional[str] = None, attendee: Optional[str] = None
-) -> dict:
+async def get_calendar_events(start_date: Optional[str] = None, end_date: Optional[str] = None, attendee: Optional[str] = None) -> dict:
     cal = get_calendar()
     events = cal.process_events()
 
@@ -627,11 +654,13 @@ async def get_calendar_event(event_id: str) -> dict:
     linked_notes = []
     if date_str:
         for note in store.get_notes_by_date(date_str):
-            linked_notes.append(CalendarEventDetailLinkedNote(
-                id=note.id,
-                title=note.title,
-                date=date_str,
-            ))
+            linked_notes.append(
+                CalendarEventDetailLinkedNote(
+                    id=note.id,
+                    title=note.title,
+                    date=date_str,
+                )
+            )
 
     return {
         "id": event.id,
@@ -652,11 +681,13 @@ async def get_calendar_by_date(date: str) -> dict:
 
     notes = []
     for note in store.get_notes_by_date(date):
-        notes.append({
-            "id": note.id,
-            "title": note.title,
-            "metadata": note.metadata.model_dump(),
-        })
+        notes.append(
+            {
+                "id": note.id,
+                "title": note.title,
+                "metadata": note.metadata.model_dump(),
+            }
+        )
 
     return {"date": date, "events": events, "notes": notes}
 
@@ -665,25 +696,25 @@ async def get_calendar_by_date(date: str) -> dict:
 async def get_image(image_path: str):
     """Serve image files from the notes and images directories."""
     from fastapi.responses import FileResponse
-    
+
     # Sanitize the path to prevent directory traversal
     safe_path = os.path.normpath(image_path).lstrip("/")
     if safe_path.startswith("..") or safe_path.startswith("/"):
         raise HTTPException(status_code=403, detail="Invalid image path")
-    
+
     # Check if it's an image file before doing filesystem lookups
-    allowed_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.pdf')
+    allowed_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".pdf")
     if not safe_path.lower().endswith(allowed_extensions):
         raise HTTPException(status_code=403, detail="Invalid file type")
-    
+
     # Search in: notes/, notes/../images/ (project-level images dir)
     search_dirs = [NOTES_DIR, os.path.join(NOTES_DIR, "..", "images")]
-    
+
     for search_dir in search_dirs:
         full_path = os.path.join(search_dir, safe_path)
         if os.path.exists(full_path) and os.path.isfile(full_path):
             return FileResponse(full_path)
-    
+
     # Fallback: search recursively in each search dir by basename
     basename = os.path.basename(safe_path)
     for search_dir in search_dirs:
@@ -693,7 +724,7 @@ async def get_image(image_path: str):
                     full_path = os.path.join(root, file)
                     if os.path.exists(full_path) and os.path.isfile(full_path):
                         return FileResponse(full_path)
-    
+
     raise HTTPException(status_code=404, detail="Image not found")
 
 
