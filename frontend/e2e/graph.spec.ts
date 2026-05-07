@@ -242,4 +242,49 @@ test.describe("Graph Page", () => {
     const pane = page.locator('[data-testid="graph-details-pane"]');
     await expect(pane).toHaveCSS('opacity', '0');
   });
+
+  test("should keep only one source", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    await page.locator('[data-testid="filter-sources-heading"]').click();
+    const appleNotesFilter = page.locator('[data-testid="source-filter-Apple Notes"]');
+    await expect(appleNotesFilter).toBeVisible();
+
+    await appleNotesFilter.hover();
+    await page.locator('[data-testid="source-filter-keep-Apple Notes"]').click();
+
+    await expect(appleNotesFilter).toHaveAttribute('data-active', 'true');
+    await expect(page.locator('[data-testid="source-filter-Evernote"]')).toHaveAttribute('data-active', 'false');
+    await expect(page.locator('[data-testid="graph-stats"]')).toContainText('nodes');
+  });
+
+  test("should keep only one structural tag", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    await page.locator('[data-testid="filter-structural-tags-heading"]').click();
+    const workFilter = page.locator('[data-testid="structural-tag-filter-work"]');
+    await expect(workFilter).toBeVisible();
+
+    await workFilter.hover();
+    await page.locator('[data-testid="structural-tag-filter-keep-work"]').click();
+
+    await expect(workFilter).toHaveAttribute('data-active', 'true');
+    await expect(page.locator('[data-testid="structural-tag-filter-zendesk"]')).toHaveAttribute('data-active', 'false');
+    await expect(page.locator('[data-testid="graph-stats"]')).toContainText('nodes');
+  });
+
+  test("should keep only one content tag", async ({ page }) => {
+    await page.waitForSelector('[data-testid="graph-stats"]', { timeout: 10000 });
+
+    await page.locator('[data-testid="filter-tags-heading"]').click();
+    const mgmtFilter = page.locator('[data-testid="content-tag-filter-management"]');
+    await expect(mgmtFilter).toBeVisible();
+
+    await mgmtFilter.hover();
+    await page.locator('[data-testid="content-tag-filter-keep-management"]').click();
+
+    await expect(mgmtFilter).toHaveAttribute('data-active', 'true');
+    await expect(page.locator('[data-testid="content-tag-filter-architecture"]')).toHaveAttribute('data-active', 'false');
+    await expect(page.locator('[data-testid="graph-stats"]')).toContainText('nodes');
+  });
 });

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Crosshair } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import { type GraphNode } from '@/lib/api'
 import type { ForceGraphNode } from '@/components/ForceGraph3DView'
@@ -338,7 +338,7 @@ export default function GraphPage() {
                     })
                     setViewingNode(null)
                   }}
-                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors group ${
                     isExcluded
                       ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
                       : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
@@ -347,6 +347,14 @@ export default function GraphPage() {
                   data-active={!isExcluded}
                 >
                   {source}
+                  <span
+                    aria-label={`Keep only ${source}`}
+                    data-testid={`source-filter-keep-${source}`}
+                    className="ml-1 text-current opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer inline-flex items-center"
+                    onClick={e => { e.stopPropagation(); setExcludedSources(new Set(sourcesInData.filter(s => s !== source))); setViewingNode(null) }}
+                  >
+                    <Crosshair size={10} />
+                  </span>
                 </button>
               )
             })}
@@ -376,7 +384,7 @@ export default function GraphPage() {
                     })
                     setViewingNode(null)
                   }}
-                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors group ${
                     isExcluded
                       ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
                       : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
@@ -385,6 +393,14 @@ export default function GraphPage() {
                   data-active={!isExcluded}
                 >
                   {tag}
+                  <span
+                    aria-label={`Keep only ${tag}`}
+                    data-testid={`structural-tag-filter-keep-${tag}`}
+                    className="ml-1 text-current opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer inline-flex items-center"
+                    onClick={e => { e.stopPropagation(); setExcludedStructTags(new Set(structuralTagsInData.filter(t => t !== tag))); setViewingNode(null) }}
+                  >
+                    <Crosshair size={10} />
+                  </span>
                 </button>
               )
             })}
@@ -417,7 +433,7 @@ export default function GraphPage() {
                     })
                     setViewingNode(null)
                   }}
-                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors inline-flex items-center gap-1 ${
+                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors inline-flex items-center gap-1 group ${
                     isExcluded
                       ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
                       : 'border-current/20'
@@ -428,6 +444,14 @@ export default function GraphPage() {
                 >
                   <ShapeIndicator shape={shape} color={isExcluded ? '#52525b' : color} />
                   {tag}
+                  <span
+                    aria-label={`Keep only ${tag}`}
+                    data-testid={`content-tag-filter-keep-${tag}`}
+                    className="ml-1 text-current opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer inline-flex items-center"
+                    onClick={e => { e.stopPropagation(); setExcludedContentTags(new Set(contentTagsInData.filter(t => t !== tag))); setViewingNode(null) }}
+                  >
+                    <Crosshair size={10} />
+                  </span>
                 </button>
               )
             })}

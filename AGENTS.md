@@ -606,10 +606,13 @@ await page.locator('[data-testid^="calendar-day-"]').first().click();
 | Graph filter panel | `filter-panel` |
 | Graph Sources section | `filter-sources`, heading `filter-sources-heading` |
 | Graph source filter chip | `source-filter-{source}` |
+| Graph source filter keep icon | `source-filter-keep-{source}` |
 | Graph Structural Tags section | `filter-structural-tags`, heading `filter-structural-tags-heading` |
 | Graph structural tag filter chip | `structural-tag-filter-{tag}` |
+| Graph structural tag filter keep icon | `structural-tag-filter-keep-{tag}` |
 | Graph Tags section | `filter-tags`, heading `filter-tags-heading` |
 | Graph content tag filter chip | `content-tag-filter-{tag}` |
+| Graph content tag filter keep icon | `content-tag-filter-keep-{tag}` |
 | Tag autocomplete menu | `tag-autocomplete-menu` |
 | Tag autocomplete item | `tag-autocomplete-item` |
 | Clear tag filter button | `clear-tag-filter` |
@@ -667,6 +670,7 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 - [ ] Full-text search fallback (for exact token matches that embeddings miss)
 - [x] MCP server (stdio transport) with tools, resources, and prompts
 - [x] Concurrent bulk embedding with connection reuse — `embed_texts_bulk()` uses pooled `httpx.Client` via `ThreadPoolExecutor` (10 workers OpenRouter / 4 workers Ollama); single `embed_texts_sync()` preserved for small-query use
+- [x] "Keep only this" crosshair icon on graph filter chips (Sources, Structural Tags, Content Tags) — hover to reveal, click to exclude all other items in the section
 
 ## Design Context
 
