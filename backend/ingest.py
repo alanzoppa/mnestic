@@ -187,8 +187,8 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
     if not force:
         try:
             ingest_state = _read_state(state_file)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to read ingest state, starting fresh: %s", e)
 
     current_provider = settings.embed_provider_ingest
     if current_provider == "ollama":
@@ -205,8 +205,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         prev_model = ingest_state.get("embed_model", "")
         if prev_model and prev_model != current_model:
             raise ValueError(
-                f"Embedding model changed from '{prev_model}' to '{current_model}'. "
-                "Run with --force to re-ingest with the new model."
+                f"Embedding model changed from '{prev_model}' to '{current_model}'. Run with --force to re-ingest with the new model."
             )
 
     cal = CalendarProcessor()
@@ -301,8 +300,8 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
             for note_id_prefix in ids_to_delete:
                 try:
                     store.delete_note_chunks(note_id_prefix)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Failed to delete old chunks for %s: %s", note_id_prefix, e)
                 progress.advance(del_task)
     logger.info("Embedding %d chunks in batches of %d...", len(all_chunks), BATCH_SIZE)
 
@@ -360,6 +359,7 @@ def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
         _write_state(state_file, ingest_state)
     except IOError as e:
         errors.append(f"State file error: {str(e)}")
+        logger.error("Failed to write ingest state: %s", e)
 
     total_time = time.time() - start_time
     logger.info(

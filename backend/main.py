@@ -4,6 +4,7 @@ import os
 import re
 import json
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from dateutil import parser as dateutil_parser
@@ -75,6 +76,44 @@ from config import NOTES_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, settings
 
 note_watcher: NoteWatcher | None = None
 
+LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+LOG_RETENTION_DAYS = 3
+
+
+def configure_logging() -> None:
+    log_dir = Path(__file__).resolve().parent.parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+
+    formatter = logging.Formatter(LOG_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+
+    file_handler = TimedRotatingFileHandler(
+        log_dir / "mnestic.log",
+        when="midnight",
+        interval=1,
+        backupCount=LOG_RETENTION_DAYS,
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+
+    logging.getLogger("ingest").setLevel(logging.DEBUG)
+    for name in ("store", "embed", "watcher", "calendar_data", "shared", "schema", "main", "rerank", "__main__"):
+        logging.getLogger(name).setLevel(logging.DEBUG)
+
+    # Quiet down noisy third-party loggers
+    for noisy in ("chromadb", "httpx", "httpcore", "sentence_transformers", "filelock", "watchdog", "urllib3", "asyncio"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+    logger.info("Logging configured: console=INFO, file=DEBUG, retention=%d days", LOG_RETENTION_DAYS)
+
 
 def _parse_date(date_str: str) -> float:
     try:
@@ -86,6 +125,7 @@ def _parse_date(date_str: str) -> float:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global note_watcher
+    configure_logging()
     note_watcher = NoteWatcher(NOTES_DIR, store, _invalidate_source_id_cache)
     note_watcher.start()
     import json
@@ -115,8 +155,8 @@ async def lifespan(app: FastAPI):
                 prev_model,
                 prev_model,
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Could not read ingest state for provider check: %s", e)
     yield
     if note_watcher:
         note_watcher.stop()
@@ -141,8 +181,8 @@ def get_calendar():
         calendar_processor = CalendarProcessor()
         try:
             calendar_processor.load()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to load calendar data: %s", e)
     return calendar_processor
 
 
@@ -474,7 +514,8 @@ async def get_people(q: Optional[str] = None) -> dict:
                 )
             )
         return {"people": people}
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to load people registry: %s", e)
         return {"people": []}
 
 
@@ -560,6 +601,8 @@ async def ingest(body: IngestRequest) -> dict:
     import asyncio
     from ingest import ingest_notes, ingest_calendar
 
+    logger.info("Ingest requested: full=%s", body.full)
+
     if body.full:
         store.reset()
         state_file = Path(NOTES_DIR) / ".ingest_state.json"
@@ -567,8 +610,20 @@ async def ingest(body: IngestRequest) -> dict:
             state_file.unlink()
 
     loop = asyncio.get_event_loop()
-    notes_result = await loop.run_in_executor(None, ingest_notes, NOTES_DIR, store, body.full)
-    calendar_result = await loop.run_in_executor(None, ingest_calendar, store)
+    try:
+        notes_result = await loop.run_in_executor(None, ingest_notes, NOTES_DIR, store, body.full)
+        calendar_result = await loop.run_in_executor(None, ingest_calendar, store)
+    except Exception as e:
+        logger.error("Ingest failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ingest failed: {e}")
+
+    notes_errors = notes_result.get("errors", []) if notes_result else []
+    cal_errors = calendar_result.get("errors", []) if calendar_result else []
+    total_errors = len(notes_errors) + len(cal_errors)
+    if total_errors:
+        logger.warning("Ingest completed with %d errors: notes=%d, calendar=%d", total_errors, len(notes_errors), len(cal_errors))
+    else:
+        logger.info("Ingest completed successfully")
 
     return {"notes_result": notes_result, "calendar_result": calendar_result}
 

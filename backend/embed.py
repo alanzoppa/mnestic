@@ -133,21 +133,21 @@ def embed_texts_sync(
                         )
                     )
                 else:
-                    results.extend(
-                        _embed_batch_ollama(client, full_batch, settings.ollama_embed_model)
-                    )
-            except httpx.HTTPStatusError:
+                    results.extend(_embed_batch_ollama(client, full_batch, settings.ollama_embed_model))
+            except httpx.HTTPStatusError as e:
                 if len(batch) > 1:
+                    logger.debug("Bisecting batch of %d texts due to HTTP error (depth=%d): %s", len(batch), _depth, e)
                     mid = (len(batch) + 1) // 2
                     results.extend(embed_texts_sync(batch[:mid], prefix, _depth + 1, provider=resolved_provider))
                     results.extend(embed_texts_sync(batch[mid:], prefix, _depth + 1, provider=resolved_provider))
                 elif len(batch[0]) > MAX_CHARS:
                     results.extend(embed_texts_sync([batch[0][:MAX_CHARS]], prefix, _depth + 1, provider=resolved_provider))
                 else:
-                    short_text = batch[0][:max(len(batch[0]) // 2, 500)]
+                    short_text = batch[0][: max(len(batch[0]) // 2, 500)]
                     results.extend(embed_texts_sync([short_text], prefix, _depth + 1, provider=resolved_provider))
-            except Exception:
+            except Exception as e:
                 if len(batch) > 1:
+                    logger.debug("Bisecting batch of %d texts due to error (depth=%d): %s", len(batch), _depth, e)
                     mid = (len(batch) + 1) // 2
                     results.extend(embed_texts_sync(batch[:mid], prefix, _depth + 1, provider=resolved_provider))
                     results.extend(embed_texts_sync(batch[mid:], prefix, _depth + 1, provider=resolved_provider))
@@ -245,7 +245,9 @@ def embed_texts_bulk(
                         if on_batch_done:
                             on_batch_done(orig_idx, len(embs))
                     except Exception as exc:
-                        logger.warning("Batch at %d failed (attempt %d/%d, %d texts): %s", orig_idx, attempt + 1, MAX_BULK_RETRIES + 1, len(batch), exc)
+                        logger.warning(
+                            "Batch at %d failed (attempt %d/%d, %d texts): %s", orig_idx, attempt + 1, MAX_BULK_RETRIES + 1, len(batch), exc
+                        )
                         if attempt < MAX_BULK_RETRIES:
                             mid = (len(batch) + 1) // 2
                             if mid > 1 and len(batch) > 1:

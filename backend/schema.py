@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import glob
+import logging
 from typing import Any
 
 import frontmatter
 
+logger = logging.getLogger(__name__)
 
 EXPECTED_FIELDS = [
     "title",
@@ -49,7 +51,8 @@ def discover_schema(notes_dir: str) -> dict:
                             sample_values[field].append(val[:3])
                         else:
                             sample_values[field].append(val)
-        except Exception:
+        except Exception as e:
+            logger.debug("Skipping unparseable note %s: %s", path, e)
             continue
 
     fields = []

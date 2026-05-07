@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
@@ -13,6 +15,8 @@ if TYPE_CHECKING:
 from utils import normalize_and_dedup_results
 from shared import _is_safe_filename, find_note_file, _sanitize_filename
 from config import NOTES_DIR
+
+logger = logging.getLogger(__name__)
 
 
 def _flatten_tags(val: Any) -> list[str]:
@@ -141,9 +145,7 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         from ingest import build_note_chunks
         from embed import embed_texts_sync
 
-        chunks, metadatas, ids = build_note_chunks(
-            note_id, meta, content or "", os.path.basename(filepath)
-        )
+        chunks, metadatas, ids = build_note_chunks(note_id, meta, content or "", os.path.basename(filepath))
         embeddings = embed_texts_sync(chunks)
         if embeddings:
             store.delete_note_chunks(note_id)
@@ -185,8 +187,8 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             try:
                 post = frontmatter.load(note_file)
                 content = post.content
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to read note file %s: %s", note_file, e)
 
         created = meta.get("created", "")
         date_str = created[:10] if created else ""
@@ -194,8 +196,8 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         if date_str and calendar_processor is not None:
             try:
                 calendar_events = calendar_processor.get_events_for_date(date_str)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to get calendar events for %s: %s", date_str, e)
 
         similar = store.get_similar(note.id, n=10)
         logical_note_id = meta.get("note_id") or note.id
@@ -206,11 +208,13 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             if s_nid == logical_note_id:
                 continue
             s_meta = entry["metadata"]
-            similar_notes.append({
-                "id": s_nid,
-                "title": s_meta.get("title", ""),
-                "score": entry["score"],
-            })
+            similar_notes.append(
+                {
+                    "id": s_nid,
+                    "title": s_meta.get("title", ""),
+                    "score": entry["score"],
+                }
+            )
 
         return {
             "id": logical_note_id,
@@ -295,7 +299,8 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             else:
                 events = calendar_processor.process_events()
             return {"events": [e.model_dump() for e in events]}
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to get calendar events: %s", e)
             return {"events": []}
 
     @mcp.tool()
@@ -318,11 +323,13 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
             if nid == note_id:
                 continue
             meta = entry["metadata"]
-            notes.append({
-                "id": nid,
-                "title": meta.get("title", "Untitled"),
-                "score": entry["score"],
-            })
+            notes.append(
+                {
+                    "id": nid,
+                    "title": meta.get("title", "Untitled"),
+                    "score": entry["score"],
+                }
+            )
             if len(notes) >= limit:
                 break
         return {"notes": notes}
@@ -350,10 +357,13 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         """
         people = store.get_people_by_query(q=name)
         return {
-            "people": [{
-                "name": p.name,
-                "frequency": p.frequency,
-            } for p in people],
+            "people": [
+                {
+                    "name": p.name,
+                    "frequency": p.frequency,
+                }
+                for p in people
+            ],
         }
 
     @mcp.tool()
@@ -365,12 +375,15 @@ def setup_mcp(store: NoteStore, calendar_processor: Any | None = None) -> FastMC
         """
         entries = store.get_glossary_entries(q=term)
         return {
-            "entries": [{
-                "term": e.term,
-                "definition": e.definition,
-                "frequency": e.frequency,
-                "source_note_ids": e.source_note_ids,
-            } for e in entries],
+            "entries": [
+                {
+                    "term": e.term,
+                    "definition": e.definition,
+                    "frequency": e.frequency,
+                    "source_note_ids": e.source_note_ids,
+                }
+                for e in entries
+            ],
         }
 
     @mcp.tool()

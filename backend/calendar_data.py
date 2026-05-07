@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from collections import defaultdict
 from datetime import datetime
@@ -10,11 +11,11 @@ from cachetools import TTLCache
 from config import CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
 from models import CalendarEvent
 
+logger = logging.getLogger(__name__)
+
 
 class CalendarProcessor:
-    def __init__(
-        self, calendar_path: str = CALENDAR_EXPORT_PATH, registry_path: str = PEOPLE_REGISTRY_PATH
-    ) -> None:
+    def __init__(self, calendar_path: str = CALENDAR_EXPORT_PATH, registry_path: str = PEOPLE_REGISTRY_PATH) -> None:
         self._calendar_path = calendar_path
         self._registry_path = registry_path
         self._events: list[dict] = []
@@ -27,7 +28,8 @@ class CalendarProcessor:
             with open(self._calendar_path, "r", encoding="utf-8") as f:
                 calendar_data = json.load(f)
             self._events = calendar_data.get("events", [])
-        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError) as e:
+            logger.warning("Failed to load calendar data from %s: %s", self._calendar_path, e)
             self._events = []
 
         # Invalidate caches when raw data changes
@@ -50,7 +52,8 @@ class CalendarProcessor:
                 alias_map[canonical.lower()] = canonical
 
             self._alias_map = alias_map
-        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError) as e:
+            logger.warning("Failed to load people registry from %s: %s", self._registry_path, e)
             self._alias_map = {}
 
     def normalize_name(self, name: str) -> str:

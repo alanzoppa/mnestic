@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -10,6 +11,8 @@ from filelock import FileLock
 
 from config import NOTES_DIR
 from constants import MAX_FILENAME_LEN, MAX_FILENAME_ATTEMPTS
+
+logger = logging.getLogger(__name__)
 
 
 def _is_safe_filename(name: str) -> bool:
@@ -42,7 +45,8 @@ def _build_source_id_cache(notes_dir: str) -> None:
             sid = post.get("source_id", "")
             if sid:
                 _source_id_cache[sid] = f
-        except Exception:
+        except Exception as e:
+            logger.debug("Skipping unparseable note %s: %s", f, e)
             continue
     _source_id_cache_populated = True
 
@@ -114,8 +118,8 @@ def _read_state(state_file: str | Path) -> dict:
         if state_file.exists():
             try:
                 return json.loads(state_file.read_text())
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to parse state file %s: %s", state_file, e)
         return {}
 
 

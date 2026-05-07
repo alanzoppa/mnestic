@@ -116,12 +116,23 @@ Each file has one clear responsibility:
 | `schema.py` | Frontmatter schema discovery |
 | `graph_service.py` | Similarity graph construction |
 | `shared.py` | Shared helpers (state, safety) |
-| `main.py` | FastAPI endpoint definitions ONLY (thin wrappers) |
+| `main.py` | FastAPI endpoints, logging configuration (`configure_logging`), lifespan setup |
 
 ### Error handling
 - Ingestion errors are collected and returned (not thrown)
 - API endpoints rely on FastAPI's default 500 handler — add explicit try/except only if you need custom error messages
 - Embedding failures trigger bisect fallback in `embed_texts_sync`
+- **Never use bare `except Exception: pass`** — always log the exception at an appropriate level (WARNING for unexpected errors, DEBUG for expected/skip-able failures)
+- ChromaDB query results may return empty lists — check `if not result["ids"]` before accessing `result["ids"][0]`
+
+### Logging
+- `configure_logging()` in `main.py` sets up the root logger at startup: console handler (INFO) + `TimedRotatingFileHandler` (DEBUG)
+- Log files: `logs/mnestic.log` with daily rotation, 3-day retention (`backupCount=3`)
+- Every backend module has `logger = logging.getLogger(__name__)` — use it, never use `print()`
+- All module loggers are set to DEBUG level in `configure_logging()`; third-party loggers (chromadb, httpx, etc.) are set to WARNING
+- Format: `%(asctime)s %(levelname)s [%(name)s] %(message)s`
+- Log levels: DEBUG for per-file/per-batch progress, INFO for phase starts/completions, WARNING for recoverable errors, ERROR for failures
+- To read logs: `journalctl -u mnestic-backend -f` (systemd) or `tail -f logs/mnestic.log` (file)
 
 ### Type safety
 - `NoteStore` returns typed models, not raw dicts — always use attribute access (`.metadata.title`) instead of dict access (`["metadata"]["title"]`)

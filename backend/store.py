@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
@@ -21,6 +22,8 @@ from models import (
     PersonWithFrequency,
     GlossaryEntry,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _to_chroma_scalar(tags: Any) -> str:
@@ -57,15 +60,11 @@ class NoteStore:
 
     @property
     def notes(self):
-        return self._client.get_or_create_collection(
-            "notes", metadata={"hnsw:space": "cosine"}
-        )
+        return self._client.get_or_create_collection("notes", metadata={"hnsw:space": "cosine"})
 
     @property
     def calendar(self):
-        return self._client.get_or_create_collection(
-            "calendar", metadata={"hnsw:space": "cosine"}
-        )
+        return self._client.get_or_create_collection("calendar", metadata={"hnsw:space": "cosine"})
 
     def add_notes(
         self,
@@ -102,17 +101,17 @@ class NoteStore:
             if tag_set & note_tags:
                 if nid:
                     seen_note_ids.add(nid)
-                results.append(NoteResult(
-                    id=all_notes["ids"][i],
-                    metadata=NoteMetadata(**meta),
-                ))
+                results.append(
+                    NoteResult(
+                        id=all_notes["ids"][i],
+                        metadata=NoteMetadata(**meta),
+                    )
+                )
                 if len(results) >= n:
                     break
         return results
 
-    def search_notes(
-        self, query_embedding: list[float], n: int = 20, where: dict = None
-    ) -> list[NoteResult]:
+    def search_notes(self, query_embedding: list[float], n: int = 20, where: dict = None) -> list[NoteResult]:
         results = self.notes.query(
             query_embeddings=[query_embedding],
             n_results=n,
@@ -120,9 +119,7 @@ class NoteStore:
         )
         return self._format_results(results, limit=n)
 
-    def search_calendar(
-        self, query_embedding: list[float], n: int = 20, where: dict = None
-    ) -> list[NoteResult]:
+    def search_calendar(self, query_embedding: list[float], n: int = 20, where: dict = None) -> list[NoteResult]:
         results = self.calendar.query(
             query_embeddings=[query_embedding],
             n_results=n,
@@ -135,18 +132,21 @@ class NoteStore:
         inner = results["ids"][0] if results["ids"] else []
         for i in range(min(len(inner), limit)):
             meta = results["metadatas"][0][i] if results["metadatas"] else {}
-            items.append(NoteResult(
-                id=inner[i],
-                document=results["documents"][0][i] if results["documents"] else "",
-                metadata=NoteMetadata(**meta) if meta else NoteMetadata(),
-                distance=results["distances"][0][i] if results["distances"] else None,
-            ))
+            items.append(
+                NoteResult(
+                    id=inner[i],
+                    document=results["documents"][0][i] if results["documents"] else "",
+                    metadata=NoteMetadata(**meta) if meta else NoteMetadata(),
+                    distance=results["distances"][0][i] if results["distances"] else None,
+                )
+            )
         return items
 
     def get_note(self, note_id: str) -> NoteResult | None:
         try:
             result = self.notes.get(ids=[note_id], include=["metadatas", "documents"])
-        except Exception:
+        except Exception as e:
+            logger.warning("get_note(%s) failed: %s", note_id, e)
             return None
         if not result["ids"]:
             return None
@@ -164,7 +164,8 @@ class NoteStore:
                 where={"note_id": logical_note_id},
                 include=["metadatas", "documents"],
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("get_note_by_note_id(%s) failed: %s", logical_note_id, e)
             return None
         if not results["ids"]:
             return None
@@ -224,13 +225,15 @@ class NoteStore:
                 continue
             if nid:
                 seen_note_ids.add(nid)
-            results.append(NoteResult(
-                id=note_id,
-                document=raw["documents"][i] if raw["documents"] else "",
-                metadata=nm,
-                score=0.0,
-                distance=None,
-            ))
+            results.append(
+                NoteResult(
+                    id=note_id,
+                    document=raw["documents"][i] if raw["documents"] else "",
+                    metadata=nm,
+                    score=0.0,
+                    distance=None,
+                )
+            )
             if n and len(results) >= n:
                 break
         return results
@@ -252,7 +255,9 @@ class NoteStore:
                 series_latest[series_val] = (created, nid)
         result = []
         for name in sorted(series_counts, key=lambda n: -series_counts[n]):
-            result.append(SeriesInfo(name=name, count=series_counts[name], latest_date=series_latest[name][0], latest_note_id=series_latest[name][1]))
+            result.append(
+                SeriesInfo(name=name, count=series_counts[name], latest_date=series_latest[name][0], latest_note_id=series_latest[name][1])
+            )
         return result
 
     def get_notes_by_series(self, series_name: str, limit: int = 20) -> list[NoteListItem]:
@@ -303,11 +308,14 @@ class NoteStore:
                 if n.document:
                     definition = n.document[:200]
                     break
-            entries.append(GlossaryEntry(term=tag_info.name, definition=definition, source_note_ids=source_ids[:3], frequency=tag_info.count))
+            entries.append(
+                GlossaryEntry(term=tag_info.name, definition=definition, source_note_ids=source_ids[:3], frequency=tag_info.count)
+            )
         return entries
 
     def get_notes_since(self, timestamp: str, limit: int = 500) -> list[NoteListItem]:
         from datetime import datetime, timezone
+
         try:
             dt = datetime.fromisoformat(timestamp)
             if dt.tzinfo is None:
@@ -405,9 +413,7 @@ class NoteStore:
                     co_occur[pair] = co_occur.get(pair, 0) + 1
 
         tag_list = [TagInfo(name=k, count=v) for k, v in sorted(tag_counts.items(), key=lambda x: -x[1])]
-        co_occur_list = [
-            CoOccurrence(tag1=p[0], tag2=p[1], count=c) for p, c in sorted(co_occur.items(), key=lambda x: -x[1])
-        ]
+        co_occur_list = [CoOccurrence(tag1=p[0], tag2=p[1], count=c) for p, c in sorted(co_occur.items(), key=lambda x: -x[1])]
         return tag_list, co_occur_list
 
     def get_folders(self) -> list[str]:
@@ -446,7 +452,8 @@ class NoteStore:
                     period = dt
                 else:
                     period = dt[:7]
-            except Exception:
+            except Exception as e:
+                logger.debug("Invalid date in timeline bucket: %s", e)
                 continue
             if period not in buckets:
                 buckets[period] = {"count": 0, "sample_ids": []}
@@ -455,10 +462,7 @@ class NoteStore:
             if len(buckets[period]["sample_ids"]) < 5:
                 buckets[period]["sample_ids"].append(canonical_id)
 
-        return [
-            TimelinePeriod(period=k, count=v["count"], sample_ids=v["sample_ids"])
-            for k, v in sorted(buckets.items())
-        ]
+        return [TimelinePeriod(period=k, count=v["count"], sample_ids=v["sample_ids"]) for k, v in sorted(buckets.items())]
 
     def get_stats(self) -> StatsResponse:
         unique = self.get_unique_notes(include=["documents", "metadatas"])
