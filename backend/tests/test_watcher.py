@@ -125,6 +125,7 @@ def test_process_pending_ready(setup_watcher):
     w, notes_dir, mock_store, *_ = setup_watcher
     write_note(notes_dir / "test.md")
     from watcher import DEBOUNCE_SECONDS
+
     w._pending["test.md"] = _DebounceEntry(
         event_type="modified",
         scheduled_at=time.monotonic() - DEBOUNCE_SECONDS - 1,
@@ -133,6 +134,26 @@ def test_process_pending_ready(setup_watcher):
         w._process_pending()
     mock_store.delete_note_chunks.assert_called_once()
     assert "test.md" not in w._pending
+
+
+def test_process_pending_batch(setup_watcher):
+    w, notes_dir, mock_store, *_ = setup_watcher
+    write_note(notes_dir / "a.md", source_id="a", title="A")
+    write_note(notes_dir / "b.md", source_id="b", title="B")
+    from watcher import DEBOUNCE_SECONDS
+
+    stale = time.monotonic() - DEBOUNCE_SECONDS - 1
+    w._pending["a.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+    w._pending["b.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+    with patch("watcher.embed_texts_bulk", return_value=[DUMMY_EMBEDDING, DUMMY_EMBEDDING]):
+        w._process_pending()
+    assert mock_store.delete_note_chunks.call_count == 2
+    assert mock_store.add_notes.call_count == 2
+    assert w._filename_to_note_id.get("a.md") == "a"
+    assert w._filename_to_note_id.get("b.md") == "b"
+    assert w._events_processed == 2
+    assert "a.md" not in w._pending
+    assert "b.md" not in w._pending
 
 
 def test_record_event_roll(setup_watcher):

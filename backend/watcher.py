@@ -11,7 +11,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from shared import _state_lock, _read_state, _write_state
-from embed import embed_texts_sync
+from embed import embed_texts_sync, embed_texts_bulk
 from ingest import make_note_id, build_note_chunks
 from store import NoteStore
 
@@ -55,10 +55,11 @@ class NoteWatcher:
         if self._running:
             return
         self._build_filename_map()
+        resolved = self._notes_dir.resolve()
         self._observer = Observer()
         self._observer.schedule(
             _Handler(self._on_event),
-            str(self._notes_dir),
+            str(resolved),
             recursive=False,
         )
         self._observer.daemon = True
@@ -195,25 +196,61 @@ class NoteWatcher:
     def _process_pending(self) -> None:
         now = time.monotonic()
         with self._lock:
-            ready = {
-                fname: entry
-                for fname, entry in self._pending.items()
-                if now - entry.scheduled_at >= DEBOUNCE_SECONDS
-            }
+            ready = {fname: entry for fname, entry in self._pending.items() if now - entry.scheduled_at >= DEBOUNCE_SECONDS}
             for fname in ready:
                 del self._pending[fname]
-        for fname, entry in ready.items():
-            self._handle_upsert(fname)
+        if len(ready) <= 1:
+            for fname in ready:
+                self._handle_upsert(fname)
+        else:
+            self._batch_upsert(list(ready.keys()))
 
-    def _handle_upsert(self, filename: str) -> None:
+    def _batch_upsert(self, filenames: list[str]) -> None:
+        prep = []
+        for filename in filenames:
+            result = self._prepare_upsert(filename)
+            if result is not None:
+                prep.append(result)
+
+        if not prep:
+            return
+
+        all_chunks = []
+        for _, _, _, chunks, _, _ in prep:
+            all_chunks.extend(chunks)
+
+        embeddings = embed_texts_bulk(all_chunks)
+        if not embeddings:
+            logger.error("Watcher: bulk embedding returned empty for %d files", len(prep))
+            return
+
+        emb_offset = 0
+        for filename, note_id, ids, chunks, metadatas, md_path in prep:
+            n = len(chunks)
+            batch_embs = embeddings[emb_offset : emb_offset + n]
+            emb_offset += n
+            if len(batch_embs) != n:
+                logger.error("Watcher: embedding count mismatch for %s", filename)
+                continue
+            with self._write_lock():
+                self._store.delete_note_chunks(note_id)
+                self._store.add_notes(ids, chunks, batch_embs, metadatas)
+            self._filename_to_note_id[filename] = note_id
+            self._update_ingest_state(note_id, md_path, n)
+            if self._invalidate_cache:
+                self._invalidate_cache()
+            self._record_event("upsert", filename, note_id)
+            logger.info("Watcher: upserted %s (%s, %d chunks)", filename, note_id, n)
+
+    def _prepare_upsert(self, filename: str) -> tuple[str, str, list[str], list[str], list[dict], Path] | None:
         md_path = self._notes_dir / filename
         if not md_path.exists():
-            return
+            return None
         try:
             post = frontmatter.load(str(md_path))
         except Exception as e:
             logger.error("Watcher: failed to parse %s: %s", filename, e)
-            return
+            return None
 
         source_id = post.metadata.get("source_id", "")
         note_id = make_note_id(source_id) if source_id else make_note_id(md_path.stem)
@@ -222,12 +259,22 @@ class NoteWatcher:
             self._handle_delete(old_note_id, filename)
 
         try:
-            chunks, metadatas, ids = build_note_chunks(
-                note_id, post.metadata, post.content, filename
-            )
+            chunks, metadatas, ids = build_note_chunks(note_id, post.metadata, post.content, filename)
             if not chunks:
                 logger.warning("Watcher: no chunks for %s, skipping", filename)
-                return
+                return None
+            return filename, note_id, ids, chunks, metadatas, md_path
+        except Exception as e:
+            logger.error("Watcher: error preparing %s: %s", filename, e)
+            return None
+
+    def _handle_upsert(self, filename: str) -> None:
+        prep = self._prepare_upsert(filename)
+        if prep is None:
+            return
+        _, note_id, ids, chunks, metadatas, md_path = prep
+
+        try:
             embeddings = embed_texts_sync(chunks)
             if not embeddings:
                 logger.error("Watcher: embedding failed for %s", filename)

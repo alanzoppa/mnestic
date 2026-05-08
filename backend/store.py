@@ -6,6 +6,7 @@ from typing import Any
 
 import chromadb
 from chromadb.config import Settings
+from chromadb.errors import NotFoundError
 
 from config import CHROMA_PERSIST_DIR
 from models import (
@@ -507,5 +508,8 @@ class NoteStore:
         self.calendar.delete(ids=ids)
 
     def reset(self) -> None:
-        self._client.delete_collection("notes")
-        self._client.delete_collection("calendar")
+        for name in ("notes", "calendar"):
+            try:
+                self._client.delete_collection(name)
+            except NotFoundError:
+                pass
