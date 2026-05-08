@@ -134,69 +134,15 @@ function FilterSection({
   )
 }
 
-function createGlowSprite(color: string): THREE.Sprite {
-  const canvas = document.createElement('canvas')
-  canvas.width = 64
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')!
-  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
-  gradient.addColorStop(0, color + 'cc')
-  gradient.addColorStop(0.5, color + '40')
-  gradient.addColorStop(1, 'transparent')
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, 64, 64)
-  const texture = new THREE.CanvasTexture(canvas)
-  const spriteMaterial = new THREE.SpriteMaterial({
-    map: texture,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  })
-  const sprite = new THREE.Sprite(spriteMaterial)
-  sprite.scale.set(28, 28, 1)
-  return sprite
-}
-
-function ageColor(t: number): THREE.Color {
-  const oldColor = new THREE.Color('#e63946')
-  const newColor = new THREE.Color('#3b82f6')
-  return oldColor.clone().lerp(newColor, t)
-}
-
-function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>, minTs: number, maxTs: number): THREE.Object3D {
+function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>): THREE.Object3D {
   const primaryTag = getPrimaryTag(node.tags ?? [])
   const style = primaryTag && tagStyles[primaryTag]
     ? tagStyles[primaryTag]
     : { color: '#6b7280', shape: 'sphere' as const }
 
-  const radius = 8
-  const geometry = makeGeometry(style.shape, radius)
-
-  let displayColor = new THREE.Color(style.color)
-  if (node.created && minTs < maxTs) {
-    const ts = new Date(node.created).getTime()
-    if (!Number.isNaN(ts)) {
-      const t = Math.max(0, Math.min(1, (ts - minTs) / (maxTs - minTs)))
-      displayColor = ageColor(t)
-    }
-  }
-
-  const material = new THREE.MeshPhysicalMaterial({
-    color: displayColor,
-    emissive: displayColor,
-    emissiveIntensity: 0.8,
-    roughness: 0.3,
-    metalness: 0.2,
-    clearcoat: 0.8,
-    clearcoatRoughness: 0.1,
-  })
-
-  const mesh = new THREE.Mesh(geometry, material)
-  const group = new THREE.Group()
-  group.add(mesh)
-  const glow = createGlowSprite('#' + displayColor.getHexString().padStart(6, '0'))
-  group.add(glow)
-  return group
+  const geometry = makeGeometry(style.shape, 8)
+  const material = makeNodeMaterial(style.color)
+  return new THREE.Mesh(geometry, material)
 }
 
 export default function GraphPage() {
@@ -279,20 +225,6 @@ export default function GraphPage() {
     if (!graphData) return {}
     const primaryTags = graphData.nodes.map(n => getPrimaryTag(n.tags ?? [])).filter((t): t is string => Boolean(t))
     return assignTagStyles(primaryTags)
-  }, [graphData])
-
-  const { minCreated, maxCreated } = useMemo(() => {
-    if (!graphData) return { minCreated: 0, maxCreated: 0 }
-    let min = Infinity
-    let max = -Infinity
-    for (const node of graphData.nodes) {
-      if (!node.created) continue
-      const ts = new Date(node.created).getTime()
-      if (Number.isNaN(ts)) continue
-      if (ts < min) min = ts
-      if (ts > max) max = ts
-    }
-    return { minCreated: min === Infinity ? 0 : min, maxCreated: max === -Infinity ? 0 : max }
   }, [graphData])
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
@@ -454,7 +386,7 @@ export default function GraphPage() {
         error={error}
         headerSlot={headerSlot}
         detailPaneSlot={<DetailPane node={viewingNode} />}
-        nodeObjectFn={(node) => createNodeObject(node, tagStyles, minCreated, maxCreated)}
+        nodeObjectFn={(node) => createNodeObject(node, tagStyles)}
         nodeLabelFn={(node) => node.title}
         onNodeClick={handleNodeClick}
         selectedNodeId={viewingNode?.id ?? null}
