@@ -134,16 +134,27 @@ function FilterSection({
   )
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '')
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
+  ]
+}
+
 function createGlowSprite(color: string): THREE.Sprite {
-  const size = 64
+  const [r, g, b] = hexToRgb(color)
+  const size = 128
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2)
-  gradient.addColorStop(0, color + 'c0')
-  gradient.addColorStop(0.4, color + '60')
-  gradient.addColorStop(0.7, color + '18')
+  gradient.addColorStop(0, `rgba(${r},${g},${b},1.0)`)
+  gradient.addColorStop(0.3, `rgba(${r},${g},${b},1.0)`)
+  gradient.addColorStop(0.5, `rgba(${r},${g},${b},0.75)`)
+  gradient.addColorStop(0.7, `rgba(${r},${g},${b},0.35)`)
   gradient.addColorStop(1, 'transparent')
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, size, size)
@@ -155,7 +166,7 @@ function createGlowSprite(color: string): THREE.Sprite {
     depthWrite: false,
   })
   const sprite = new THREE.Sprite(spriteMaterial)
-  sprite.scale.set(22, 22, 1)
+  sprite.scale.set(20, 20, 1)
   return sprite
 }
 
@@ -189,11 +200,11 @@ function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>, 
   const material = new THREE.MeshPhysicalMaterial({
     color: displayColor,
     emissive: displayColor,
-    emissiveIntensity: 0.6,
-    roughness: 0.35,
-    metalness: 0.15,
-    clearcoat: 0.5,
-    clearcoatRoughness: 0.15,
+    emissiveIntensity: 0.0,
+    roughness: 0.4,
+    metalness: 0.1,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.2,
   })
 
   const mesh = new THREE.Mesh(geometry, material)
