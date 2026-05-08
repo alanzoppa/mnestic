@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
-import { ChevronDown, ChevronRight, Crosshair } from 'lucide-react'
-import { format, parseISO, isValid } from 'date-fns'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { type GraphNode } from '@/lib/api'
 import type { ForceGraphNode } from '@/components/ForceGraph3DView'
+import ForceGraph3DView, { makeNodeMaterial } from '@/components/ForceGraph3DView'
+import DetailPane from '@/components/DetailPane'
+import FilterChip from '@/components/FilterChip'
 import { tagKeys, graphKeys, graphApi } from '@/lib/queries'
 import { STRUCTURAL_TAGS } from '@/lib/constants'
 import { TagAutocomplete } from '@/components/TagAutocomplete'
-import ForceGraph3DView from '@/components/ForceGraph3DView'
-import Link from 'next/link'
 
 const GOLDEN_ANGLE = 137.508
+
+const SHAPES = ['sphere', 'box', 'octahedron', 'dodecahedron', 'icosahedron', 'torus', 'cone', 'tetrahedron'] as const
 
 function getPrimaryTag(tags: string[]): string | undefined {
   return tags.find(t => !STRUCTURAL_TAGS.includes(t))
@@ -30,8 +32,6 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 type TagStyle = { color: string; shape: string }
-
-const SHAPES = ['sphere', 'box', 'octahedron', 'dodecahedron', 'icosahedron', 'torus', 'cone', 'tetrahedron'] as const
 
 function assignTagStyles(tags: string[]): Record<string, TagStyle> {
   const sorted = [...new Set(tags)].sort()
@@ -85,30 +85,6 @@ function ShapeIndicator({ shape, color }: { shape: string; color: string }) {
   }
 }
 
-function getNodeStyle(node: GraphNode, tagStyles: Record<string, TagStyle>): TagStyle {
-  const primaryTag = getPrimaryTag(node.tags ?? [])
-  return primaryTag && tagStyles[primaryTag]
-    ? tagStyles[primaryTag]
-    : { color: '#6b7280', shape: 'sphere' }
-}
-
-function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>): THREE.Object3D {
-  const { color, shape } = getNodeStyle(node, tagStyles)
-  const radius = 8
-  const geometry = makeGeometry(shape, radius)
-  const material = new THREE.MeshPhysicalMaterial({
-    color,
-    emissive: new THREE.Color(color),
-    emissiveIntensity: 0.5,
-    roughness: 0.15,
-    metalness: 0.3,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.05,
-    transparent: false,
-  })
-  return new THREE.Mesh(geometry, material)
-}
-
 function FilterSection({
   title,
   count,
@@ -158,8 +134,18 @@ function FilterSection({
   )
 }
 
+function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>): THREE.Object3D {
+  const primaryTag = getPrimaryTag(node.tags ?? [])
+  const style = primaryTag && tagStyles[primaryTag]
+    ? tagStyles[primaryTag]
+    : { color: '#6b7280', shape: 'sphere' as const }
+
+  const geometry = makeGeometry(style.shape, 8)
+  const material = makeNodeMaterial(style.color)
+  return new THREE.Mesh(geometry, material)
+}
+
 export default function GraphPage() {
-  const selectedNodeIdRef = useRef<string | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
   const [threshold, setThreshold] = useState(0.75)
@@ -169,7 +155,7 @@ export default function GraphPage() {
   const [sourcesCollapsed, setSourcesCollapsed] = useState(true)
   const [structTagsCollapsed, setStructTagsCollapsed] = useState(true)
   const [contentTagsCollapsed, setContentTagsCollapsed] = useState(true)
-  const [hasLoaded, setHasLoaded] = useState(false)
+  const hasLoaded = useRef(false)
 
   const { data: tagsData } = useQuery({
     queryKey: tagKeys.list,
@@ -212,10 +198,6 @@ export default function GraphPage() {
     return Array.from(tagSet).sort()
   }, [data])
 
-  const contentTagStyles = useMemo(() => {
-    return assignTagStyles(contentTagsInData)
-  }, [contentTagsInData])
-
   const graphData = useMemo(() => {
     if (!data) return null
     if (excludedSources.size === 0 && excludedStructTags.size === 0 && excludedContentTags.size === 0) {
@@ -247,40 +229,14 @@ export default function GraphPage() {
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
-    selectedNodeIdRef.current = node.id
     setViewingNode(node)
   }, [])
 
   useEffect(() => {
-    if (!viewingNode) {
-      selectedNodeIdRef.current = null
+    if (graphData && graphData.nodes.length > 0 && !hasLoaded.current) {
+      hasLoaded.current = true
     }
-  }, [viewingNode])
-
-  useEffect(() => {
-    if (graphData && graphData.nodes.length > 0 && !hasLoaded) {
-      setHasLoaded(true)
-    }
-  }, [graphData, hasLoaded])
-
-  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
-    const mesh = obj as THREE.Mesh
-    const material = mesh.material as THREE.MeshPhysicalMaterial
-    if (!material) return
-
-    const isSelected = selectedNodeIdRef.current === node.id
-    const hasSelection = selectedNodeIdRef.current !== null
-
-    const targetEmissiveIntensity = hasSelection
-      ? (isSelected ? 0.8 : 0.08)
-      : 0.5
-
-    if (Math.abs(material.emissiveIntensity - targetEmissiveIntensity) > 0.01) {
-      material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.1
-    } else {
-      material.emissiveIntensity = targetEmissiveIntensity
-    }
-  }, [tagStyles])
+  }, [graphData])
 
   const headerSlot = (
     <div className="bg-zinc-950 border-b border-zinc-800">
@@ -324,40 +280,25 @@ export default function GraphPage() {
             onReset={() => { setExcludedSources(new Set()); setViewingNode(null) }}
             dataTestId="filter-sources"
           >
-            {sourcesInData.map(source => {
-              const isExcluded = excludedSources.has(source)
-              return (
-                <button
-                  key={source}
-                  onClick={() => {
-                    setExcludedSources(prev => {
-                      const next = new Set(prev)
-                      if (next.has(source)) next.delete(source)
-                      else next.add(source)
-                      return next
-                    })
-                    setViewingNode(null)
-                  }}
-                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors group ${
-                    isExcluded
-                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
-                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                  }`}
-                  data-testid={`source-filter-${source}`}
-                  data-active={!isExcluded}
-                >
-                  {source}
-                  <span
-                    aria-label={`Keep only ${source}`}
-                    data-testid={`source-filter-keep-${source}`}
-                    className="ml-1 text-current opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer inline-flex items-center"
-                    onClick={e => { e.stopPropagation(); setExcludedSources(new Set(sourcesInData.filter(s => s !== source))); setViewingNode(null) }}
-                  >
-                    <Crosshair size={10} />
-                  </span>
-                </button>
-              )
-            })}
+            {sourcesInData.map(source => (
+              <FilterChip
+                key={source}
+                label={source}
+                isExcluded={excludedSources.has(source)}
+                onToggle={() => {
+                  setExcludedSources(prev => {
+                    const next = new Set(prev)
+                    if (next.has(source)) next.delete(source)
+                    else next.add(source)
+                    return next
+                  })
+                  setViewingNode(null)
+                }}
+                onKeepOnly={() => { setExcludedSources(new Set(sourcesInData.filter(s => s !== source))); setViewingNode(null) }}
+                testId={`source-filter-${source}`}
+                keepTestId={`source-filter-keep-${source}`}
+              />
+            ))}
           </FilterSection>
         )}
         {structuralTagsInData.length > 0 && (
@@ -370,40 +311,26 @@ export default function GraphPage() {
             onReset={() => { setExcludedStructTags(new Set()); setViewingNode(null) }}
             dataTestId="filter-structural-tags"
           >
-            {structuralTagsInData.map(tag => {
-              const isExcluded = excludedStructTags.has(tag)
-              return (
-                <button
-                  key={tag}
-                  onClick={() => {
-                    setExcludedStructTags(prev => {
-                      const next = new Set(prev)
-                      if (next.has(tag)) next.delete(tag)
-                      else next.add(tag)
-                      return next
-                    })
-                    setViewingNode(null)
-                  }}
-                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors group ${
-                    isExcluded
-                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
-                      : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                  }`}
-                  data-testid={`structural-tag-filter-${tag}`}
-                  data-active={!isExcluded}
-                >
-                  {tag}
-                  <span
-                    aria-label={`Keep only ${tag}`}
-                    data-testid={`structural-tag-filter-keep-${tag}`}
-                    className="ml-1 text-current opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer inline-flex items-center"
-                    onClick={e => { e.stopPropagation(); setExcludedStructTags(new Set(structuralTagsInData.filter(t => t !== tag))); setViewingNode(null) }}
-                  >
-                    <Crosshair size={10} />
-                  </span>
-                </button>
-              )
-            })}
+            {structuralTagsInData.map(tag => (
+              <FilterChip
+                key={tag}
+                label={tag}
+                isExcluded={excludedStructTags.has(tag)}
+                onToggle={() => {
+                  setExcludedStructTags(prev => {
+                    const next = new Set(prev)
+                    if (next.has(tag)) next.delete(tag)
+                    else next.add(tag)
+                    return next
+                  })
+                  setViewingNode(null)
+                }}
+                onKeepOnly={() => { setExcludedStructTags(new Set(structuralTagsInData.filter(t => t !== tag))); setViewingNode(null) }}
+                baseClass="bg-purple-500/10 text-purple-400 border-purple-500/20"
+                testId={`structural-tag-filter-${tag}`}
+                keepTestId={`structural-tag-filter-keep-${tag}`}
+              />
+            ))}
           </FilterSection>
         )}
         {contentTagsInData.length > 0 && (
@@ -417,14 +344,14 @@ export default function GraphPage() {
             dataTestId="filter-tags"
           >
             {contentTagsInData.map(tag => {
+              const style = tagStyles[tag] ?? { color: '#6b7280', shape: 'sphere' as const }
               const isExcluded = excludedContentTags.has(tag)
-              const style = contentTagStyles[tag]
-              const color = style?.color ?? '#6b7280'
-              const shape = style?.shape ?? 'sphere'
               return (
-                <button
+                <FilterChip
                   key={tag}
-                  onClick={() => {
+                  label={tag}
+                  isExcluded={isExcluded}
+                  onToggle={() => {
                     setExcludedContentTags(prev => {
                       const next = new Set(prev)
                       if (next.has(tag)) next.delete(tag)
@@ -433,31 +360,15 @@ export default function GraphPage() {
                     })
                     setViewingNode(null)
                   }}
-                  className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors inline-flex items-center gap-1 group ${
-                    isExcluded
-                      ? 'bg-zinc-800/50 text-zinc-600 border-zinc-700/50 line-through'
-                      : 'border-current/20'
-                  }`}
-                  style={!isExcluded ? { color, backgroundColor: `${color}15`, borderColor: `${color}30` } : undefined}
-                  data-testid={`content-tag-filter-${tag}`}
-                  data-active={!isExcluded}
-                >
-                  <ShapeIndicator shape={shape} color={isExcluded ? '#52525b' : color} />
-                  {tag}
-                  <span
-                    aria-label={`Keep only ${tag}`}
-                    data-testid={`content-tag-filter-keep-${tag}`}
-                    className="ml-1 text-current opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer inline-flex items-center"
-                    onClick={e => { e.stopPropagation(); setExcludedContentTags(new Set(contentTagsInData.filter(t => t !== tag))); setViewingNode(null) }}
-                  >
-                    <Crosshair size={10} />
-                  </span>
-                </button>
+                  onKeepOnly={() => { setExcludedContentTags(new Set(contentTagsInData.filter(t => t !== tag))); setViewingNode(null) }}
+                  icon={<ShapeIndicator shape={style.shape} color={isExcluded ? '#52525b' : style.color} />}
+                  style={!isExcluded ? { color: style.color, backgroundColor: `${style.color}15`, borderColor: `${style.color}30` } : undefined}
+                  testId={`content-tag-filter-${tag}`}
+                  keepTestId={`content-tag-filter-keep-${tag}`}
+                />
               )
             })}
-            <button
-              className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-default"
-            >
+            <button className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-default">
               <ShapeIndicator shape="sphere" color="#6b7280" />
               Other
             </button>
@@ -467,52 +378,18 @@ export default function GraphPage() {
     </div>
   )
 
-  const detailPaneSlot = (
-    <div
-      className={`absolute bottom-4 right-4 bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-w-xs z-20 shadow-lg transition-opacity duration-300 ${
-        viewingNode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}
-      data-testid="graph-details-pane"
-    >
-      {viewingNode && (
-        <>
-          <Link
-            href={`/notes/${viewingNode.id}`}
-            className="font-medium text-zinc-100 truncate hover:text-blue-400 transition-colors block mb-0.5"
-          >
-            {viewingNode.title}
-          </Link>
-          {viewingNode.created && (
-            <div className="text-xs text-zinc-500 mb-1">{(() => {
-              const d = parseISO(viewingNode.created);
-              return isValid(d) ? format(d, 'MMM d, yyyy') : viewingNode.created;
-            })()}</div>
-          )}
-          <div className="text-xs text-zinc-400">{viewingNode.folder} · {viewingNode.source}</div>
-          {viewingNode.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {viewingNode.tags.slice(0, 5).map(t => (
-                <span key={t} className="px-1.5 py-0.5 bg-zinc-800 rounded text-xs text-zinc-300">{t}</span>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-
   return (
-    <div className={hasLoaded ? 'animate-scale-in' : ''}>
+    <div className={hasLoaded.current ? 'animate-scale-in' : ''}>
       <ForceGraph3DView
         graphData={graphData}
         isLoading={isLoading}
         error={error}
         headerSlot={headerSlot}
-        detailPaneSlot={detailPaneSlot}
+        detailPaneSlot={<DetailPane node={viewingNode} />}
         nodeObjectFn={(node) => createNodeObject(node, tagStyles)}
-        nodePositionUpdateFn={nodePositionUpdate}
         nodeLabelFn={(node) => node.title}
         onNodeClick={handleNodeClick}
+        selectedNodeId={viewingNode?.id ?? null}
       />
     </div>
   )

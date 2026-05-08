@@ -1,15 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import * as THREE from 'three'
-import { format, parseISO, isValid } from 'date-fns'
 import { Search, ArrowLeft } from 'lucide-react'
 import { type GraphNode } from '@/lib/api'
 import type { ForceGraphNode } from '@/components/ForceGraph3DView'
+import ForceGraph3DView, { makeNodeMaterial } from '@/components/ForceGraph3DView'
+import DetailPane from '@/components/DetailPane'
 import { searchGraphKeys, searchGraphApi } from '@/lib/queries'
-import ForceGraph3DView from '@/components/ForceGraph3DView'
 import Link from 'next/link'
 
 const GRADIENT_STOPS = ['#2563eb', '#06b6d4', '#10b981', '#eab308', '#ef4444']
@@ -39,8 +39,6 @@ function SearchGraphContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
-  const selectedNodeIdRef = useRef<string | null>(null)
-  const lastClickedIdRef = useRef<string | null>(null)
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [inputValue, setInputValue] = useState(initialQuery)
   const [query, setQuery] = useState(initialQuery)
@@ -83,52 +81,14 @@ function SearchGraphContent() {
   const createNodeObject = useCallback((node: ForceGraphNode): THREE.Object3D => {
     const color = nodeColorMap[node.id] || '#6b7280'
     const geometry = new THREE.SphereGeometry(4.2, 24, 24)
-    const material = new THREE.MeshPhysicalMaterial({
-      color,
-      emissive: new THREE.Color(color),
-      emissiveIntensity: 0.5,
-      roughness: 0.15,
-      metalness: 0.3,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.05,
-    })
+    const material = makeNodeMaterial(color)
     return new THREE.Mesh(geometry, material)
   }, [nodeColorMap])
 
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     if (!node) return
-    // stale zoom-completion callbacks may arrive after a new node has been selected
-    if (lastClickedIdRef.current !== null && node.id === lastClickedIdRef.current) return
-    lastClickedIdRef.current = node.id
-    selectedNodeIdRef.current = node.id
     setViewingNode(node)
   }, [])
-
-  useEffect(() => {
-    if (!viewingNode) {
-      selectedNodeIdRef.current = null
-      lastClickedIdRef.current = null
-    }
-  }, [viewingNode])
-
-  const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
-    const mesh = obj as THREE.Mesh
-    const material = mesh.material as THREE.MeshPhysicalMaterial
-    if (!material) return
-
-    const isSelected = selectedNodeIdRef.current === node.id
-    const hasSelection = !!selectedNodeIdRef.current
-
-    const targetEmissiveIntensity = hasSelection
-      ? (isSelected ? 0.8 : 0.08)
-      : 0.5
-
-    if (Math.abs(material.emissiveIntensity - targetEmissiveIntensity) > 0.01) {
-      material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.1
-    } else {
-      material.emissiveIntensity = targetEmissiveIntensity
-    }
-  }, [nodeColorMap])
 
   const handleSearch = () => {
     const q = inputValue.trim()
@@ -182,50 +142,7 @@ function SearchGraphContent() {
     </div>
   )
 
-  const detailPaneSlot = (
-    <div
-      className={`absolute bottom-4 right-4 bg-zinc-900 border border-zinc-700 rounded-lg p-3 max-w-xs z-20 shadow-lg transition-opacity duration-300 ${
-        viewingNode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}
-      data-testid="graph-details-pane"
-    >
-      {viewingNode && (
-        <>
-          <Link
-            href={`/notes/${viewingNode.id}`}
-            className="font-medium text-zinc-100 truncate hover:text-blue-400 transition-colors block mb-0.5"
-          >
-            {viewingNode.title}
-          </Link>
-          {viewingNode.created && (
-            <div className="text-xs text-zinc-500 mb-1">{(() => {
-              const d = parseISO(viewingNode.created)
-              return isValid(d) ? format(d, 'MMM d, yyyy') : viewingNode.created
-            })()}</div>
-          )}
-          <div className="text-xs text-zinc-400">{viewingNode.folder} · {viewingNode.source}</div>
-          {viewingNode.search_score !== undefined && (
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: nodeColorMap[viewingNode.id] || '#6b7280' }}
-              />
-              <span className="text-xs text-zinc-300">
-                Relevance: {(viewingNode.search_score * 100).toFixed(0)}%
-              </span>
-            </div>
-          )}
-          {viewingNode.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {viewingNode.tags.slice(0, 5).map(t => (
-                <span key={t} className="px-1.5 py-0.5 bg-zinc-800 rounded text-xs text-zinc-300">{t}</span>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
+  const detailPaneSlot = <DetailPane node={viewingNode} nodeColorMap={nodeColorMap} />
 
   const legendSlot = (
     <div className="absolute top-4 right-4 bg-zinc-900/90 border border-zinc-700 rounded-lg p-3 z-20" data-testid="graph-legend">
@@ -245,65 +162,34 @@ function SearchGraphContent() {
     </div>
   )
 
-  if (!initialQuery && !query) {
-    return (
-      <div className="h-[calc(100vh-48px)] bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-zinc-800 flex items-center gap-4 flex-wrap">
-          <Link href="/search" className="text-zinc-500 hover:text-zinc-300 transition-colors">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-2xl font-bold">Search Graph</h1>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
-              placeholder="Search query..."
-              className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-600 w-64"
-              data-search-input=""
-            />
-            <button
-              onClick={handleSearch}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors flex items-center gap-1"
-            >
-              <Search size={14} />
-              Search
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-zinc-500 text-center">
-            <Search size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-lg">Enter a search query to visualize results</p>
-            <p className="text-sm mt-1">Semantically related notes will connect as a force graph</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const placeholderSlot = !initialQuery && !query ? (
+    <div className="text-zinc-500 text-center">
+      <Search size={40} className="mx-auto mb-3 opacity-30" />
+      <p className="text-lg">Enter a search query to visualize results</p>
+      <p className="text-sm mt-1">Semantically related notes will connect as a force graph</p>
+    </div>
+  ) : null
 
   return (
     <ForceGraph3DView
       graphData={graphData}
       isLoading={isLoading}
       error={error}
-      headerSlot={headerSlot}
+      headerSlot={(!initialQuery && !query) ? headerSlot : headerSlot}
       detailPaneSlot={detailPaneSlot}
-      legendSlot={legendSlot}
+      legendSlot={(!initialQuery && !query) ? null : legendSlot}
+      placeholderSlot={placeholderSlot}
       nodeObjectFn={createNodeObject}
-      nodePositionUpdateFn={nodePositionUpdate}
       nodeLabelFn={(node) => {
         const pct = node.search_score !== undefined ? `${(node.search_score * 100).toFixed(0)}%` : ''
         return pct ? `${node.title} (${pct})` : node.title
       }}
       onNodeClick={handleNodeClick}
+      selectedNodeId={viewingNode?.id ?? null}
       dataTestId="graph-container"
     />
   )
 }
-
-import { Suspense } from 'react'
 
 export default function SearchGraphPage() {
   return (

@@ -1,13 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import ForceGraph3DView from "@/components/ForceGraph3DView";
+import React from "react";
 
-vi.mock("react-force-graph-3d", () => ({
-  __esModule: true,
-  default: vi.fn(function MockForceGraph3D(props: any, ref: any) {
-    return { type: "div", props: { "data-testid": "mock-force-graph" } };
-  }),
+vi.mock("next/dynamic", () => ({
+  default:
+    (_importFn: () => Promise<any>, _opts?: any) =>
+    React.forwardRef<any, any>(function Wrapped(_props: any, ref: any) {
+      React.useImperativeHandle(ref, () => ({
+        scene: () => null,
+        cameraPosition: () => {},
+      }));
+      return React.createElement("div");
+    }),
 }));
+
+import ForceGraph3DView from "@/components/ForceGraph3DView";
 
 describe("ForceGraph3DView", () => {
   it("shows loading state when isLoading is true", () => {

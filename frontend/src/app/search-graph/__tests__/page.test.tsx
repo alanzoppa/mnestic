@@ -32,9 +32,10 @@ vi.mock("@/lib/queries", () => ({
 }));
 
 vi.mock("@/components/ForceGraph3DView", () => ({
-  default: ({ graphData, isLoading, error, headerSlot, legendSlot, detailPaneSlot }: any) => {
+  default: ({ graphData, isLoading, error, headerSlot, legendSlot, detailPaneSlot, placeholderSlot }: any) => {
     if (isLoading) return <div>{headerSlot}<div>Loading data...</div></div>;
     if (error) return <div>{headerSlot}<div>Error</div></div>;
+    if (placeholderSlot && !graphData) return <div>{headerSlot}{placeholderSlot}</div>;
     if (!graphData || graphData.nodes.length === 0) return <div>{headerSlot}<div>No connections found.</div></div>;
     return (
       <div>
