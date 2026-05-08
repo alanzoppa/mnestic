@@ -135,16 +135,23 @@ function FilterSection({
 }
 
 function createGlowSprite(color: string): THREE.Sprite {
+  const size = 256
   const canvas = document.createElement('canvas')
-  canvas.width = 64
-  canvas.height = 64
+  canvas.width = size
+  canvas.height = size
   const ctx = canvas.getContext('2d')!
-  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
-  gradient.addColorStop(0, color + 'cc')
-  gradient.addColorStop(0.5, color + '40')
+  const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2)
+  // Core: bright solid color
+  gradient.addColorStop(0, color + 'ff')
+  // Inner halo: strong color
+  gradient.addColorStop(0.2, color + 'e0')
+  // Mid halo: moderate
+  gradient.addColorStop(0.5, color + '80')
+  // Outer halo: faint but visible
+  gradient.addColorStop(0.8, color + '30')
   gradient.addColorStop(1, 'transparent')
   ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, 64, 64)
+  ctx.fillRect(0, 0, size, size)
   const texture = new THREE.CanvasTexture(canvas)
   const spriteMaterial = new THREE.SpriteMaterial({
     map: texture,
@@ -153,14 +160,17 @@ function createGlowSprite(color: string): THREE.Sprite {
     depthWrite: false,
   })
   const sprite = new THREE.Sprite(spriteMaterial)
-  sprite.scale.set(28, 28, 1)
+  sprite.scale.set(100, 100, 1)
   return sprite
 }
 
 function ageColor(t: number): THREE.Color {
-  const oldColor = new THREE.Color('#e63946')
-  const newColor = new THREE.Color('#3b82f6')
-  return oldColor.clone().lerp(newColor, t)
+  // Aggressive non-linear mapping to spread the clustered data
+  // 75% of notes are below t=0.4; this stretches them across the full spectrum
+  const adjustedT = Math.pow(Math.max(0, Math.min(1, t)), 0.25)
+  const oldColor = new THREE.Color('#ff1a1a')  // pure saturated red
+  const newColor = new THREE.Color('#1a66ff')  // saturated blue
+  return oldColor.clone().lerp(newColor, adjustedT)
 }
 
 function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>, minTs: number, maxTs: number): THREE.Object3D {
@@ -184,11 +194,11 @@ function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>, 
   const material = new THREE.MeshPhysicalMaterial({
     color: displayColor,
     emissive: displayColor,
-    emissiveIntensity: 0.8,
+    emissiveIntensity: 1.2,
     roughness: 0.3,
     metalness: 0.2,
-    clearcoat: 0.8,
-    clearcoatRoughness: 0.1,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
   })
 
   const mesh = new THREE.Mesh(geometry, material)
