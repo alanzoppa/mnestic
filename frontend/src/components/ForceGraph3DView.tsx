@@ -106,7 +106,16 @@ export default function ForceGraph3DView({
   }, [sceneReady])
 
   const nodePositionUpdate = useCallback((obj: THREE.Object3D, _coords: { x: number; y: number; z: number }, node: ForceGraphNode) => {
-    const mesh = obj as THREE.Mesh
+    let mesh: THREE.Mesh | null = null
+    if ((obj as THREE.Mesh).material) {
+      mesh = obj as THREE.Mesh
+    } else if ((obj as THREE.Group).children) {
+      mesh = obj.children.find((c): c is THREE.Mesh => {
+        const m = (c as THREE.Mesh).material
+        return !!m && !Array.isArray(m)
+      }) ?? null
+    }
+    if (!mesh) return
     const material = mesh.material as THREE.MeshPhysicalMaterial
     if (!material) return
 
@@ -115,8 +124,8 @@ export default function ForceGraph3DView({
     const hasSelection = !!sid
 
     const targetEmissiveIntensity = hasSelection
-      ? (isSelected ? 0.8 : 0.08)
-      : 0.5
+      ? (isSelected ? 1.2 : 0.08)
+      : 0.8
 
     if (Math.abs(material.emissiveIntensity - targetEmissiveIntensity) > 0.01) {
       material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.1
