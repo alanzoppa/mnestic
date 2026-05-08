@@ -124,11 +124,11 @@ export default function ForceGraph3DView({
     const hasSelection = !!sid
 
     const targetEmissiveIntensity = hasSelection
-      ? (isSelected ? 1.8 : 0.05)
-      : 1.2
+      ? (isSelected ? 1.2 : 0.08)
+      : 0.8
 
     if (Math.abs(material.emissiveIntensity - targetEmissiveIntensity) > 0.01) {
-      material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.08
+      material.emissiveIntensity += (targetEmissiveIntensity - material.emissiveIntensity) * 0.1
     } else {
       material.emissiveIntensity = targetEmissiveIntensity
     }
