@@ -258,3 +258,111 @@ def test_on_moved_debounce(setup_watcher):
 
     w._on_event("moved", "/some/path/moved.md")
     assert len(w._pending) == 1
+
+
+def test_start_resolves_symlink(tmp_path):
+    real_dir = tmp_path / "real_notes"
+    real_dir.mkdir()
+    write_note(real_dir / "test.md", source_id="symtest")
+
+    link_dir = tmp_path / "link_notes"
+    link_dir.symlink_to(real_dir)
+
+    mock_store = MagicMock()
+    mock_store.delete_note_chunks = MagicMock(return_value=0)
+    mock_store.add_notes = MagicMock()
+    mock_store.get_unique_notes = MagicMock(return_value={"ids": [], "metadatas": []})
+
+    w = NoteWatcher(str(link_dir), mock_store, None)
+
+    with patch("watcher.Observer.schedule") as mock_schedule:
+        w.start()
+
+    args, _ = mock_schedule.call_args
+    scheduled_path = args[1]
+    assert scheduled_path == str(real_dir.resolve())
+    assert scheduled_path != str(link_dir)
+
+    w.stop()
+
+
+def test_full_cycle_multiple_files_batch(setup_watcher):
+    w, notes_dir, mock_store, _ = setup_watcher
+    from watcher import DEBOUNCE_SECONDS
+
+    write_note(notes_dir / "a.md", source_id="batch_a", title="A")
+    write_note(notes_dir / "b.md", source_id="batch_b", title="B")
+    write_note(notes_dir / "c.md", source_id="batch_c", title="C")
+
+    mock_store.get_unique_notes.return_value = {"ids": [], "metadatas": []}
+
+    with patch("watcher.embed_texts_bulk", return_value=[DUMMY_EMBEDDING] * 3) as mock_bulk:
+        with patch("watcher.embed_texts_sync") as mock_sync:
+            w.start()
+            time.sleep(DEBOUNCE_SECONDS + 2)
+
+    mock_bulk.assert_called_once()
+    mock_sync.assert_not_called()
+
+    assert mock_store.add_notes.call_count == 3
+    assert mock_store.delete_note_chunks.call_count == 3
+
+    assert w.status()["events_processed"] == 3
+
+    w.stop()
+
+
+def test_git_pull_scenario(setup_watcher):
+    w, notes_dir, mock_store, _ = setup_watcher
+    from watcher import DEBOUNCE_SECONDS
+
+    # Pre-existing file that will be modified
+    write_note(notes_dir / "existing.md", source_id="existing", body="Old content")
+    existing_mtime = (notes_dir / "existing.md").stat().st_mtime
+
+    # Pre-existing file that will be deleted
+    write_note(notes_dir / "to_delete.md", source_id="to_delete", body="Delete me")
+
+    # Set up ingest state with old mtimes so startup_scan queues/cleans them
+    state_file = notes_dir / ".ingest_state.json"
+    state_data = {
+        "files": {
+            "existing": {"mtime": existing_mtime - 100, "chunks": 1},
+            "to_delete": {"mtime": 1, "chunks": 1},
+        }
+    }
+    state_file.write_text(json.dumps(state_data))
+
+    mock_store.get_unique_notes.return_value = {"ids": [], "metadatas": []}
+
+    # Delete the file from disk (git pull removed it)
+    (notes_dir / "to_delete.md").unlink()
+
+    # Modify the existing file (git pull updated it)
+    write_note(notes_dir / "existing.md", source_id="existing", body="New content")
+
+    # Write 2 new files (git pull added them)
+    write_note(notes_dir / "new1.md", source_id="new1", body="New file 1")
+    write_note(notes_dir / "new2.md", source_id="new2", body="New file 2")
+
+    with patch("watcher.embed_texts_bulk", return_value=[DUMMY_EMBEDDING] * 3) as mock_bulk:
+        with patch("watcher.embed_texts_sync") as mock_sync:
+            w.start()
+            time.sleep(DEBOUNCE_SECONDS + 2)
+
+    mock_bulk.assert_called_once()
+    mock_sync.assert_not_called()
+
+    # At least 2 upserts + 1 deletion recorded
+    assert mock_store.add_notes.call_count >= 3
+    assert w.status()["events_processed"] >= 4
+
+    # Deleted file's note_id was removed from ChromaDB
+    delete_calls_for_deleted = [c for c in mock_store.delete_note_chunks.call_args_list if c[0][0] == "to_delete"]
+    assert len(delete_calls_for_deleted) >= 1
+
+    # Deleted file's entry removed from state
+    final_state = json.loads(state_file.read_text())
+    assert "to_delete" not in final_state.get("files", {})
+
+    w.stop()
