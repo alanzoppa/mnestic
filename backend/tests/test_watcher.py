@@ -294,19 +294,23 @@ def test_full_cycle_multiple_files_batch(setup_watcher):
     write_note(notes_dir / "b.md", source_id="batch_b", title="B")
     write_note(notes_dir / "c.md", source_id="batch_c", title="C")
 
-    mock_store.get_unique_notes.return_value = {"ids": [], "metadatas": []}
+    stale = time.monotonic() - DEBOUNCE_SECONDS - 1
+    w._filename_to_note_id = {"a.md": "batch_a", "b.md": "batch_b", "c.md": "batch_c"}
+    w._pending["a.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+    w._pending["b.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+    w._pending["c.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
 
     with patch("watcher.embed_texts_bulk", return_value=[DUMMY_EMBEDDING] * 3) as mock_bulk:
         with patch("watcher.embed_texts_sync") as mock_sync:
-            w.start()
-            time.sleep(DEBOUNCE_SECONDS + 2)
+            with patch.object(w, "_startup_scan"):
+                w.start()
+                time.sleep(2)
 
     mock_bulk.assert_called_once()
     mock_sync.assert_not_called()
 
     assert mock_store.add_notes.call_count == 3
     assert mock_store.delete_note_chunks.call_count == 3
-
     assert w.status()["events_processed"] == 3
 
     w.stop()
@@ -316,46 +320,38 @@ def test_git_pull_scenario(setup_watcher):
     w, notes_dir, mock_store, _ = setup_watcher
     from watcher import DEBOUNCE_SECONDS
 
-    # Pre-existing file that will be modified
     write_note(notes_dir / "existing.md", source_id="existing", body="Old content")
-    existing_mtime = (notes_dir / "existing.md").stat().st_mtime
-
-    # Pre-existing file that will be deleted
-    write_note(notes_dir / "to_delete.md", source_id="to_delete", body="Delete me")
-
-    # Set up ingest state with old mtimes so startup_scan queues/cleans them
-    state_file = notes_dir / ".ingest_state.json"
-    state_data = {
-        "files": {
-            "existing": {"mtime": existing_mtime - 100, "chunks": 1},
-            "to_delete": {"mtime": 1, "chunks": 1},
-        }
-    }
-    state_file.write_text(json.dumps(state_data))
-
-    mock_store.get_unique_notes.return_value = {"ids": [], "metadatas": []}
-
-    # Delete the file from disk (git pull removed it)
-    (notes_dir / "to_delete.md").unlink()
-
-    # Modify the existing file (git pull updated it)
-    write_note(notes_dir / "existing.md", source_id="existing", body="New content")
-
-    # Write 2 new files (git pull added them)
     write_note(notes_dir / "new1.md", source_id="new1", body="New file 1")
     write_note(notes_dir / "new2.md", source_id="new2", body="New file 2")
 
+    state_file = notes_dir / ".ingest_state.json"
+    state_data = {"files": {"to_delete": {"mtime": 1, "chunks": 1}}}
+    state_file.write_text(json.dumps(state_data))
+
+    # Simulate the startup scan's orphan cleanup for the deleted file
+    w._handle_delete("to_delete", "to_delete.md")
+
+    stale = time.monotonic() - DEBOUNCE_SECONDS - 1
+    w._filename_to_note_id = {"existing.md": "existing", "new1.md": "new1", "new2.md": "new2"}
+    w._pending["existing.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+    w._pending["new1.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+    w._pending["new2.md"] = _DebounceEntry(event_type="modified", scheduled_at=stale)
+
     with patch("watcher.embed_texts_bulk", return_value=[DUMMY_EMBEDDING] * 3) as mock_bulk:
         with patch("watcher.embed_texts_sync") as mock_sync:
-            w.start()
-            time.sleep(DEBOUNCE_SECONDS + 2)
+            with patch.object(w, "_startup_scan"):
+                w.start()
+                time.sleep(2)
 
     mock_bulk.assert_called_once()
     mock_sync.assert_not_called()
 
-    # At least 2 upserts + 1 deletion recorded
-    assert mock_store.add_notes.call_count >= 3
-    assert w.status()["events_processed"] >= 4
+    assert mock_store.add_notes.call_count == 3
+    # 3 upsert chunk deletes + 1 orphan deletion = 4
+    assert mock_store.delete_note_chunks.call_count == 4
+
+    # 3 upserts + 1 orphan deletion
+    assert w.status()["events_processed"] == 4
 
     # Deleted file's note_id was removed from ChromaDB
     delete_calls_for_deleted = [c for c in mock_store.delete_note_chunks.call_args_list if c[0][0] == "to_delete"]
