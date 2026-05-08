@@ -141,9 +141,9 @@ function createGlowSprite(color: string): THREE.Sprite {
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2)
-  gradient.addColorStop(0, color + 'c0')
-  gradient.addColorStop(0.4, color + '60')
-  gradient.addColorStop(0.7, color + '18')
+  // Very tight, subtle glow core
+  gradient.addColorStop(0, color + '40')
+  gradient.addColorStop(0.4, color + '10')
   gradient.addColorStop(1, 'transparent')
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, size, size)
@@ -151,11 +151,12 @@ function createGlowSprite(color: string): THREE.Sprite {
   const spriteMaterial = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     depthWrite: false,
+    opacity: 0.4,
   })
   const sprite = new THREE.Sprite(spriteMaterial)
-  sprite.scale.set(22, 22, 1)
+  sprite.scale.set(10, 10, 1)
   return sprite
 }
 
@@ -189,11 +190,11 @@ function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>, 
   const material = new THREE.MeshPhysicalMaterial({
     color: displayColor,
     emissive: displayColor,
-    emissiveIntensity: 0.6,
-    roughness: 0.35,
-    metalness: 0.15,
-    clearcoat: 0.5,
-    clearcoatRoughness: 0.15,
+    emissiveIntensity: 0.3,
+    roughness: 0.5,
+    metalness: 0.05,
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.3,
   })
 
   const mesh = new THREE.Mesh(geometry, material)
