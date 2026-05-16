@@ -15,7 +15,7 @@ DEFAULT_SIMILAR_N = 10
 DEFAULT_SIMILAR_THRESHOLD = 0.75
 
 # Embedding
-EMBED_DIM = 256
+EMBED_DIM = 4096
 BATCH_SIZE = 50
 EMBED_PREFIX_DOC = ""
 EMBED_PREFIX_QUERY = "Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: "
