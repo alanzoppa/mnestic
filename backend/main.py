@@ -72,7 +72,7 @@ from models import (
 
 from shared import _is_safe_filename, find_note_file, _invalidate_source_id_cache, _sanitize_filename
 from watcher import NoteWatcher
-from config import NOTES_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, settings
+from config import NOTES_DIR, STATE_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, settings
 
 note_watcher: NoteWatcher | None = None
 
@@ -81,7 +81,7 @@ LOG_RETENTION_DAYS = 3
 
 
 def configure_logging() -> None:
-    log_dir = Path(__file__).resolve().parent.parent / "logs"
+    log_dir = Path(os.getenv("LOG_DIR", str(Path(__file__).resolve().parent.parent / "logs")))
     log_dir.mkdir(exist_ok=True)
 
     formatter = logging.Formatter(LOG_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
@@ -126,11 +126,11 @@ def _parse_date(date_str: str) -> float:
 async def lifespan(app: FastAPI):
     global note_watcher
     configure_logging()
-    note_watcher = NoteWatcher(NOTES_DIR, store, _invalidate_source_id_cache)
+    note_watcher = NoteWatcher(NOTES_DIR, STATE_DIR, store, _invalidate_source_id_cache)
     note_watcher.start()
     import json
 
-    state_file = Path(NOTES_DIR) / ".ingest_state.json"
+    state_file = Path(STATE_DIR) / ".ingest_state.json"
     try:
         state = json.loads(state_file.read_text()) if state_file.exists() else {}
         prev_provider = state.get("embed_provider", "")
@@ -171,6 +171,12 @@ store = NoteStore()
 reranker = Reranker()
 
 calendar_processor: Any = None
+
+
+@app.get("/api/health")
+async def health_check() -> dict:
+    """Lightweight health check — no ChromaDB query, no external calls."""
+    return {"status": "ok"}
 
 
 def get_calendar():
@@ -605,7 +611,7 @@ async def ingest(body: IngestRequest) -> dict:
 
     if body.full:
         store.reset()
-        state_file = Path(NOTES_DIR) / ".ingest_state.json"
+        state_file = Path(STATE_DIR) / ".ingest_state.json"
         if state_file.exists():
             state_file.unlink()
 
@@ -786,4 +792,4 @@ async def get_image(image_path: str):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=os.getenv("UVICORN_HOST", "127.0.0.1"), port=int(os.getenv("UVICORN_PORT", "8000")))

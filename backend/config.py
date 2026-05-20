@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     """Machine-specific paths loaded from .env with sensible defaults."""
 
     model_config = SettingsConfigDict(
-        env_file=str(Path(__file__).resolve().parent.parent / ".env"),
+        env_file=os.getenv("ENV_FILE", str(Path(__file__).resolve().parent.parent / ".env")),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -45,10 +45,24 @@ class Settings(BaseSettings):
             raise ValueError(f"embed_provider must be 'ollama' or 'openrouter', got '{v}'")
         return v
 
-    # Internal paths derived deterministically
+    # Internal paths derived deterministically (or from MNESTIC_DATA_DIR env)
     @property
     def repo_root(self) -> Path:
+        data_dir = os.getenv("MNESTIC_DATA_DIR")
+        if data_dir:
+            return Path(data_dir)
         return Path(__file__).resolve().parent.parent
+
+    @property
+    def state_dir(self) -> str:
+        """Directory for mutable state files (defaults to notes_dir for backward compat).
+
+        In Docker, notes_dir is read-only, so STATE_DIR must point to a writable path
+        (e.g. MNESTIC_DATA_DIR/chroma_data)."""
+        sdir = os.getenv("STATE_DIR")
+        if sdir:
+            return sdir
+        return self.notes_dir
 
     @property
     def notes_dir(self) -> str:
@@ -76,6 +90,7 @@ CALENDAR_EXPORT_PATH = settings.calendar_export_path
 PEOPLE_REGISTRY_PATH = settings.people_registry_path
 NOTES_SOURCE = settings.notes_source
 NOTES_DIR = settings.notes_dir
+STATE_DIR = settings.state_dir
 CHROMA_PERSIST_DIR = settings.chroma_persist_dir
 IMAGES_DIR = settings.images_dir
 DATA_DIR = settings.data_dir

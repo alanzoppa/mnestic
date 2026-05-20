@@ -16,7 +16,7 @@ from embed import embed_texts_sync, embed_texts_bulk, BATCH_SIZE
 from models import CalendarEvent
 from store import NoteStore
 from calendar_data import CalendarProcessor, CALENDAR_EXPORT_PATH, PEOPLE_REGISTRY_PATH
-from config import settings
+from config import settings, STATE_DIR
 
 logger = logging.getLogger("ingest")
 
@@ -180,8 +180,14 @@ def get_calendar_context(
 
 
 def ingest_notes(notes_dir: str, store: NoteStore, force: bool = False) -> dict:
+    """Ingest all markdown notes from *notes_dir* into ChromaDB.
+
+    State is persisted via STATE_DIR (from config), which defaults to notes_dir
+    for backward compatibility but can be overridden when notes_dir is read-only.
+    """
     notes_path = Path(notes_dir)
-    state_file = notes_path / ".ingest_state.json"
+    state_path = Path(STATE_DIR)
+    state_file = state_path / ".ingest_state.json"
 
     ingest_state = {"last_ingest": "", "files": {}}
     if not force:

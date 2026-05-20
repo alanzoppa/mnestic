@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import math
 import logging
 import httpx
@@ -25,7 +26,7 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
 def _l2_normalize(vec: list[float]) -> list[float]:

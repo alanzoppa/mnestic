@@ -34,10 +34,12 @@ class NoteWatcher:
     def __init__(
         self,
         notes_dir: str,
-        store: NoteStore,
+        state_dir: str | None = None,
+        store: NoteStore = None,  # type: ignore[assignment]
         invalidate_cache_callback: Callable[[], None] | None = None,
     ):
         self._notes_dir = Path(notes_dir)
+        self._state_dir = Path(state_dir) if state_dir else self._notes_dir
         self._store = store
         self._invalidate_cache = invalidate_cache_callback
         self._observer: Observer | None = None
@@ -76,7 +78,7 @@ class NoteWatcher:
     def _startup_scan(self) -> None:
         """After startup, index any files on disk that aren't tracked or have changed,
         and clean up orphaned entries in state / ChromaDB."""
-        state_file = self._notes_dir / ".ingest_state.json"
+        state_file = self._state_dir / ".ingest_state.json"
         tracked: dict = _read_state(state_file).get("files", {})
         queued = 0
         for md_file in self._notes_dir.iterdir():
@@ -320,7 +322,7 @@ class NoteWatcher:
             self._recent_events = self._recent_events[-STATUS_RECENT_MAX:]
 
     def _update_ingest_state(self, note_id: str, md_path: Path, chunk_count: int) -> None:
-        state_file = self._notes_dir / ".ingest_state.json"
+        state_file = self._state_dir / ".ingest_state.json"
         try:
             state = _read_state(state_file)
             mtime = md_path.stat().st_mtime
@@ -333,7 +335,7 @@ class NoteWatcher:
             logger.warning("Watcher: failed to update ingest state for %s: %s", note_id, e)
 
     def _remove_from_ingest_state(self, note_id: str) -> None:
-        state_file = self._notes_dir / ".ingest_state.json"
+        state_file = self._state_dir / ".ingest_state.json"
         try:
             state = _read_state(state_file)
             state.get("files", {}).pop(note_id, None)

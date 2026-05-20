@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+
+# Data (bind-mounted at runtime, not needed in image)
+chroma_data/
+logs/
+
+# Notes symlinks (bind-mounted at runtime)
+notes/
+images/
+data/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker
+docker-compose.yml
+
+# Misc
+.env
+*.md
+!backend/README.md
