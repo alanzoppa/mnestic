@@ -58,3 +58,9 @@ playwright-report/
 test-results/
 
 # External
+
+# Deployment configs with personal paths (use .example versions instead)
+deploy/mnestic-backend.service
+deploy/mnestic-frontend.service
+.github/workflows/deploy.yml
+docker-compose.yml

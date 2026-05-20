@@ -1,0 +1,19 @@
+# IMPORTANT: Customize User and paths for your host before installing.
+# The default assumes the project is at ~/Code/mnestic.
+# If your username or project path differs, edit WorkingDirectory and ExecStart.
+
+[Unit]
+Description=Mnestic FastAPI Backend
+After=network.target
+
+[Service]
+Type=simple
+# Change to your username:
+User=yourusername
+WorkingDirectory=%h/Code/mnestic/backend
+ExecStart=%h/Code/mnestic/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

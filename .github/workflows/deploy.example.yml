@@ -1,0 +1,18 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64, mnestic]
+    env:
+      # Customize PATH for your Node.js and tool installations:
+      PATH: /usr/local/bin:/usr/bin:/bin
+    steps:
+      - name: Deploy
+        working-directory: .
+        run: bash scripts/deploy.sh
