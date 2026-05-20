@@ -139,6 +139,7 @@ class NoteStore:
                     document=results["documents"][0][i] if results["documents"] else "",
                     metadata=NoteMetadata(**meta) if meta else NoteMetadata(),
                     distance=results["distances"][0][i] if results["distances"] else None,
+                    score=1.0 - results["distances"][0][i] if results["distances"] else 0.0,
                 )
             )
         return items
