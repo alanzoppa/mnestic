@@ -10,6 +10,10 @@ jobs:
   deploy:
     runs-on: [self-hosted, linux, x64, mnestic]
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Copy docker-compose.yml
+        run: cp /home/alan/Code/mnestic/docker-compose.yml docker-compose.yml
       - name: Deploy
-        working-directory: .
         run: bash scripts/deploy.sh
