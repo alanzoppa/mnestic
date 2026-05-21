@@ -73,13 +73,13 @@ ${docker_status}
 \`\`\`
 
 ### Instructions
-1. Read the error output above — identify the root cause (do NOT re-diagnose from scratch)
-2. Fix the issue in the mnestic repo (\`${REPO_ROOT}\`)
-3. Commit your fix and push to main
-4. The next CI push will retrigger this workflow
-5. If the fix is in deploy.yml or deploy.sh, the workflow fires on push automatically
-6. Verify by checking the CI run: \`gh run list --repo alanzoppa/mnestic --workflow=deploy.yml --limit 1\`
-7. After fixing, \`kanban_complete()\` with what you changed
+1. **Try re-running first** — many failures are transient (Docker daemon restart, network blip, disk space). Run \`cd ${REPO_ROOT} && bash scripts/deploy.sh\` — if it succeeds, \`kanban_complete()\` with 're-ran deploy.sh, succeeded'
+2. If re-run fails with the same error, read the error output above and identify the root cause
+3. Fix the issue in the mnestic repo (\`${REPO_ROOT}\`) — apply the fix, don't just document it
+4. Commit your fix and push to main
+5. Verify by checking the CI run: \`gh run list --repo alanzoppa/mnestic --workflow=deploy.yml --limit 1\`
+6. After fixing and verifying, \`kanban_complete()\` with what you changed
+7. Do NOT call \`kanban_complete()\` after only diagnosing — you must apply a fix OR re-run successfully
 "
 
   # Create kanban task (best-effort — don't let kanban failure mask the original error)
