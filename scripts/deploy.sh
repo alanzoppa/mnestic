@@ -3,11 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# In CI (GitHub Actions), the repo is already checked out at the right commit.
-# Outside CI (manual deploy), we need to git pull to get latest.
+# In CI (GitHub Actions), the workflow's working-directory already points to the
+# clone — no git pull needed. Use $PWD since GITHUB_WORKSPACE may differ.
 if [ -n "${GITHUB_ACTIONS:-}" ]; then
   IN_CI=true
-  REPO_ROOT="$GITHUB_WORKSPACE"
+  REPO_ROOT="$PWD"
 else
   IN_CI=false
   REPO_ROOT="$(git -C "$SCRIPT_DIR/.." rev-parse --show-toplevel)"
