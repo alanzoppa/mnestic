@@ -1,3 +1,4 @@
+# This is the public template. Copy to deploy.yml and customize for your runner.
 name: Deploy
 on:
   push:
@@ -8,11 +9,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    runs-on: [self-hosted, linux, x64, mnestic]
-    env:
-      # Customize PATH for your Node.js and tool installations:
-      PATH: /usr/local/bin:/usr/bin:/bin
+    runs-on: [self-hosted, linux, x64]
     steps:
+      - uses: actions/checkout@v4
+      - name: Copy docker-compose.yml
+        run: cp /path/to/your/docker-compose.yml docker-compose.yml
       - name: Deploy
-        working-directory: .
         run: bash scripts/deploy.sh

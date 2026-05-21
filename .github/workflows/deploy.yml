@@ -9,12 +9,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, linux, x64, mnestic]
+    env:
+      PATH: /home/alan/.nvm/versions/node/v24.13.0/bin:/home/alan/.local/bin:/home/alan/bin:/usr/local/bin:/usr/bin:/bin
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          clean: false
-      - name: Copy docker-compose.yml
-        run: cp /home/alan/Code/mnestic/docker-compose.yml docker-compose.yml
       - name: Deploy
+        working-directory: /home/alan/Code/mnestic
         run: bash scripts/deploy.sh
