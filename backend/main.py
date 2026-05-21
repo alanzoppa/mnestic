@@ -72,7 +72,7 @@ from models import (
 
 from shared import _is_safe_filename, find_note_file, _invalidate_source_id_cache, _sanitize_filename
 from watcher import NoteWatcher
-from config import NOTES_DIR, STATE_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, settings
+from config import NOTES_DIR, STATE_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, MNESTIC_LITE, settings
 
 note_watcher: NoteWatcher | None = None
 
@@ -126,8 +126,11 @@ def _parse_date(date_str: str) -> float:
 async def lifespan(app: FastAPI):
     global note_watcher
     configure_logging()
-    note_watcher = NoteWatcher(NOTES_DIR, STATE_DIR, store, _invalidate_source_id_cache)
-    note_watcher.start()
+    if not MNESTIC_LITE:
+        note_watcher = NoteWatcher(NOTES_DIR, STATE_DIR, store, _invalidate_source_id_cache)
+        note_watcher.start()
+    else:
+        logger.info("MNESTIC_LITE=1 — skipping watcher startup scan")
     import json
 
     state_file = Path(STATE_DIR) / ".ingest_state.json"

@@ -84,6 +84,10 @@ class Settings(BaseSettings):
 # Module-level singleton
 settings = Settings()
 
+# Lite mode: skip watcher startup scan (no embedding calls, low CPU/RAM)
+_RAW = os.environ.get("MNESTIC_LITE", "0").strip().lower()
+MNESTIC_LITE = _RAW in ("1", "true", "yes")
+
 # Flat re-exports for backward compatibility
 REPO_ROOT = settings.repo_root
 CALENDAR_EXPORT_PATH = settings.calendar_export_path
