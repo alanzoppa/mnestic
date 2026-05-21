@@ -13,6 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          clean: false
       - name: Copy docker-compose.yml
         run: cp /home/alan/Code/mnestic/docker-compose.yml docker-compose.yml
       - name: Deploy
