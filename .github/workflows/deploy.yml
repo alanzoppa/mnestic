@@ -12,6 +12,9 @@ jobs:
     env:
       PATH: /home/alan/.nvm/versions/node/v24.13.0/bin:/home/alan/.local/bin:/home/alan/bin:/usr/local/bin:/usr/bin:/bin
     steps:
+      - name: Pull latest
+        working-directory: /home/alan/Code/mnestic
+        run: git pull --rebase
       - name: Deploy
         working-directory: /home/alan/Code/mnestic
         run: bash scripts/deploy.sh
