@@ -121,6 +121,32 @@ Uses Ollama Cloud's `kimi-k2.5:cloud` model. Re-run the Step 4 ingest after capt
 
 ## Development
 
+### Containerized development
+
+For a self-contained development environment using synthetic test data instead of
+live personal notes:
+
+1. Generate test data:
+   ```bash
+   make seed
+   ```
+2. Start the dev stack:
+   ```bash
+   docker compose -f docker-compose.dev.yml up -d
+   ```
+   This brings up the backend on http://localhost:8000 and the frontend on
+   http://localhost:3001.
+3. Point environment variables at the dev containers if you want to run the
+   Next.js dev server outside Docker:
+   ```bash
+   # frontend/.env.local
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api
+   ```
+
+The dev compose file (`docker-compose.dev.yml`) mounts `./test_data/` so the
+watcher is enabled (`MNESTIC_LITE=0`) and runs the full indexing pipeline on
+startup.
+
 ### Backend API
 
 The FastAPI backend exposes these endpoints:

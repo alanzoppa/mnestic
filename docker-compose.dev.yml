@@ -1,0 +1,63 @@
+services:
+  mnestic-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mnestic-backend:latest
+    container_name: mnestic-backend-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_data:/data/chroma_data
+      - ./test_data/notes/:/data/notes:ro
+      - ./test_data/images/:/data/images:ro
+      - ./test_data/data/:/data/data:ro
+      - ./logs:/data/logs
+      - ./.env:/app/.env:ro
+    environment:
+      - MNESTIC_DATA_DIR=/data
+      - ENV_FILE=/app/.env
+      - LOG_DIR=/data/logs
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - STATE_DIR=/data/chroma_data
+      - UVICORN_HOST=0.0.0.0
+      - MNESTIC_LITE=0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    networks:
+      - mnestic-dev
+
+  mnestic-frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+      args:
+        API_REWRITE_TARGET: http://mnestic-backend:8000/api/:path*
+    image: mnestic-frontend:latest
+    container_name: mnestic-frontend-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - API_REWRITE_TARGET=http://mnestic-backend:8000/api/:path*
+    depends_on:
+      - mnestic-backend
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - mnestic-dev
+
+networks:
+  mnestic-dev:
+    driver: bridge
