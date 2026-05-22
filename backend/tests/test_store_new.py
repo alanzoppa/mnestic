@@ -5,6 +5,7 @@ from models import NoteMetadata, NoteResult, NoteListItem, SeriesInfo, PersonWit
 import pytest
 
 
+@pytest.mark.integration
 def test_get_series_list_empty(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -17,6 +18,7 @@ def test_get_series_list_empty(tmp_store):
     assert len(result) == 0
 
 
+@pytest.mark.integration
 def test_get_series_list_with_series(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -37,6 +39,7 @@ def test_get_series_list_with_series(tmp_store):
     assert result[1].count == 1
 
 
+@pytest.mark.integration
 def test_get_notes_by_series(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -55,6 +58,7 @@ def test_get_notes_by_series(tmp_store):
     assert result[1].title == "Old Standup"
 
 
+@pytest.mark.integration
 def test_get_notes_by_series_respects_limit(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -71,6 +75,7 @@ def test_get_notes_by_series_respects_limit(tmp_store):
     assert len(result) == 2
 
 
+@pytest.mark.integration
 def test_get_people_by_query(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -88,6 +93,7 @@ def test_get_people_by_query(tmp_store):
     assert result[0].frequency == 2
 
 
+@pytest.mark.integration
 def test_get_people_by_query_no_match(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -100,6 +106,7 @@ def test_get_people_by_query_no_match(tmp_store):
     assert len(result) == 0
 
 
+@pytest.mark.integration
 def test_get_people_by_query_all(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -115,6 +122,7 @@ def test_get_people_by_query_all(tmp_store):
     assert len(result) == 3
 
 
+@pytest.mark.integration
 def test_get_glossary_entries(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -132,6 +140,7 @@ def test_get_glossary_entries(tmp_store):
     assert result[0].frequency >= 2
 
 
+@pytest.mark.integration
 def test_get_notes_since(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -148,6 +157,7 @@ def test_get_notes_since(tmp_store):
     assert result[0].title == "New"
 
 
+@pytest.mark.integration
 def test_get_notes_since_future(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -160,6 +170,7 @@ def test_get_notes_since_future(tmp_store):
     assert len(result) == 0
 
 
+@pytest.mark.integration
 def test_get_notes_since_bad_timestamp(tmp_store):
     result = tmp_store.get_notes_since("not-a-date")
     assert len(result) == 0

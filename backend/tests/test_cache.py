@@ -58,6 +58,7 @@ def app_client(tmp_path):
         yield client, notes_dir_str
 
 
+@pytest.mark.unit
 def test_all_notes_found_by_source_id(app_client):
     c, notes_dir = app_client
     from shared import find_note_file, _source_id_cache
@@ -73,6 +74,7 @@ def test_all_notes_found_by_source_id(app_client):
         assert os.path.exists(result)
 
 
+@pytest.mark.unit
 def test_apple_notes_source_id_with_colon_slash(app_client):
     c, notes_dir = app_client
     from shared import find_note_file
@@ -83,6 +85,7 @@ def test_apple_notes_source_id_with_colon_slash(app_client):
     assert os.path.basename(result) == "Apple_Note_0.md"
 
 
+@pytest.mark.unit
 def test_invalidation_then_find_rebuilds_cache(app_client):
     c, notes_dir = app_client
     import shared
@@ -110,6 +113,7 @@ def test_invalidation_then_find_rebuilds_cache(app_client):
     assert len(shared._source_id_cache) == 5
 
 
+@pytest.mark.unit
 def test_evernote_source_id(app_client):
     c, notes_dir = app_client
     from shared import find_note_file

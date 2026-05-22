@@ -115,6 +115,7 @@ def populated_store_with_calendar(populated_store, tmp_path):
     return populated_store, cal
 
 
+@pytest.mark.unit
 def test_search_notes_mocked_embedding(populated_store):
     with patch("embed.embed_query_sync", return_value=[0.15] * 256):
         mcp = setup_mcp(populated_store, calendar_processor=None)
@@ -128,6 +129,7 @@ def test_search_notes_mocked_embedding(populated_store):
     assert "Meeting Notes" in titles
 
 
+@pytest.mark.unit
 def test_get_note_found(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("get_note", {"note_id": "nid1"}))
@@ -145,6 +147,7 @@ def test_get_note_found(populated_store):
     assert "similar_notes" in data
 
 
+@pytest.mark.unit
 def test_get_note_not_found(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("get_note", {"note_id": "nonexistent"}))
@@ -152,6 +155,7 @@ def test_get_note_not_found(populated_store):
     assert _tool_text(result) is None
 
 
+@pytest.mark.unit
 def test_get_recent_notes_filter_and_sort(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("get_recent_notes", {"days": 50}))
@@ -165,6 +169,7 @@ def test_get_recent_notes_filter_and_sort(populated_store):
     assert dates == sorted(dates, reverse=True)
 
 
+@pytest.mark.unit
 def test_list_tags_counts_and_cooccur(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("list_tags", {}))
@@ -181,6 +186,7 @@ def test_list_tags_counts_and_cooccur(populated_store):
     assert ("meeting", "work") in co
 
 
+@pytest.mark.unit
 def test_get_notes_by_tag_exact_match(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("get_notes_by_tag", {"tag": "meeting", "limit": 10}))
@@ -194,6 +200,7 @@ def test_get_notes_by_tag_exact_match(populated_store):
     assert "Project Roadmap" not in titles
 
 
+@pytest.mark.unit
 def test_get_stats(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("get_stats", {}))
@@ -207,6 +214,7 @@ def test_get_stats(populated_store):
     assert data["date_range"][0] is not None
 
 
+@pytest.mark.unit
 def test_get_calendar_events_empty_with_none_processor(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.call_tool("get_calendar_events", {}))
@@ -217,6 +225,7 @@ def test_get_calendar_events_empty_with_none_processor(populated_store):
     assert data["events"] == []
 
 
+@pytest.mark.unit
 def test_find_similar_notes(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     # "nid1" is a logical note_id (not the raw chunk ID), so this exercises
@@ -232,6 +241,7 @@ def test_find_similar_notes(populated_store):
     assert all("score" in n for n in data["notes"])
 
 
+@pytest.mark.unit
 def test_resource_stats(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.read_resource("notes://stats"))
@@ -241,6 +251,7 @@ def test_resource_stats(populated_store):
     assert "Total tags:" in text
 
 
+@pytest.mark.unit
 def test_resource_recent(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.read_resource("notes://recent"))
@@ -250,6 +261,7 @@ def test_resource_recent(populated_store):
     assert "Meeting Notes" in text
 
 
+@pytest.mark.unit
 def test_resource_recent_days(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.read_resource("notes://recent/50"))
@@ -262,6 +274,7 @@ def test_resource_recent_days(populated_store):
     assert "Personal Journal" not in text
 
 
+@pytest.mark.unit
 def test_resource_note(populated_store, tmp_path, monkeypatch):
     notes_dir = tmp_path / "notes"
     notes_dir.mkdir()
@@ -279,6 +292,7 @@ def test_resource_note(populated_store, tmp_path, monkeypatch):
     assert "This is the body" in text
 
 
+@pytest.mark.unit
 def test_resource_tags(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.read_resource("notes://tags"))
@@ -289,6 +303,7 @@ def test_resource_tags(populated_store):
 
 
 @patch("embed.embed_query_sync", return_value=[0.15] * 256)
+@pytest.mark.unit
 def test_resource_search(mock_embed, populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.read_resource("notes://search/meeting"))
@@ -298,6 +313,7 @@ def test_resource_search(mock_embed, populated_store):
     assert "Meeting Notes" in text
 
 
+@pytest.mark.unit
 def test_prompt_summarize_recent(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.render_prompt("summarize_recent", {"days": "14"}))
@@ -307,6 +323,7 @@ def test_prompt_summarize_recent(populated_store):
     assert "last 14 days" in msg.content.text
 
 
+@pytest.mark.unit
 def test_prompt_find_connections(populated_store):
     mcp = setup_mcp(populated_store, calendar_processor=None)
     result = _run(mcp.render_prompt("find_connections", {"person": "Alice"}))

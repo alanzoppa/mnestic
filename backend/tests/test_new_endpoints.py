@@ -64,6 +64,7 @@ def app_client():
         yield client, mock_store
 
 
+@pytest.mark.unit
 def test_get_series_empty(app_client):
     c, mock_store = app_client
     mock_store.get_series_list.return_value = []
@@ -73,6 +74,7 @@ def test_get_series_empty(app_client):
     assert data["series"] == []
 
 
+@pytest.mark.unit
 def test_get_series_with_data(app_client):
     c, mock_store = app_client
     mock_store.get_series_list.return_value = [
@@ -87,6 +89,7 @@ def test_get_series_with_data(app_client):
     assert data["series"][0]["count"] == 45
 
 
+@pytest.mark.unit
 def test_get_series_notes(app_client):
     c, mock_store = app_client
     mock_store.get_notes_by_series.return_value = [
@@ -101,6 +104,7 @@ def test_get_series_notes(app_client):
     mock_store.get_notes_by_series.assert_called_with("weekly_standup", limit=10)
 
 
+@pytest.mark.unit
 def test_search_similar_text(app_client):
     c, mock_store = app_client
     mock_store.search_notes.return_value = [
@@ -114,6 +118,7 @@ def test_search_similar_text(app_client):
     assert data["results"][0]["type"] == "note"
 
 
+@pytest.mark.unit
 def test_search_similar_text_empty(app_client):
     c, mock_store = app_client
     res = c.post("/api/search/similar", json={"text": "", "n": 5})
@@ -122,6 +127,7 @@ def test_search_similar_text_empty(app_client):
     assert data["results"] == []
 
 
+@pytest.mark.unit
 def test_get_people_with_q(app_client):
     c, mock_store = app_client
     mock_store.get_people_by_query.return_value = [
@@ -137,6 +143,7 @@ def test_get_people_with_q(app_client):
     mock_store.get_people_by_query.assert_called_with(q="alice")
 
 
+@pytest.mark.unit
 def test_get_people_without_q(app_client):
     c, mock_store = app_client
     mock_store.get_people_by_query.return_value = []
@@ -146,6 +153,7 @@ def test_get_people_without_q(app_client):
     assert "people" in data
 
 
+@pytest.mark.unit
 def test_get_glossary(app_client):
     c, mock_store = app_client
     mock_store.get_glossary_entries.return_value = [
@@ -160,6 +168,7 @@ def test_get_glossary(app_client):
     mock_store.get_glossary_entries.assert_called_with(q="zendesk")
 
 
+@pytest.mark.unit
 def test_get_glossary_no_query(app_client):
     c, mock_store = app_client
     mock_store.get_glossary_entries.return_value = []
@@ -170,6 +179,7 @@ def test_get_glossary_no_query(app_client):
     mock_store.get_glossary_entries.assert_called_with(q="")
 
 
+@pytest.mark.unit
 def test_get_notes_since(app_client):
     c, mock_store = app_client
     mock_store.get_notes_since.return_value = [
@@ -184,6 +194,7 @@ def test_get_notes_since(app_client):
     mock_store.get_notes_since.assert_called_with("2024-03-01T00:00:00Z", limit=500)
 
 
+@pytest.mark.unit
 def test_get_notes_since_no_param(app_client):
     c, mock_store = app_client
     res = c.get("/api/notes")
@@ -193,6 +204,7 @@ def test_get_notes_since_no_param(app_client):
     assert data["count"] == 0
 
 
+@pytest.mark.unit
 def test_get_notes_since_does_not_block_detail(app_client):
     c, mock_store = app_client
     mock_store.get_note.return_value = NoteResult(
@@ -205,6 +217,7 @@ def test_get_notes_since_does_not_block_detail(app_client):
     assert data["id"] == "note-001"
 
 
+@pytest.mark.unit
 def test_watcher_status_has_recent_events(app_client):
     c, mock_store = app_client
     res = c.get("/api/watcher/status")

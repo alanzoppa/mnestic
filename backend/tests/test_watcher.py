@@ -25,7 +25,7 @@ def setup_watcher(tmp_path):
     def _invalidate():
         cache_called.append(1)
 
-    w = NoteWatcher(str(notes_dir), mock_store, _invalidate)
+    w = NoteWatcher(str(notes_dir), store=mock_store, invalidate_cache_callback=_invalidate)
     return w, notes_dir, mock_store, cache_called
 
 
@@ -45,6 +45,7 @@ def write_note(path, title="Test", source_id="note1", body="Hello"):
     path.write_text(content, encoding="utf-8")
 
 
+@pytest.mark.integration
 def test_status_initial(setup_watcher):
     w, *_ = setup_watcher
     s = w.status()
@@ -54,6 +55,7 @@ def test_status_initial(setup_watcher):
     assert s["recent_events"] == []
 
 
+@pytest.mark.integration
 def test_build_filename_map(setup_watcher):
     w, notes_dir, *_ = setup_watcher
     write_note(notes_dir / "test.md")
@@ -61,6 +63,7 @@ def test_build_filename_map(setup_watcher):
     assert w._filename_to_note_id.get("test.md") == "note1"
 
 
+@pytest.mark.integration
 def test_handle_upsert(setup_watcher):
     w, notes_dir, mock_store, *_ = setup_watcher
     write_note(notes_dir / "test.md")
@@ -71,6 +74,7 @@ def test_handle_upsert(setup_watcher):
     assert w._filename_to_note_id.get("test.md") == "note1"
 
 
+@pytest.mark.integration
 def test_handle_upsert_no_chunks_skips(setup_watcher):
     w, notes_dir, mock_store, *_ = setup_watcher
     write_note(notes_dir / "test.md", body="")
@@ -80,6 +84,7 @@ def test_handle_upsert_no_chunks_skips(setup_watcher):
     mock_store.add_notes.assert_not_called()
 
 
+@pytest.mark.integration
 def test_handle_delete(setup_watcher):
     w, notes_dir, mock_store, cache_called = setup_watcher
     w._filename_to_note_id = {"test.md": "note1"}
@@ -92,18 +97,21 @@ def test_handle_delete(setup_watcher):
     assert "note1" not in data.get("files", {})
 
 
+@pytest.mark.integration
 def test_on_event_filters_non_md(setup_watcher):
     w, *_ = setup_watcher
     w._on_event("modified", "/some/path/photo.jpg")
     assert len(w._pending) == 0
 
 
+@pytest.mark.integration
 def test_on_event_filters_ingest_state(setup_watcher):
     w, *_ = setup_watcher
     w._on_event("modified", "/some/path/.ingest_state.json")
     assert len(w._pending) == 0
 
 
+@pytest.mark.integration
 def test_on_event_debounce(setup_watcher):
     w, *_ = setup_watcher
     w._on_event("modified", "/some/path/test.md")
@@ -112,6 +120,7 @@ def test_on_event_debounce(setup_watcher):
     assert len(w._pending) == 1
 
 
+@pytest.mark.integration
 def test_on_deleted_immediate(setup_watcher):
     w, _, mock_store, cache_called = setup_watcher
     w._filename_to_note_id = {"test.md": "note1"}
@@ -121,6 +130,7 @@ def test_on_deleted_immediate(setup_watcher):
     assert len(cache_called) == 1
 
 
+@pytest.mark.integration
 def test_process_pending_ready(setup_watcher):
     w, notes_dir, mock_store, *_ = setup_watcher
     write_note(notes_dir / "test.md")
@@ -136,6 +146,7 @@ def test_process_pending_ready(setup_watcher):
     assert "test.md" not in w._pending
 
 
+@pytest.mark.integration
 def test_process_pending_batch(setup_watcher):
     w, notes_dir, mock_store, *_ = setup_watcher
     write_note(notes_dir / "a.md", source_id="a", title="A")
@@ -156,6 +167,7 @@ def test_process_pending_batch(setup_watcher):
     assert "b.md" not in w._pending
 
 
+@pytest.mark.integration
 def test_record_event_roll(setup_watcher):
     w, *_ = setup_watcher
     for i in range(25):
@@ -165,6 +177,7 @@ def test_record_event_roll(setup_watcher):
     assert w._recent_events[-1]["filename"] == "n24.md"
 
 
+@pytest.mark.integration
 def test_update_ingest_state(setup_watcher):
     w, notes_dir, *_ = setup_watcher
     md_path = notes_dir / "test.md"
@@ -174,6 +187,7 @@ def test_update_ingest_state(setup_watcher):
     assert state["files"]["note1"]["chunks"] == 2
 
 
+@pytest.mark.integration
 def test_remove_note_id(setup_watcher):
     w, notes_dir, *_ = setup_watcher
     state_file = notes_dir / ".ingest_state.json"
@@ -183,6 +197,7 @@ def test_remove_note_id(setup_watcher):
     assert "note1" not in state.get("files", {})
 
 
+@pytest.mark.integration
 def test_start_stop(setup_watcher):
     w, *_ = setup_watcher
     assert w.running is False
@@ -192,6 +207,7 @@ def test_start_stop(setup_watcher):
     assert w.running is False
 
 
+@pytest.mark.integration
 def test_startup_scan_queues_untracked(setup_watcher):
     w, notes_dir, *_ = setup_watcher
     write_note(notes_dir / "untracked.md", source_id="untracked", body="Hello world")
@@ -200,6 +216,7 @@ def test_startup_scan_queues_untracked(setup_watcher):
     assert w._filename_to_note_id.get("untracked.md") == "untracked"
 
 
+@pytest.mark.integration
 def test_startup_scan_queues_stale_mtime(setup_watcher):
     w, notes_dir, *_ = setup_watcher
     write_note(notes_dir / "stale.md", source_id="stale", body="Content")
@@ -209,6 +226,7 @@ def test_startup_scan_queues_stale_mtime(setup_watcher):
     assert "stale.md" in w._pending
 
 
+@pytest.mark.integration
 def test_startup_scan_skips_up_to_date(setup_watcher):
     w, notes_dir, *_ = setup_watcher
     write_note(notes_dir / "fresh.md", source_id="fresh", body="Content")
@@ -220,6 +238,7 @@ def test_startup_scan_skips_up_to_date(setup_watcher):
     assert "fresh.md" not in w._pending
 
 
+@pytest.mark.integration
 def test_startup_scan_cleans_state_orphans(setup_watcher):
     w, notes_dir, mock_store, cache_called = setup_watcher
     w._filename_to_note_id = {"existing.md": "existing"}
@@ -232,6 +251,7 @@ def test_startup_scan_cleans_state_orphans(setup_watcher):
     assert len(cache_called) == 1
 
 
+@pytest.mark.integration
 def test_startup_scan_cleans_chroma_orphans(setup_watcher):
     w, notes_dir, mock_store, cache_called = setup_watcher
     w._filename_to_note_id = {"existing.md": "existing"}
@@ -244,6 +264,7 @@ def test_startup_scan_cleans_chroma_orphans(setup_watcher):
     assert len(cache_called) == 1
 
 
+@pytest.mark.integration
 def test_on_moved_queues_upsert(setup_watcher):
     w, notes_dir, mock_store, *_ = setup_watcher
     write_note(notes_dir / "moved.md", source_id="moved", body="Moved content")
@@ -251,6 +272,7 @@ def test_on_moved_queues_upsert(setup_watcher):
     assert "moved.md" in w._pending
 
 
+@pytest.mark.integration
 def test_on_moved_debounce(setup_watcher):
     w, *_ = setup_watcher
     w._on_event("moved", "/some/path/moved.md")
@@ -260,6 +282,7 @@ def test_on_moved_debounce(setup_watcher):
     assert len(w._pending) == 1
 
 
+@pytest.mark.integration
 def test_start_resolves_symlink(tmp_path):
     real_dir = tmp_path / "real_notes"
     real_dir.mkdir()
@@ -273,7 +296,7 @@ def test_start_resolves_symlink(tmp_path):
     mock_store.add_notes = MagicMock()
     mock_store.get_unique_notes = MagicMock(return_value={"ids": [], "metadatas": []})
 
-    w = NoteWatcher(str(link_dir), mock_store, None)
+    w = NoteWatcher(str(link_dir), store=mock_store, invalidate_cache_callback=None)
 
     with patch("watcher.Observer.schedule") as mock_schedule:
         w.start()
@@ -286,6 +309,8 @@ def test_start_resolves_symlink(tmp_path):
     w.stop()
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 def test_full_cycle_multiple_files_batch(setup_watcher):
     w, notes_dir, mock_store, _ = setup_watcher
     from watcher import DEBOUNCE_SECONDS
@@ -316,6 +341,8 @@ def test_full_cycle_multiple_files_batch(setup_watcher):
     w.stop()
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 def test_git_pull_scenario(setup_watcher):
     w, notes_dir, mock_store, _ = setup_watcher
     from watcher import DEBOUNCE_SECONDS

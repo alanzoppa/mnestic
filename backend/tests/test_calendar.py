@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from calendar_data import CalendarProcessor
 
 
+@pytest.mark.unit
 def test_load_missing_calendar_graceful():
     cal = CalendarProcessor("/nonexistent/calendar.json", "/nonexistent/registry.json")
     cal.load()
@@ -18,6 +19,7 @@ def test_load_missing_calendar_graceful():
     assert events == []
 
 
+@pytest.mark.unit
 def test_load_missing_registry_graceful(tmp_path):
     cal_path = tmp_path / "calendar.json"
     cal_path.write_text('{"events": []}')
@@ -27,32 +29,39 @@ def test_load_missing_registry_graceful(tmp_path):
     assert cal._alias_map == {}
 
 
+@pytest.mark.unit
 def test_load(loaded_calendar):
     assert loaded_calendar._events is not None
 
 
+@pytest.mark.unit
 def test_normalize_name_alias(loaded_calendar):
     assert loaded_calendar.normalize_name("Alice") == "Alice Smith"
 
 
+@pytest.mark.unit
 def test_normalize_name_canonical(loaded_calendar):
     assert loaded_calendar.normalize_name("Alice Smith") == "Alice Smith"
 
 
+@pytest.mark.unit
 def test_normalize_name_unknown(loaded_calendar):
     assert loaded_calendar.normalize_name("Unknown Person") == "Unknown Person"
 
 
+@pytest.mark.unit
 def test_normalize_name_empty(loaded_calendar):
     assert loaded_calendar.normalize_name("") == ""
 
 
+@pytest.mark.unit
 def test_process_events_count(loaded_calendar):
     events = loaded_calendar.process_events()
     assert len(events) == 3
     assert all(isinstance(e, CalendarEvent) for e in events)
 
 
+@pytest.mark.unit
 def test_process_events_fields(loaded_calendar):
     events = loaded_calendar.process_events()
     first = events[0]
@@ -66,6 +75,7 @@ def test_process_events_fields(loaded_calendar):
     assert hasattr(first, "attendee_names")
 
 
+@pytest.mark.unit
 def test_process_events_all_day(loaded_calendar):
     events = loaded_calendar.process_events()
     all_day = next(e for e in events if e.id == "evt003")
@@ -73,17 +83,20 @@ def test_process_events_all_day(loaded_calendar):
     assert "T00:00:00" in all_day.start
 
 
+@pytest.mark.unit
 def test_get_events_for_date(loaded_calendar):
     events = loaded_calendar.get_events_for_date("2019-12-09")
     assert len(events) == 1
     assert events[0].summary == "1:1 with Alice"
 
 
+@pytest.mark.unit
 def test_get_events_for_participant(loaded_calendar):
     events = loaded_calendar.get_events_for_participant("Alice")
     assert len(events) >= 1
 
 
+@pytest.mark.unit
 def test_get_embedding_text(loaded_calendar):
     events = loaded_calendar.process_events()
     first = events[0]
@@ -94,6 +107,7 @@ def test_get_embedding_text(loaded_calendar):
     assert "Conference Room A" in text
 
 
+@pytest.mark.unit
 def test_get_events_for_date_matches_notes(tmp_store, sample_calendar):
     """Calendar events link to notes by matching the date metadata field."""
     calendar_path, registry_path = sample_calendar
@@ -118,6 +132,7 @@ def test_get_events_for_date_matches_notes(tmp_store, sample_calendar):
     assert date_notes["metadatas"][0]["title"] == "Note A"
 
 
+@pytest.mark.unit
 def test_process_events_cached(loaded_calendar):
     """process_events caches its output; subsequent calls return the same list."""
     first = loaded_calendar.process_events()

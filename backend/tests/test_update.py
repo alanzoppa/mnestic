@@ -65,6 +65,7 @@ def app_client_with_files(tmp_path):
         yield client, mock_store, notes_dir_str
 
 
+@pytest.mark.unit
 def test_update_note_title(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -94,6 +95,7 @@ def test_update_note_title(app_client_with_files):
     mock_store.add_notes.assert_called_once()
 
 
+@pytest.mark.unit
 def test_update_note_content(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -104,6 +106,7 @@ def test_update_note_content(app_client_with_files):
     mock_store.add_notes.assert_called_once()
 
 
+@pytest.mark.unit
 def test_update_content_writes_to_file(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -121,6 +124,7 @@ def test_update_content_writes_to_file(app_client_with_files):
     assert found, "Content PATCH should write new body to the markdown file"
 
 
+@pytest.mark.unit
 def test_reingest_deletes_old_chunks_after_embedding(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -134,6 +138,7 @@ def test_reingest_deletes_old_chunks_after_embedding(app_client_with_files):
     assert call_order == ["delete", "add"], f"delete should happen after embedding succeeds, got {call_order}"
 
 
+@pytest.mark.unit
 def test_reingest_preserves_chunks_on_embedding_failure(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -145,6 +150,7 @@ def test_reingest_preserves_chunks_on_embedding_failure(app_client_with_files):
     mock_store.add_notes.assert_not_called()
 
 
+@pytest.mark.unit
 def test_update_note_tags(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -159,6 +165,7 @@ def test_update_note_tags(app_client_with_files):
             assert "new-tag" in post.metadata["tags"]
 
 
+@pytest.mark.unit
 def test_update_note_participants(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -171,6 +178,7 @@ def test_update_note_participants(app_client_with_files):
             assert "Bob" in post.metadata["participants"]
 
 
+@pytest.mark.unit
 def test_update_note_no_fields(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -178,6 +186,7 @@ def test_update_note_no_fields(app_client_with_files):
     assert res.status_code == 422
 
 
+@pytest.mark.unit
 def test_update_note_not_found(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -188,6 +197,7 @@ def test_update_note_not_found(app_client_with_files):
     assert res.status_code == 404
 
 
+@pytest.mark.unit
 def test_update_note_modifies_file(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -204,6 +214,7 @@ def test_update_note_modifies_file(app_client_with_files):
     assert found_renamed
 
 
+@pytest.mark.unit
 def test_reingest_chunks_contain_updated_content(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -217,6 +228,7 @@ def test_reingest_chunks_contain_updated_content(app_client_with_files):
     assert any(new_body in chunk for chunk in chunks), f"Updated content not found in reingested chunks: {chunks}"
 
 
+@pytest.mark.unit
 def test_reingest_metadata_has_comma_separated_tags(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -231,6 +243,7 @@ def test_reingest_metadata_has_comma_separated_tags(app_client_with_files):
         assert "alpha" not in md["tags"] or "," in md["tags"], "Tags should not be an array in ChromaDB metadata"
 
 
+@pytest.mark.unit
 def test_reingest_metadata_has_comma_separated_participants(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -244,6 +257,7 @@ def test_reingest_metadata_has_comma_separated_participants(app_client_with_file
         assert md["participants"] == "Alice,Bob,Carol", f"Participants should be comma-serialized, got: {md['participants']}"
 
 
+@pytest.mark.unit
 def test_reingest_chunk_text_includes_updated_title(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -256,6 +270,7 @@ def test_reingest_chunk_text_includes_updated_title(app_client_with_files):
     assert chunks[0].startswith("Title: Brand New Title"), f"First chunk should contain updated title, got: {chunks[0][:80]}"
 
 
+@pytest.mark.unit
 def test_reingest_uses_correct_note_id(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -273,6 +288,7 @@ def test_reingest_uses_correct_note_id(app_client_with_files):
         assert "x-coredata---test-note-1" in cid
 
 
+@pytest.mark.unit
 def test_title_rename_creates_new_file_and_removes_old(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -288,6 +304,7 @@ def test_title_rename_creates_new_file_and_removes_old(app_client_with_files):
     assert "Renamed Note File.md" in added
 
 
+@pytest.mark.unit
 def test_combined_update_propagates_all_fields(app_client_with_files):
     c, mock_store, notes_dir = app_client_with_files
 
@@ -310,6 +327,7 @@ def test_combined_update_propagates_all_fields(app_client_with_files):
     assert metadatas[0]["title"] == "Combined Update"
 
 
+@pytest.mark.unit
 def test_get_people(app_client_with_files, tmp_path):
     c, mock_store, notes_dir = app_client_with_files
 

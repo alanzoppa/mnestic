@@ -6,6 +6,11 @@ requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "unit: Pure logic with mocks (fast)",
+    "integration: Tests requiring real ChromaDB or embedding calls (slower)",
+    "slow: Tests > 2 seconds",
+]
 
 [tool.ruff]
 line-length = 140

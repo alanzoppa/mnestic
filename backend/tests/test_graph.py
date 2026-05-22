@@ -62,6 +62,7 @@ def app_client_with_store(tmp_path):
         yield client, store
 
 
+@pytest.mark.integration
 def test_graph_empty(app_client):
     c, _ = app_client
     res = c.get("/api/graph")
@@ -70,6 +71,7 @@ def test_graph_empty(app_client):
     assert data == {"nodes": [], "edges": []}
 
 
+@pytest.mark.integration
 def test_graph_single_note(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -85,6 +87,7 @@ def test_graph_single_note(app_client_with_store):
     assert data["edges"] == []
 
 
+@pytest.mark.integration
 def test_graph_two_similar_notes(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -104,6 +107,7 @@ def test_graph_two_similar_notes(app_client_with_store):
     assert data["edges"][0]["weight"] >= 0.75
 
 
+@pytest.mark.integration
 def test_graph_same_note_id_skip(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -122,6 +126,7 @@ def test_graph_same_note_id_skip(app_client_with_store):
     assert len(data["edges"]) == 0
 
 
+@pytest.mark.integration
 def test_graph_tag_filter(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -141,6 +146,7 @@ def test_graph_tag_filter(app_client_with_store):
         assert "work" in node.get("tags", [])
 
 
+@pytest.mark.integration
 def test_graph_threshold_behavior(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -161,6 +167,7 @@ def test_graph_threshold_behavior(app_client_with_store):
     assert len(res_low.json()["edges"]) == 1
 
 
+@pytest.mark.integration
 def test_graph_response_schema(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -190,6 +197,7 @@ def test_graph_response_schema(app_client_with_store):
         assert "weight" in edge
 
 
+@pytest.mark.integration
 def test_search_graph_empty(app_client_with_store):
     c, store = app_client_with_store
     res = c.get("/api/search-graph?query=test")
@@ -198,6 +206,7 @@ def test_search_graph_empty(app_client_with_store):
     assert data == {"nodes": [], "edges": []}
 
 
+@pytest.mark.integration
 def test_search_graph_with_results(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -221,6 +230,7 @@ def test_search_graph_with_results(app_client_with_store):
     assert len(data["edges"]) == 1
 
 
+@pytest.mark.integration
 def test_search_graph_scores_on_nodes(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(
@@ -240,6 +250,7 @@ def test_search_graph_scores_on_nodes(app_client_with_store):
             assert "search_score" in node
 
 
+@pytest.mark.integration
 def test_search_graph_no_query(app_client_with_store):
     c, store = app_client_with_store
     res = c.get("/api/search-graph?query=   ")
@@ -248,6 +259,7 @@ def test_search_graph_no_query(app_client_with_store):
     assert data == {"nodes": [], "edges": []}
 
 
+@pytest.mark.integration
 def test_search_graph_reranker_integration(app_client_with_store):
     c, store = app_client_with_store
     store.add_notes(

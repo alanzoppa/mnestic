@@ -62,6 +62,7 @@ def app_client():
         yield client, mock_store
 
 
+@pytest.mark.integration
 def test_get_stats(app_client):
     c, mock_store = app_client
     res = c.get("/api/stats")
@@ -72,6 +73,7 @@ def test_get_stats(app_client):
     assert data["total_calendar_events"] == 50
 
 
+@pytest.mark.integration
 def test_search_basic(app_client):
     c, mock_store = app_client
     mock_store.search_notes.return_value = [
@@ -87,6 +89,7 @@ def test_search_basic(app_client):
     assert data["results"][0]["type"] == "note"
 
 
+@pytest.mark.integration
 def test_search_empty_query_returns_all_notes(app_client):
     """Browse page sends '' query — should still return notes via list_notes."""
     c, mock_store = app_client
@@ -105,6 +108,7 @@ def test_search_empty_query_returns_all_notes(app_client):
     mock_store.list_notes.assert_called_once()
 
 
+@pytest.mark.integration
 def test_search_with_calendar(app_client):
     c, mock_store = app_client
     mock_store.search_notes.return_value = []
@@ -119,6 +123,7 @@ def test_search_with_calendar(app_client):
     assert len(calendar_results) >= 1
 
 
+@pytest.mark.integration
 def test_get_note_not_found(app_client):
     c, mock_store = app_client
     mock_store.get_note.return_value = None
@@ -128,6 +133,7 @@ def test_get_note_not_found(app_client):
     assert res.status_code == 404
 
 
+@pytest.mark.integration
 def test_get_tags(app_client):
     c, mock_store = app_client
     res = c.get("/api/tags")
@@ -137,6 +143,7 @@ def test_get_tags(app_client):
     assert "co_occurrence" in data
 
 
+@pytest.mark.integration
 def test_get_timeline(app_client):
     c, mock_store = app_client
     res = c.get("/api/timeline?group_by=month")
@@ -145,6 +152,7 @@ def test_get_timeline(app_client):
     assert "periods" in data
 
 
+@pytest.mark.integration
 def test_get_similar(app_client):
     c, mock_store = app_client
     mock_store.get_similar.return_value = [
@@ -158,6 +166,7 @@ def test_get_similar(app_client):
     assert "notes" in data
 
 
+@pytest.mark.integration
 def test_get_schema(app_client):
     c, mock_store = app_client
     with patch("main.discover_schema") as mock_schema:
@@ -175,6 +184,7 @@ def test_get_schema(app_client):
     assert data["total_files"] == 100
 
 
+@pytest.mark.integration
 def test_get_calendar_events(app_client):
     c, mock_store = app_client
     with patch("main.get_calendar") as mock_get_cal:
@@ -193,6 +203,7 @@ def test_get_calendar_events(app_client):
     assert len(data["events"]) == 1
 
 
+@pytest.mark.integration
 def test_get_calendar_date(app_client):
     c, mock_store = app_client
     with patch("main.get_calendar") as mock_get_cal:
@@ -214,6 +225,7 @@ def test_get_calendar_date(app_client):
     assert "notes" in data
 
 
+@pytest.mark.integration
 def test_get_graph(app_client):
     c, mock_store = app_client
 
@@ -235,6 +247,7 @@ def test_get_graph(app_client):
     assert len(data["nodes"]) > 0
 
 
+@pytest.mark.integration
 def test_get_graph_with_tag_filter(app_client):
     c, mock_store = app_client
 
@@ -256,6 +269,7 @@ def test_get_graph_with_tag_filter(app_client):
     assert len(filtered_nodes) <= len(data["nodes"])
 
 
+@pytest.mark.integration
 def test_get_graph_nodes_have_metadata(app_client):
     """Graph nodes must contain metadata looked up by logical note_id, not chunk id."""
     c, mock_store = app_client
@@ -280,6 +294,7 @@ def test_get_graph_nodes_have_metadata(app_client):
     assert node["id"] != ""
 
 
+@pytest.mark.integration
 def test_find_note_file_path_traversal():
     """Reject source_ids containing path traversal characters."""
     from main import _is_safe_filename, find_note_file
@@ -294,6 +309,7 @@ def test_find_note_file_path_traversal():
     assert find_note_file("a/b", "/tmp/notes") is None
 
 
+@pytest.mark.integration
 def test_get_calendar_events_missing_data(app_client):
     """Calendar endpoints gracefully degrade when calendar data is missing."""
     c, mock_store = app_client
@@ -309,6 +325,7 @@ def test_get_calendar_events_missing_data(app_client):
         assert len(data["events"]) == 0
 
 
+@pytest.mark.integration
 def test_search_reranker_called(app_client):
     """Reranker is called with non-empty query when rerank is enabled (default)."""
     c, mock_store = app_client
@@ -324,6 +341,7 @@ def test_search_reranker_called(app_client):
     assert "results" in data
 
 
+@pytest.mark.integration
 def test_search_reranker_skipped_when_empty_query(app_client):
     """Browse page sends empty query — reranker should not be called."""
     c, mock_store = app_client
@@ -338,6 +356,7 @@ def test_search_reranker_skipped_when_empty_query(app_client):
     assert "results" in data
 
 
+@pytest.mark.integration
 def test_search_reranker_disabled(app_client):
     """rerank=false skips reranking and uses embedding scores directly."""
     c, mock_store = app_client
@@ -352,6 +371,7 @@ def test_search_reranker_disabled(app_client):
     assert "results" in data
 
 
+@pytest.mark.integration
 def test_search_embeds_once(app_client):
     """embed_query_sync must be called only once per search request."""
     c, mock_store = app_client
@@ -362,6 +382,7 @@ def test_search_embeds_once(app_client):
     assert res.status_code == 200
 
 
+@pytest.mark.integration
 def test_search_n_capped(app_client):
     """n_results is capped to RERANK_MAX_CANDIDATES when reranking, 200 otherwise."""
     c, mock_store = app_client

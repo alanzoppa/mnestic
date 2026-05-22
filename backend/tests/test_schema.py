@@ -8,24 +8,29 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from schema import discover_schema, _classify_field, EXPECTED_FIELDS
 
 
+@pytest.mark.unit
 def test_classify_field_created():
     assert _classify_field("created", "low") == "both"
     assert _classify_field("created", "high") == "both"
 
 
+@pytest.mark.unit
 def test_classify_field_modified():
     assert _classify_field("modified", "low") == "both"
     assert _classify_field("modified", "high") == "both"
 
 
+@pytest.mark.unit
 def test_classify_field_low_cardinality():
     assert _classify_field("folder", "low") == "metadata"
 
 
+@pytest.mark.unit
 def test_classify_field_high_cardinality():
     assert _classify_field("title", "high") == "embedded"
 
 
+@pytest.mark.unit
 def test_discover_schema(tmp_path):
     for i, name in enumerate(["Note1", "Note2"]):
         post = frontmatter.Post("test content")
@@ -57,6 +62,7 @@ def test_discover_schema(tmp_path):
     assert source_field["type"] == "str"
 
 
+@pytest.mark.unit
 def test_discover_schema_empty_dir(tmp_path):
     result = discover_schema(str(tmp_path))
 

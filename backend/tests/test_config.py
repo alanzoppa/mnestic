@@ -19,28 +19,34 @@ from config import (
 )
 
 
+@pytest.mark.unit
 def test_repo_root_is_directory():
     assert REPO_ROOT.is_dir()
     assert (REPO_ROOT / "backend").is_dir()
     assert (REPO_ROOT / "frontend").is_dir()
 
 
+@pytest.mark.unit
 def test_notes_dir_inside_repo():
     assert Path(NOTES_DIR) == REPO_ROOT / "notes"
 
 
+@pytest.mark.unit
 def test_chroma_persist_dir_inside_repo():
     assert Path(CHROMA_PERSIST_DIR) == REPO_ROOT / "chroma_data"
 
 
+@pytest.mark.unit
 def test_images_dir_inside_repo():
     assert Path(IMAGES_DIR) == REPO_ROOT / "images"
 
 
+@pytest.mark.unit
 def test_data_dir_inside_repo():
     assert Path(DATA_DIR) == REPO_ROOT / "data"
 
 
+@pytest.mark.unit
 def test_settings_env_defaults(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     s = Settings()
@@ -50,6 +56,7 @@ def test_settings_env_defaults(monkeypatch, tmp_path):
     assert s.notes_source.startswith(str(tmp_path))
 
 
+@pytest.mark.unit
 def test_env_overrides(monkeypatch):
     monkeypatch.setenv("CALENDAR_EXPORT_PATH", "/custom/cal.json")
     monkeypatch.setenv("PEOPLE_REGISTRY_PATH", "/custom/people.json")
@@ -59,6 +66,7 @@ def test_env_overrides(monkeypatch):
     assert isinstance(s.notes_source, str)
 
 
+@pytest.mark.unit
 def test_expanduser_in_validator(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("NOTES_SOURCE", "~/Notes")
@@ -66,6 +74,7 @@ def test_expanduser_in_validator(monkeypatch, tmp_path):
     assert s.notes_source == str(tmp_path / "Notes")
 
 
+@pytest.mark.unit
 def test_settings_singleton_matches_exports():
     from config import settings as singleton
 

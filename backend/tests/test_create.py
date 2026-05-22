@@ -45,6 +45,7 @@ def app_client():
         yield client, mock_store
 
 
+@pytest.mark.unit
 def test_create_note_success(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
@@ -62,18 +63,21 @@ def test_create_note_success(app_client, tmp_path):
     assert data["metadata"]["title"] == "New Note"
 
 
+@pytest.mark.unit
 def test_create_note_empty_title(app_client):
     c, mock_store = app_client
     res = c.post("/api/notes", json={"title": "", "content": "body"})
     assert res.status_code == 422
 
 
+@pytest.mark.unit
 def test_create_note_missing_title(app_client):
     c, mock_store = app_client
     res = c.post("/api/notes", json={"content": "body"})
     assert res.status_code == 422
 
 
+@pytest.mark.unit
 def test_create_note_defaults(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
@@ -91,6 +95,7 @@ def test_create_note_defaults(app_client, tmp_path):
     assert data["metadata"]["source"] == "Manual"
 
 
+@pytest.mark.unit
 def test_create_note_with_series(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
@@ -107,6 +112,7 @@ def test_create_note_with_series(app_client, tmp_path):
     assert data["metadata"]["series"] == "weekly_sync"
 
 
+@pytest.mark.unit
 def test_create_note_with_participants(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
@@ -123,6 +129,7 @@ def test_create_note_with_participants(app_client, tmp_path):
     assert "Alice" in data["metadata"]["participants"]
 
 
+@pytest.mark.unit
 def test_create_note_written_to_disk(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(
@@ -140,6 +147,7 @@ def test_create_note_written_to_disk(app_client, tmp_path):
     assert "Disk" in md_files[0]
 
 
+@pytest.mark.unit
 def test_create_note_reingests(app_client, tmp_path):
     c, mock_store = app_client
     mock_store.get_note_by_note_id.return_value = NoteResult(

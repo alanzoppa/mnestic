@@ -12,11 +12,13 @@ from graph_service import build_similarity_graph_from_notes
 DUMMY_EMBEDDING = [0.1] * 256
 
 
+@pytest.mark.integration
 def test_empty_note_ids(tmp_store):
     result = build_similarity_graph_from_notes(tmp_store, [])
     assert result == {"nodes": [], "edges": []}
 
 
+@pytest.mark.integration
 def test_single_note(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0"],
@@ -29,6 +31,7 @@ def test_single_note(tmp_store):
     assert result["edges"] == []
 
 
+@pytest.mark.integration
 def test_two_similar_notes(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0", "note_2_chunk_0"],
@@ -45,6 +48,7 @@ def test_two_similar_notes(tmp_store):
     assert result["edges"][0]["weight"] >= 0.75
 
 
+@pytest.mark.integration
 def test_two_dissimilar_notes(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0", "note_2_chunk_0"],
@@ -60,6 +64,7 @@ def test_two_dissimilar_notes(tmp_store):
     assert len(result["edges"]) == 0
 
 
+@pytest.mark.integration
 def test_duplicate_note_ids(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0", "note_1_chunk_1"],
@@ -75,6 +80,7 @@ def test_duplicate_note_ids(tmp_store):
     assert len(result["edges"]) == 0
 
 
+@pytest.mark.integration
 def test_scores_propagation(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0", "note_2_chunk_0"],
@@ -92,6 +98,7 @@ def test_scores_propagation(tmp_store):
         assert node["search_score"] == scores[node["id"]]
 
 
+@pytest.mark.integration
 def test_no_scores(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0", "note_2_chunk_0"],
@@ -107,6 +114,7 @@ def test_no_scores(tmp_store):
         assert "search_score" not in node
 
 
+@pytest.mark.integration
 def test_tags_as_list(tmp_store):
     tmp_store.add_notes(
         ids=["note_1_chunk_0", "note_2_chunk_0"],
@@ -127,12 +135,14 @@ def test_tags_as_list(tmp_store):
     assert "test" in note1["tags"]
 
 
+@pytest.mark.integration
 def test_note_ids_capped_at_1000(tmp_store):
     many_ids = [f"note_{i}" for i in range(1500)]
     result = build_similarity_graph_from_notes(tmp_store, many_ids, threshold=0.75)
     assert result == {"nodes": [], "edges": []}
 
 
+@pytest.mark.integration
 def test_missing_embeddings(tmp_store):
     mock_store = MagicMock()
     mock_store.notes.get.return_value = {

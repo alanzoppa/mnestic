@@ -9,16 +9,19 @@ from ingest import chunk_text, make_note_id, make_doc_id, get_calendar_context
 from models import CalendarEvent
 
 
+@pytest.mark.unit
 def test_chunk_text_short():
     result = chunk_text("hello")
     assert result == ["hello"]
 
 
+@pytest.mark.unit
 def test_chunk_text_empty():
     result = chunk_text("")
     assert result == []
 
 
+@pytest.mark.unit
 def test_chunk_text_respects_markdown():
     text = "\n\n".join([f"## Section {i}\n\n" + "This is a paragraph with many words to fill space. " * 30 for i in range(5)])
     result = chunk_text(text)
@@ -32,6 +35,7 @@ def test_chunk_text_respects_markdown():
                 assert "Section" in line, "Headers should be kept whole"
 
 
+@pytest.mark.unit
 def test_chunk_text_custom_size():
     text = "word " * 500
     result = chunk_text(text, chunk_size=100, overlap=20)
@@ -41,6 +45,7 @@ def test_chunk_text_custom_size():
         assert len(chunk) <= 120  # allow some structural overhead
 
 
+@pytest.mark.unit
 def test_chunk_text_overlap():
     text = "\n\nParagraph " + "word " * 100 + "\n\nParagraph " + "word " * 100
     chunks = chunk_text(text, chunk_size=200, overlap=40)
@@ -53,22 +58,26 @@ def test_chunk_text_overlap():
         assert len(shared) > 0, "overlapping chunks should share some words"
 
 
+@pytest.mark.unit
 def test_make_note_id_colons():
     result = make_note_id("x-coredata://test/id")
     assert ":" not in result
     assert "/" not in result
 
 
+@pytest.mark.unit
 def test_make_note_id_strips_dashes():
     result = make_note_id("---test---")
     assert result == "test"
 
 
+@pytest.mark.unit
 def test_make_note_id_evernote():
     result = make_note_id("evernote:note:abc123")
     assert ":" not in result
 
 
+@pytest.mark.unit
 def test_make_doc_id_different_for_different_files():
     id1 = make_doc_id("note1", 0, "file1.md")
     id2 = make_doc_id("note1", 0, "file2.md")
@@ -77,6 +86,7 @@ def test_make_doc_id_different_for_different_files():
     assert id1.endswith("_chunk_0")
 
 
+@pytest.mark.unit
 def test_make_doc_id_same_for_same_file():
     id1 = make_doc_id("note1", 0, "file.md")
     id2 = make_doc_id("note1", 0, "file.md")
@@ -85,16 +95,19 @@ def test_make_doc_id_same_for_same_file():
     assert "_chunk_0" in id1
 
 
+@pytest.mark.unit
 def test_get_calendar_context_no_participants():
     result = get_calendar_context([], "2019-12-09", [])
     assert result == ""
 
 
+@pytest.mark.unit
 def test_get_calendar_context_no_date():
     result = get_calendar_context(["Alice"], "", [])
     assert result == ""
 
 
+@pytest.mark.unit
 def test_get_calendar_context_match():
     events = [CalendarEvent(id="evt1", summary="Meeting", start="2019-12-09T10:00:00", end="2019-12-09T11:00:00", attendees="Alice Smith", attendee_names=["Alice Smith"], date="2019-12-09")]
     result = get_calendar_context(["Alice"], "2019-12-09", events)
@@ -102,6 +115,7 @@ def test_get_calendar_context_match():
     assert "2019-12-09" in result
 
 
+@pytest.mark.unit
 def test_get_calendar_context_no_match():
     events = [CalendarEvent(id="evt1", summary="Meeting", start="2019-12-09T10:00:00", end="2019-12-09T11:00:00", attendees="Alice Smith", attendee_names=["Alice Smith"], date="2019-12-09")]
     result = get_calendar_context(["Unknown"], "2019-12-09", events)

@@ -6,42 +6,52 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 
+@pytest.mark.integration
 def test_flatten_tags_list():
     assert _flatten_tags(["a", "b", "c"]) == "a,b,c"
 
 
+@pytest.mark.integration
 def test_flatten_tags_string():
     assert _flatten_tags("already") == "already"
 
 
+@pytest.mark.integration
 def test_flatten_tags_none():
     assert _flatten_tags(None) == ""
 
 
+@pytest.mark.integration
 def test_flatten_participants_list():
     assert _flatten_participants(["Alice", "Bob"]) == "Alice,Bob"
 
 
+@pytest.mark.integration
 def test_flatten_participants_none():
     assert _flatten_participants(None) == ""
 
 
+@pytest.mark.integration
 def test_serialize_metadata_lists():
     assert _serialize_metadata({"tags": ["a", "b"]}) == {"tags": "a,b"}
 
 
+@pytest.mark.integration
 def test_serialize_metadata_none():
     assert _serialize_metadata({"x": None}) == {}
 
 
+@pytest.mark.integration
 def test_serialize_metadata_bool():
     assert _serialize_metadata({"flag": True}) == {"flag": "true"}
 
 
+@pytest.mark.integration
 def test_serialize_metadata_int():
     assert _serialize_metadata({"count": 5}) == {"count": 5}
 
 
+@pytest.mark.integration
 def test_add_and_search_notes(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -59,6 +69,7 @@ def test_add_and_search_notes(tmp_store):
     assert "note1" in result_ids
 
 
+@pytest.mark.integration
 def test_add_and_search_calendar(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -75,6 +86,7 @@ def test_add_and_search_calendar(tmp_store):
     assert results[0].id == "cal1"
 
 
+@pytest.mark.integration
 def test_get_note_found(tmp_store):
     embedding = [0.1] * 256
     tmp_store.add_notes(
@@ -90,11 +102,13 @@ def test_get_note_found(tmp_store):
     assert result.metadata.title == "Test Note"
 
 
+@pytest.mark.integration
 def test_get_note_not_found(tmp_store):
     result = tmp_store.get_note("nonexistent")
     assert result is None
 
 
+@pytest.mark.integration
 def test_get_tags(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -113,6 +127,7 @@ def test_get_tags(tmp_store):
     assert tag_counts["personal"] == 1
 
 
+@pytest.mark.integration
 def test_get_tags_co_occurrence(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -130,6 +145,7 @@ def test_get_tags_co_occurrence(tmp_store):
     assert work_notes.count == 2
 
 
+@pytest.mark.integration
 def test_get_timeline(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -147,6 +163,7 @@ def test_get_timeline(tmp_store):
     assert timeline[0].count == 2
 
 
+@pytest.mark.integration
 def test_get_timeline_filter_by_tag(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -167,6 +184,7 @@ def test_get_timeline_filter_by_tag(tmp_store):
     assert "note1" in timeline[0].sample_ids
 
 
+@pytest.mark.integration
 def test_get_stats(tmp_store):
     embedding1 = [0.1] * 256
     embedding2 = [0.2] * 256
@@ -193,6 +211,7 @@ def test_get_stats(tmp_store):
     assert stats.avg_note_length > 0
 
 
+@pytest.mark.integration
 def test_delete_notes(tmp_store):
     embedding = [0.1] * 256
 
@@ -212,6 +231,7 @@ def test_delete_notes(tmp_store):
     assert result2 is not None
 
 
+@pytest.mark.integration
 def test_reset(tmp_store):
     embedding = [0.1] * 256
 
@@ -236,6 +256,7 @@ def test_reset(tmp_store):
     assert stats.total_calendar_events == 0
 
 
+@pytest.mark.integration
 def test_get_notes_by_tag_no_documents(tmp_store):
     """get_notes_by_tag must not load document bodies — only metadata."""
     embedding = [0.1] * 256
@@ -254,6 +275,7 @@ def test_get_notes_by_tag_no_documents(tmp_store):
     assert result[0].document == ""
 
 
+@pytest.mark.integration
 def test_get_notes_by_tag_deduplicates_by_note_id(tmp_store):
     """A note with multiple chunks sharing a tag must appear only once."""
     embedding = [0.1] * 256
@@ -274,6 +296,7 @@ def test_get_notes_by_tag_deduplicates_by_note_id(tmp_store):
     assert note_ids == {"n1", "n2"}
 
 
+@pytest.mark.integration
 def test_get_notes_by_tag_with_where(tmp_store):
     """get_notes_by_tag passes where clauses through to ChromaDB."""
     embedding = [0.1] * 256
@@ -291,6 +314,7 @@ def test_get_notes_by_tag_with_where(tmp_store):
     assert result[0].metadata.source == "Evernote"
 
 
+@pytest.mark.integration
 def test_get_similar_single_db_call(tmp_store):
     """get_similar must issue only one DB get call."""
     embedding = [0.1] * 256
@@ -318,6 +342,7 @@ def test_get_similar_single_db_call(tmp_store):
     assert len(similar) <= 2
 
 
+@pytest.mark.integration
 def test_list_notes_no_filter(tmp_store):
     """list_notes returns all unique notes when no where filter is applied."""
     embedding = [0.1] * 256
@@ -336,6 +361,7 @@ def test_list_notes_no_filter(tmp_store):
     assert titles == {"Note 1", "Note 2"}
 
 
+@pytest.mark.integration
 def test_list_notes_with_where_filter(tmp_store):
     """list_notes respects the where parameter for filtering."""
     embedding = [0.1] * 256
@@ -353,6 +379,7 @@ def test_list_notes_with_where_filter(tmp_store):
     assert results[0].metadata.title == "Note 1"
 
 
+@pytest.mark.integration
 def test_list_notes_deduplicates_by_note_id(tmp_store):
     """list_notes returns only one entry per logical note_id (skips chunks)."""
     embedding = [0.1] * 256
