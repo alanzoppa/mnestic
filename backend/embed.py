@@ -58,6 +58,12 @@ def _embed_batch_ollama(client: httpx.Client, full_batch: list[str], model: str)
     return [_l2_normalize(emb[:EMBED_DIM]) for emb in embeddings]
 
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException)),
+    reraise=True,
+)
 def _embed_batch_openrouter(
     client: httpx.Client,
     batch: list[str],
@@ -114,7 +120,7 @@ def embed_texts_sync(
     resolved_provider = _get_provider(provider)
 
     results: list[list[float]] = []
-    timeout = 300.0 if resolved_provider == "ollama" else 60.0
+    timeout = 300.0 if resolved_provider == "ollama" else 120.0
     batch_size = BATCH_SIZE if resolved_provider == "ollama" else OPENROUTER_EMBED_BATCH_SIZE
 
     with httpx.Client(timeout=timeout) as client:
@@ -180,7 +186,7 @@ def embed_texts_bulk(
 
     resolved_provider = _get_provider(provider)
     batch_size = BATCH_SIZE if resolved_provider == "ollama" else OPENROUTER_EMBED_BATCH_SIZE
-    timeout = 300.0 if resolved_provider == "ollama" else 60.0
+    timeout = 300.0 if resolved_provider == "ollama" else 120.0
 
     if max_workers is None:
         max_workers = 2 if resolved_provider == "ollama" else 10
