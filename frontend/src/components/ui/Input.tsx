@@ -12,12 +12,13 @@ export function Input({
   error,
   icon,
   className = '',
+  id,
   ...props
 }: InputProps) {
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-zinc-400 mb-1.5">
+        <label htmlFor={id} className="block text-sm font-medium text-zinc-400 mb-1.5">
           {label}
         </label>
       )}
@@ -28,6 +29,7 @@ export function Input({
           </div>
         )}
         <input
+          id={id}
           className={`w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all ${icon ? 'pl-10' : ''} ${error ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : ''} ${className}`}
           {...props}
         />

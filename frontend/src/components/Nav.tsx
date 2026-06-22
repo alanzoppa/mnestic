@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph, Plus } from 'lucide-react';
+import { LayoutGrid, Search, BookOpen, Tag, BarChart3, Calendar, Zap, GitGraph, Plus, Settings } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutGrid },
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/graph', label: 'Graph', icon: Zap },
   { href: '/search-graph', label: 'Search Graph', icon: GitGraph },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 interface NavProps {

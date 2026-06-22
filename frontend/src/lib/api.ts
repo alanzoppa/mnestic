@@ -1,7 +1,18 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 async function fetchAPI(path: string, options?: RequestInit) {
-  const res = await fetch(`${API_BASE}${path}`, options);
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${res.status}`);
+  }
+
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -270,4 +281,54 @@ export interface PersonInfo {
 
 export async function getPeople(): Promise<{ people: PersonInfo[] }> {
   return fetchAPI("/people");
+}
+
+// ============================================================================
+// Auth API
+// ============================================================================
+
+export interface AuthStatus {
+  enabled: boolean;
+  authenticated: boolean;
+}
+
+export async function getAuthStatus(): Promise<AuthStatus> {
+  return fetchAPI("/auth/status");
+}
+
+export async function login(password: string): Promise<{ status: string }> {
+  return fetchAPI("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+}
+
+export async function logout(): Promise<void> {
+  return fetchAPI("/auth/logout", { method: "POST" });
+}
+
+export interface ApiToken {
+  id: number;
+  name: string;
+  key_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked: boolean;
+}
+
+export async function listApiTokens(): Promise<{ tokens: ApiToken[] }> {
+  return fetchAPI("/auth/keys");
+}
+
+export async function createApiToken(name: string): Promise<{ token: string }> {
+  return fetchAPI("/auth/keys", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function revokeApiToken(id: number): Promise<void> {
+  return fetchAPI(`/auth/keys/${id}`, { method: "DELETE" });
 }
