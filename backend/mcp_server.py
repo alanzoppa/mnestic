@@ -14,9 +14,37 @@ if TYPE_CHECKING:
 
 from utils import normalize_and_dedup_results
 from shared import _is_safe_filename, find_note_file, _sanitize_filename
-from config import NOTES_DIR
+from config import MNESTIC_API_KEY, NOTES_DIR
 
 logger = logging.getLogger(__name__)
+
+
+class _BackendClient:
+    """Small httpx client wrapper that sends the API key header when configured."""
+
+    def __init__(self) -> None:
+        self._headers: dict[str, str] = {}
+        if MNESTIC_API_KEY:
+            self._headers["X-API-Key"] = MNESTIC_API_KEY
+
+    def get(self, path: str, **kwargs):
+        import httpx
+        return httpx.get(f"http://127.0.0.1:8000{path}", headers=self._headers, **kwargs)
+
+    def post(self, path: str, **kwargs):
+        import httpx
+        return httpx.post(f"http://127.0.0.1:8000{path}", headers=self._headers, **kwargs)
+
+    def patch(self, path: str, **kwargs):
+        import httpx
+        return httpx.patch(f"http://127.0.0.1:8000{path}", headers=self._headers, **kwargs)
+
+    def delete(self, path: str, **kwargs):
+        import httpx
+        return httpx.delete(f"http://127.0.0.1:8000{path}", headers=self._headers, **kwargs)
+
+
+_backend_client = _BackendClient()
 
 
 def _flatten_tags(val: Any) -> list[str]:

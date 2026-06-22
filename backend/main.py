@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 import frontmatter
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -68,11 +68,18 @@ from models import (
     PeopleQueryResponse,
     CreateNoteRequest,
     CreateNoteResponse,
+    LoginRequest,
+    AuthStatusResponse,
+    TokenListResponse,
+    TokenItem,
+    CreateKeyResponse,
+    CreateKeyRequest,
 )
 
 from shared import _is_safe_filename, find_note_file, _invalidate_source_id_cache, _sanitize_filename
 from watcher import NoteWatcher
 from config import NOTES_DIR, STATE_DIR, IMAGES_DIR, CALENDAR_EXPORT_PATH, MNESTIC_LITE, settings
+from auth import require_auth, optional_auth_status, verify_password, set_session_cookie, clear_session_cookie, create_token, list_tokens, revoke_token
 
 note_watcher: NoteWatcher | None = None
 
@@ -182,6 +189,69 @@ async def health_check() -> dict:
     return {"status": "ok"}
 
 
+# ---------------------------------------------------------------------------
+# Auth routes
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/login")
+async def login(body: LoginRequest, response: Response) -> dict:
+    """Verify the configured password and set a signed session cookie."""
+    from config import MNESTIC_PASSWORD_HASH
+    if not MNESTIC_PASSWORD_HASH:
+        raise HTTPException(status_code=400, detail="Authentication is not configured")
+    if verify_password(body.password, MNESTIC_PASSWORD_HASH):
+        set_session_cookie(response)
+        return {"status": "ok"}
+    raise HTTPException(status_code=401, detail="Invalid password")
+
+
+@app.post("/api/auth/logout")
+async def logout(response: Response, user: None = Depends(require_auth)) -> dict:
+    """Clear the session cookie."""
+    clear_session_cookie(response)
+    return {"status": "ok"}
+
+
+@app.get("/api/auth/status", response_model=AuthStatusResponse)
+async def auth_status(request: Request) -> AuthStatusResponse:
+    """Return whether authentication is enabled and whether the request is authenticated."""
+    result = await optional_auth_status(request)
+    return AuthStatusResponse(enabled=result["enabled"], authenticated=result["authenticated"])
+
+
+@app.get("/api/auth/keys", response_model=TokenListResponse, dependencies=[Depends(require_auth)])
+async def get_keys() -> TokenListResponse:
+    """List API tokens."""
+    tokens = list_tokens()
+    return TokenListResponse(tokens=[TokenItem(**t) for t in tokens])
+
+
+@app.post("/api/auth/keys", response_model=CreateKeyResponse, dependencies=[Depends(require_auth)])
+async def create_key(body: CreateKeyRequest) -> CreateKeyResponse:
+    """Create a new API token. Returns the plaintext token exactly once."""
+    plaintext, token = create_token(body.name.strip() or "Unnamed")
+    return CreateKeyResponse(
+        token=plaintext,
+        id=token["id"],
+        name=token["name"],
+        key_prefix=token["key_prefix"],
+        created_at=token["created_at"],
+    )
+
+
+@app.delete("/api/auth/keys/{token_id}", dependencies=[Depends(require_auth)])
+async def delete_key(token_id: int) -> dict:
+    """Revoke an API token."""
+    revoked = revoke_token(token_id)
+    if not revoked:
+        raise HTTPException(status_code=404, detail="Token not found or already revoked")
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Protected existing routes
+# ---------------------------------------------------------------------------
+
 def get_calendar():
     global calendar_processor
     if calendar_processor is None:
@@ -195,7 +265,7 @@ def get_calendar():
     return calendar_processor
 
 
-@app.post("/api/search", response_model=SearchResponse)
+@app.post("/api/search", response_model=SearchResponse, dependencies=[Depends(require_auth)])
 async def search(body: SearchRequest) -> dict:
     global reranker
     filters = body.filters
@@ -290,7 +360,7 @@ async def search(body: SearchRequest) -> dict:
     return {"results": list(seen_note_ids.values())}
 
 
-@app.get("/api/notes", response_model=NotesSinceResponse)
+@app.get("/api/notes", response_model=NotesSinceResponse, dependencies=[Depends(require_auth)])
 async def get_notes_since(since: Optional[str] = None, limit: int = 500) -> dict:
     if not since:
         return {"notes": [], "since": "", "count": 0}
@@ -298,7 +368,7 @@ async def get_notes_since(since: Optional[str] = None, limit: int = 500) -> dict
     return {"notes": notes, "since": since, "count": len(notes)}
 
 
-@app.post("/api/notes", response_model=CreateNoteResponse, status_code=201)
+@app.post("/api/notes", response_model=CreateNoteResponse, status_code=201, dependencies=[Depends(require_auth)])
 async def create_note(body: CreateNoteRequest) -> dict:
     if not body.title.strip():
         raise HTTPException(status_code=422, detail="Title is required")
@@ -344,7 +414,7 @@ async def create_note(body: CreateNoteRequest) -> dict:
     return {"id": note_id, "metadata": stored_meta, "content": stored_content}
 
 
-@app.get("/api/notes/{note_id}", response_model=NoteDetailResponse)
+@app.get("/api/notes/{note_id}", response_model=NoteDetailResponse, dependencies=[Depends(require_auth)])
 async def get_note(note_id: str) -> dict:
     note = store.get_note(note_id)
     if not note:
@@ -413,7 +483,7 @@ def _reingest_note(note_id: str, md_path: str) -> None:
         store.add_notes(ids, chunks, embeddings, metadatas)
 
 
-@app.patch("/api/notes/{note_id}", response_model=UpdateNoteResponse)
+@app.patch("/api/notes/{note_id}", response_model=UpdateNoteResponse, dependencies=[Depends(require_auth)])
 async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
     if all(v is None for v in [body.title, body.content, body.tags, body.participants]):
         raise HTTPException(status_code=422, detail="No fields to update")
@@ -491,7 +561,7 @@ async def update_note(note_id: str, body: UpdateNoteRequest) -> dict:
 from config import PEOPLE_REGISTRY_PATH
 
 
-@app.get("/api/people", response_model=PeopleQueryResponse)
+@app.get("/api/people", response_model=PeopleQueryResponse, dependencies=[Depends(require_auth)])
 async def get_people(q: Optional[str] = None) -> dict:
     store_people = store.get_people_by_query(q=q or "")
     if q:
@@ -528,37 +598,37 @@ async def get_people(q: Optional[str] = None) -> dict:
         return {"people": []}
 
 
-@app.get("/api/tags", response_model=TagsResponse)
+@app.get("/api/tags", response_model=TagsResponse, dependencies=[Depends(require_auth)])
 async def get_tags() -> dict:
     tags, co_occurrence = store.get_tags()
     return {"tags": tags, "co_occurrence": co_occurrence}
 
 
-@app.get("/api/series", response_model=SeriesListResponse)
+@app.get("/api/series", response_model=SeriesListResponse, dependencies=[Depends(require_auth)])
 async def get_series() -> dict:
     series = store.get_series_list()
     return {"series": series}
 
 
-@app.get("/api/series/{series_name}/notes", response_model=SeriesNotesResponse)
+@app.get("/api/series/{series_name}/notes", response_model=SeriesNotesResponse, dependencies=[Depends(require_auth)])
 async def get_series_notes(series_name: str, limit: int = 20) -> dict:
     notes = store.get_notes_by_series(series_name, limit=limit)
     return {"series": series_name, "notes": notes}
 
 
-@app.get("/api/glossary", response_model=GlossaryResponse)
+@app.get("/api/glossary", response_model=GlossaryResponse, dependencies=[Depends(require_auth)])
 async def get_glossary(q: Optional[str] = None) -> dict:
     entries = store.get_glossary_entries(q=q or "")
     return {"entries": entries}
 
 
-@app.get("/api/timeline", response_model=TimelineResponse)
+@app.get("/api/timeline", response_model=TimelineResponse, dependencies=[Depends(require_auth)])
 async def get_timeline(group_by: str = "month", tag: Optional[str] = None) -> dict:
     periods = store.get_timeline(group_by=group_by, tag=tag)
     return {"periods": periods}
 
 
-@app.get("/api/similar/{note_id}", response_model=SimilarNotesResponse)
+@app.get("/api/similar/{note_id}", response_model=SimilarNotesResponse, dependencies=[Depends(require_auth)])
 async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) -> dict:
     similar = store.get_similar(note_id, n=n)
     query_note = store.get_note(note_id) or store.get_note_by_note_id(note_id)
@@ -582,7 +652,7 @@ async def get_similar_notes(note_id: str, n: int = 10, threshold: float = 0.75) 
     return {"notes": notes}
 
 
-@app.post("/api/search/similar", response_model=SearchResponse)
+@app.post("/api/search/similar", response_model=SearchResponse, dependencies=[Depends(require_auth)])
 async def search_similar_text(body: SimilarTextRequest) -> dict:
     if not body.text.strip():
         return {"results": []}
@@ -605,7 +675,7 @@ async def search_similar_text(body: SimilarTextRequest) -> dict:
     return {"results": items}
 
 
-@app.post("/api/ingest", response_model=IngestResponse)
+@app.post("/api/ingest", response_model=IngestResponse, dependencies=[Depends(require_auth)])
 async def ingest(body: IngestRequest) -> dict:
     import asyncio
     from ingest import ingest_notes, ingest_calendar
@@ -637,12 +707,12 @@ async def ingest(body: IngestRequest) -> dict:
     return {"notes_result": notes_result, "calendar_result": calendar_result}
 
 
-@app.get("/api/graph", response_model=GraphResponse)
+@app.get("/api/graph", response_model=GraphResponse, dependencies=[Depends(require_auth)])
 async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_neighbors: int = 3, threshold: float = 0.75) -> dict:
     return build_similarity_graph(store, tag, folder, threshold)
 
 
-@app.get("/api/search-graph", response_model=GraphResponse)
+@app.get("/api/search-graph", response_model=GraphResponse, dependencies=[Depends(require_auth)])
 async def get_search_graph(query: str, threshold: float = 0.55, n: int = 50) -> dict:
     global reranker
     query_embedding = embed_query_sync(query) if query.strip() else None
@@ -667,24 +737,24 @@ async def get_search_graph(query: str, threshold: float = 0.55, n: int = 50) -> 
     return build_similarity_graph_from_notes(store, note_ids[:n], threshold, scores)
 
 
-@app.get("/api/schema", response_model=SchemaResponse)
+@app.get("/api/schema", response_model=SchemaResponse, dependencies=[Depends(require_auth)])
 async def get_schema() -> dict:
     return discover_schema(NOTES_DIR)
 
 
-@app.get("/api/watcher/status", response_model=WatcherStatus)
+@app.get("/api/watcher/status", response_model=WatcherStatus, dependencies=[Depends(require_auth)])
 async def get_watcher_status() -> dict:
     if note_watcher is None:
         return {"running": False, "notes_dir": str(NOTES_DIR), "recent_events": []}
     return note_watcher.status()
 
 
-@app.get("/api/stats", response_model=StatsResponse)
+@app.get("/api/stats", response_model=StatsResponse, dependencies=[Depends(require_auth)])
 async def get_stats() -> dict:
     return store.get_stats()
 
 
-@app.get("/api/calendar", response_model=CalendarEventsResponse)
+@app.get("/api/calendar", response_model=CalendarEventsResponse, dependencies=[Depends(require_auth)])
 async def get_calendar_events(start_date: Optional[str] = None, end_date: Optional[str] = None, attendee: Optional[str] = None) -> dict:
     cal = get_calendar()
     events = cal.process_events()
@@ -700,7 +770,7 @@ async def get_calendar_events(start_date: Optional[str] = None, end_date: Option
     return {"events": events}
 
 
-@app.get("/api/calendar/{event_id}", response_model=CalendarEventDetailResponse)
+@app.get("/api/calendar/{event_id}", response_model=CalendarEventDetailResponse, dependencies=[Depends(require_auth)])
 async def get_calendar_event(event_id: str) -> dict:
     cal = get_calendar()
     events = cal.process_events()
@@ -738,7 +808,7 @@ async def get_calendar_event(event_id: str) -> dict:
     }
 
 
-@app.get("/api/calendar/date/{date}", response_model=CalendarDateResponse)
+@app.get("/api/calendar/date/{date}", response_model=CalendarDateResponse, dependencies=[Depends(require_auth)])
 async def get_calendar_by_date(date: str) -> dict:
     cal = get_calendar()
     events = cal.get_events_for_date(date)
@@ -756,7 +826,7 @@ async def get_calendar_by_date(date: str) -> dict:
     return {"date": date, "events": events, "notes": notes}
 
 
-@app.get("/api/images/{image_path:path}")
+@app.get("/api/images/{image_path:path}", dependencies=[Depends(require_auth)])
 async def get_image(image_path: str):
     """Serve image files from the notes and images directories."""
     from fastapi.responses import FileResponse

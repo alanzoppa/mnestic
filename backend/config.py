@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     people_registry_path: str = "~/Desktop/notes/people_registry.json"
     notes_source: str = "~/Desktop/notes/Apple Notes"
 
+    # Authentication (empty hash = auth disabled)
+    mnestic_password_hash: str = ""
+    session_secret: str = ""
+    mnestic_api_key: str = ""
+
     # Embedding providers
     openrouter_api_key: str = ""
     openrouter_embed_model: str = "google/gemini-embedding-2"
@@ -81,9 +86,31 @@ class Settings(BaseSettings):
     def data_dir(self) -> str:
         return str(self.repo_root / "data")
 
+    @property
+    def auth_db_path(self) -> str:
+        """SQLite database for API tokens and session metadata."""
+        return str(Path(self.state_dir) / "mnestic_auth.db")
+
+    def reload_auth(self) -> tuple[str, str, str]:
+        """Return fresh auth settings from environment.
+
+        Useful when tests monkeypatch os.environ and need the module-level
+        constants to reflect the new values.
+        """
+        return (
+            settings.mnestic_password_hash,
+            settings.session_secret,
+            settings.mnestic_api_key,
+        )
+
 
 # Module-level singleton
 settings = Settings()
+
+# Auth re-exports
+MNESTIC_PASSWORD_HASH = settings.mnestic_password_hash
+SESSION_SECRET = settings.session_secret
+MNESTIC_API_KEY = settings.mnestic_api_key
 
 # Lite mode: skip watcher startup scan (no embedding calls, low CPU/RAM)
 _RAW = os.environ.get("MNESTIC_LITE", "0").strip().lower()

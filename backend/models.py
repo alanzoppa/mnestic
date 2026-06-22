@@ -341,3 +341,37 @@ class SeriesNotesResponse(BaseModel):
 class SimilarTextRequest(BaseModel):
     text: str
     n: int = 10
+
+
+class LoginRequest(BaseModel):
+    password: str
+
+
+class AuthStatusResponse(BaseModel):
+    enabled: bool
+    authenticated: bool
+
+
+class CreateKeyRequest(BaseModel):
+    name: str
+
+
+class TokenItem(BaseModel):
+    id: int
+    name: str
+    key_prefix: str
+    created_at: str
+    last_used_at: Optional[str] = None
+    revoked: bool = False
+
+
+class TokenListResponse(BaseModel):
+    tokens: list[TokenItem]
+
+
+class CreateKeyResponse(BaseModel):
+    token: str
+    id: int
+    name: str
+    key_prefix: str
+    created_at: str
