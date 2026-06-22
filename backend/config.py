@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # Embedding providers
     openrouter_api_key: str = ""
-    openrouter_embed_model: str = "qwen/qwen3-embedding-8b"
+    openrouter_embed_model: str = "google/gemini-embedding-2"
     ollama_embed_model: str = "qwen3-embedding"
     embed_provider_ingest: str = "openrouter"
     embed_provider_query: str = "openrouter"

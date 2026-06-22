@@ -60,7 +60,7 @@ def _make_ollama_response(embeddings):
 def _make_openrouter_response(embeddings):
     mock_resp = MagicMock()
     data = [{"object": "embedding", "index": i, "embedding": emb} for i, emb in enumerate(embeddings)]
-    mock_resp.json.return_value = {"data": data, "model": "qwen/qwen3-embedding-8b"}
+    mock_resp.json.return_value = {"data": data, "model": "google/gemini-embedding-2"}
     mock_resp.raise_for_status = MagicMock()
     return mock_resp
 
@@ -78,7 +78,7 @@ def _mock_settings(provider_ingest="ollama", provider_query="ollama"):
     mock.embed_provider_ingest = provider_ingest
     mock.embed_provider_query = provider_query
     mock.ollama_embed_model = "qwen3-embedding"
-    mock.openrouter_embed_model = "qwen/qwen3-embedding-8b"
+    mock.openrouter_embed_model = "google/gemini-embedding-2"
     mock.openrouter_api_key = "test-key"
     return mock
 
@@ -147,7 +147,7 @@ def test_openrouter_provider_calls_openrouter_endpoint():
         call_args = mock_client.post.call_args
         assert call_args[0][0] == "https://openrouter.ai/api/v1/embeddings"
         body = call_args[1]["json"]
-        assert body["model"] == "qwen/qwen3-embedding-8b"
+        assert body["model"] == "google/gemini-embedding-2"
         assert body["dimensions"] == EMBED_DIM
         assert body["input_type"] == "search_document"
         headers = call_args[1]["headers"]

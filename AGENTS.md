@@ -216,7 +216,7 @@ NOTES_SOURCE=~/Desktop/notes/Apple Notes
 
 # Embedding providers
 OPENROUTER_API_KEY=             # Required for EMBED_PROVIDER=openrouter
-OPENROUTER_EMBED_MODEL=qwen/qwen3-embedding-8b
+OPENROUTER_EMBED_MODEL=google/gemini-embedding-2
 OLLAMA_EMBED_MODEL=qwen3-embedding
 EMBED_PROVIDER_INGEST=ollama    # ollama or openrouter
 EMBED_PROVIDER_QUERY=ollama     # ollama or openrouter
@@ -228,7 +228,7 @@ EMBED_PROVIDER_QUERY=ollama     # ollama or openrouter
 | `PEOPLE_REGISTRY_PATH` | `~/Desktop/notes/people_registry.json` | People aliases registry |
 | `NOTES_SOURCE` | `~/Desktop/notes/Apple Notes` | Source notes for `scripts/sync_notes.py` |
 | `OPENROUTER_API_KEY` | _(empty)_ | API key for OpenRouter embedding provider |
-| `OPENROUTER_EMBED_MODEL` | `qwen/qwen3-embedding-8b` | OpenRouter model slug |
+| `OPENROUTER_EMBED_MODEL` | `google/gemini-embedding-2` | OpenRouter model slug |
 | `OLLAMA_EMBED_MODEL` | `qwen3-embedding` | Ollama model name |
 | `EMBED_PROVIDER_INGEST` | `openrouter` | Provider for bulk ingest embedding |
 | `EMBED_PROVIDER_QUERY` | `openrouter` | Provider for search query embedding |
@@ -657,7 +657,7 @@ Duplicate filenames get `__2`, `__3`, etc. suffixes.
 
 ## Changelog
 
-- [x] Dual-provider embedding (`qwen3-embedding-8b` via Ollama + OpenRouter) — configurable `EMBED_PROVIDER_INGEST`/`EMBED_PROVIDER_QUERY`, provider consistency guard on ingest, qwen3 prefix convention
+- [x] Dual-provider embedding (OpenRouter `google/gemini-embedding-2` + Ollama `qwen3-embedding`) — configurable `EMBED_PROVIDER_INGEST`/`EMBED_PROVIDER_QUERY`, provider consistency guard on ingest, qwen3 prefix convention
 - [x] Cross-encoder reranker (`BAAI/bge-reranker-v2-m3`) — second-stage note ranking via `/search` with `?rerank=true` toggle
 
 - [x] Similarity graph page (`/graph`) — force-directed graph with react-force-graph or D3
