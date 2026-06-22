@@ -112,7 +112,9 @@ if [ -x "$REPO_ROOT/backend/.venv/bin/pytest" ]; then
   "$REPO_ROOT/backend/.venv/bin/pip" install -q -r "$REPO_ROOT/backend/requirements.txt"
 
   echo ">>> Running backend tests..."
-  "$REPO_ROOT/backend/.venv/bin/pytest" -q "$REPO_ROOT/backend/tests/"
+  # Local .env may contain a real password hash for the running server. Force auth
+  # off during tests so the suite sees the same behavior as CI.
+  MNESTIC_PASSWORD_HASH="" "$REPO_ROOT/backend/.venv/bin/pytest" -q "$REPO_ROOT/backend/tests/"
 else
   echo ">>> Skipping backend venv tests (no .venv/bin/pytest found — Docker build will validate)"
 fi
