@@ -14,7 +14,12 @@ jobs:
     steps:
       - name: Pull latest
         working-directory: /home/alan/Code/mnestic
-        run: git pull --rebase
+        # Self-hosted runner reuses the same working tree; a dirty tree blocks
+        # rebase pulls. Hard-reset to origin/main so deploy always runs from a
+        # clean, known state.
+        run: |
+          git fetch origin
+          git reset --hard origin/main
       - name: Deploy
         working-directory: /home/alan/Code/mnestic
         run: bash scripts/deploy.sh
