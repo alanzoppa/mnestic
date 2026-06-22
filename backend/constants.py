@@ -1,5 +1,9 @@
 """Shared constants for the mnestic backend."""
 
+# EMBED_DIM is configurable via .env (pydantic settings); re-exported here so
+# existing `from constants import EMBED_DIM` call sites keep working.
+from config import EMBED_DIM  # noqa: F401
+
 
 # Chunking
 CHUNK_SIZE = 2000
@@ -15,7 +19,6 @@ DEFAULT_SIMILAR_N = 10
 DEFAULT_SIMILAR_THRESHOLD = 0.75
 
 # Embedding
-EMBED_DIM = 4096
 BATCH_SIZE = 50
 EMBED_PREFIX_DOC = ""
 EMBED_PREFIX_QUERY = "Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: "

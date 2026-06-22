@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     ollama_embed_model: str = "qwen3-embedding"
     embed_provider_ingest: str = "openrouter"
     embed_provider_query: str = "openrouter"
+    embed_dim: int = 3072
 
     @field_validator("calendar_export_path", "people_registry_path", "notes_source", mode="before")
     @classmethod
@@ -104,3 +105,4 @@ OPENROUTER_EMBED_MODEL = settings.openrouter_embed_model
 OLLAMA_EMBED_MODEL = settings.ollama_embed_model
 EMBED_PROVIDER_INGEST = settings.embed_provider_ingest
 EMBED_PROVIDER_QUERY = settings.embed_provider_query
+EMBED_DIM = settings.embed_dim
