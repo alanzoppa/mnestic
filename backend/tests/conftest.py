@@ -14,6 +14,16 @@ from store import NoteStore
 from calendar_data import CalendarProcessor
 
 
+@pytest.fixture(autouse=True)
+def disable_auth_for_tests(monkeypatch):
+    """Disable password/API-key auth by default so tests don't depend on .env."""
+    import auth as auth_module
+    import config as config_module
+
+    monkeypatch.setattr(config_module, "MNESTIC_PASSWORD_HASH", "")
+    monkeypatch.setattr(auth_module, "MNESTIC_PASSWORD_HASH", "")
+
+
 @pytest.fixture
 def tmp_store(tmp_path):
     return NoteStore(persist_dir=str(tmp_path / "chroma_test"))
