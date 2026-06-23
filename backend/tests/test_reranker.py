@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,7 +20,7 @@ def test_init_custom_model():
 
 @pytest.mark.unit
 def test_available_false_when_cross_encoder_none():
-    with patch("rerank.CrossEncoder", None):
+    with patch("sentence_transformers.CrossEncoder", None):
         r = Reranker()
         assert not r.available()
 
@@ -28,7 +28,7 @@ def test_available_false_when_cross_encoder_none():
 @pytest.mark.unit
 def test_rerank_returns_original_order_when_unavailable():
     candidates = [{"title": "B", "score": 0.5}, {"title": "A", "score": 0.9}]
-    with patch("rerank.CrossEncoder", None):
+    with patch("sentence_transformers.CrossEncoder", None):
         r = Reranker()
         result = r.rerank("test", candidates)
     assert result == candidates
@@ -45,7 +45,7 @@ def test_rerank_builds_correct_pairs():
     mock_model = MagicMock()
     mock_model.predict.return_value = [0.9]
     candidates = [{"title": "My Title", "snippet": "My snippet."}]
-    with patch("rerank.CrossEncoder", return_value=mock_model):
+    with patch("sentence_transformers.CrossEncoder", return_value=mock_model):
         r = Reranker()
         r.rerank("my query", candidates)
     mock_model.predict.assert_called_once()
@@ -62,7 +62,7 @@ def test_rerank_sorts_by_score_descending():
         {"title": "High", "score": 0.0},
         {"title": "Mid", "score": 0.0},
     ]
-    with patch("rerank.CrossEncoder", return_value=mock_model):
+    with patch("sentence_transformers.CrossEncoder", return_value=mock_model):
         r = Reranker()
         result = r.rerank("test", candidates)
     titles = [c["title"] for c in result]
@@ -74,7 +74,7 @@ def test_rerank_uses_batch_size():
     mock_model = MagicMock()
     mock_model.predict.return_value = [0.9]
     candidates = [{"title": "T", "snippet": "S."}]
-    with patch("rerank.CrossEncoder", return_value=mock_model):
+    with patch("sentence_transformers.CrossEncoder", return_value=mock_model):
         r = Reranker()
         r.rerank("q", candidates)
     _, kwargs = mock_model.predict.call_args
