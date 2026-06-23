@@ -15,27 +15,23 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# --- Stage 2: Runtime ---
+# --- Stage 2: Runtime (standalone) ---
 FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy build artifacts and runtime config
-COPY --from=builder /build/.next .next
+# Copy standalone server + static assets only.
+# Standalone mode bundles only the needed node_modules into .next/standalone,
+# so we don't need a separate npm ci --omit=dev step (~700 MB → ~30 MB).
+COPY --from=builder /build/.next/standalone ./
+COPY --from=builder /build/.next/static ./.next/static
 COPY --from=builder /build/public public
-COPY --from=builder /build/package.json .
-COPY --from=builder /build/package-lock.json* .
-COPY --from=builder /build/next.config.ts .
-COPY --from=builder /build/tsconfig.json .
-
-# Install production deps only
-RUN npm ci --omit=dev
 
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 
 # Health check via wget (alpine has no curl)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD wget --spider http://localhost:3000/ || exit 1
+    CMD wget --spider http://127.0.0.1:3000/ || exit 1
 
-CMD ["node", "node_modules/.bin/next", "start", "-p", "3000"]
+CMD ["node", "server.js"]

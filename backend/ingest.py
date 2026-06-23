@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from langchain_text_splitters import MarkdownTextSplitter
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, MofNCompleteColumn
 
 from shared import _state_lock, _read_state, _write_state
@@ -26,6 +25,9 @@ def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[st
         return []
     if len(text) <= chunk_size:
         return [text]
+    # Lazy import: langchain_text_splitters pulls in transformers + torch (~250 MB)
+    # at module level via a type annotation. Only import when actually chunking.
+    from langchain_text_splitters import MarkdownTextSplitter
     splitter = MarkdownTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,

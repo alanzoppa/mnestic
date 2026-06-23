@@ -5,32 +5,50 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-try:
-    from sentence_transformers import CrossEncoder
-except Exception:
-    CrossEncoder = None  # type: ignore
-
 from constants import RERANKER_MODEL, RERANK_BATCH_SIZE
 
 logger = logging.getLogger(__name__)
 
 
 class Reranker:
-    """Lazy-initialized cross-encoder reranker."""
+    """Lazy-initialized cross-encoder reranker.
+
+    torch and sentence_transformers are imported lazily inside _load()
+    to avoid loading ~250 MB of libraries at startup when reranking
+    is not needed.
+    """
 
     def __init__(self, model_name: str | None = None) -> None:
         self.model_name = model_name or RERANKER_MODEL
         self._model: Any = None
         self._available = True
+        self._import_attempted = False
 
     def _load(self) -> Any:
         if self._model is not None:
             return self._model
-        if not self._available or CrossEncoder is None:
+        if not self._available:
             return None
+
+        # Lazy import: only load torch + sentence_transformers when reranking
+        # is actually requested for the first time.
+        if not self._import_attempted:
+            self._import_attempted = True
+            try:
+                from sentence_transformers import CrossEncoder  # noqa: F811
+            except Exception:
+                logger.warning("sentence_transformers not available — reranking disabled")
+                self._available = False
+                return None
+
+            self._CrossEncoder = CrossEncoder  # type: ignore
+
+        if not hasattr(self, "_CrossEncoder") or self._CrossEncoder is None:
+            return None
+
         try:
             logger.info("Loading reranker model %s", self.model_name)
-            self._model = CrossEncoder(self.model_name)
+            self._model = self._CrossEncoder(self.model_name)
             return self._model
         except Exception:
             logger.warning("Failed to load reranker model %s", self.model_name)
