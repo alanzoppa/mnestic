@@ -148,7 +148,7 @@ function createNodeObject(node: GraphNode, tagStyles: Record<string, TagStyle>):
 export default function GraphPage() {
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [selectedTag, setSelectedTag] = useState('')
-  const [threshold, setThreshold] = useState(0.75)
+  const [threshold, setThreshold] = useState(0.85)
   const [excludedSources, setExcludedSources] = useState<Set<string>>(new Set())
   const [excludedStructTags, setExcludedStructTags] = useState<Set<string>>(new Set())
   const [excludedContentTags, setExcludedContentTags] = useState<Set<string>>(new Set())

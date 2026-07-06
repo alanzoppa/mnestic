@@ -42,7 +42,7 @@ function SearchGraphContent() {
   const [viewingNode, setViewingNode] = useState<GraphNode | null>(null)
   const [inputValue, setInputValue] = useState(initialQuery)
   const [query, setQuery] = useState(initialQuery)
-  const [threshold, setThreshold] = useState(0.55)
+  const [threshold, setThreshold] = useState(0.75)
 
   useEffect(() => {
     if (initialQuery) {

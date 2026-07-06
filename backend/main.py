@@ -708,12 +708,12 @@ async def ingest(body: IngestRequest) -> dict:
 
 
 @app.get("/api/graph", response_model=GraphResponse, dependencies=[Depends(require_auth)])
-async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_neighbors: int = 3, threshold: float = 0.75) -> dict:
+async def get_graph(tag: Optional[str] = None, folder: Optional[str] = None, n_neighbors: int = 3, threshold: float = 0.85) -> dict:
     return build_similarity_graph(store, tag, folder, threshold)
 
 
 @app.get("/api/search-graph", response_model=GraphResponse, dependencies=[Depends(require_auth)])
-async def get_search_graph(query: str, threshold: float = 0.55, n: int = 50) -> dict:
+async def get_search_graph(query: str, threshold: float = 0.75, n: int = 50) -> dict:
     global reranker
     query_embedding = embed_query_sync(query) if query.strip() else None
     if query_embedding is None:

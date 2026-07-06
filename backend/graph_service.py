@@ -12,7 +12,7 @@ from models import NoteMetadata
 def build_similarity_graph_from_notes(
     store: NoteStore,
     note_ids: list[str],
-    threshold: float = 0.75,
+    threshold: float = 0.85,
     scores: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Build a similarity graph from a given set of note_ids.
@@ -116,7 +116,7 @@ def build_similarity_graph(
     store: NoteStore,
     tag: str | None = None,
     folder: str | None = None,
-    threshold: float = 0.75,
+    threshold: float = 0.85,
 ) -> dict[str, Any]:
     """Build a similarity graph from note embeddings filtered by tag/folder.
 
