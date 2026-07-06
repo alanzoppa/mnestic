@@ -111,7 +111,7 @@ def test_ollama_doc_prefix_is_empty():
 
 
 @pytest.mark.unit
-def test_ollama_query_prefix_uses_instruction():
+def test_ollama_query_prefix_is_empty():
     with patch("embed.httpx.Client") as mock_cls, patch("embed.settings", _mock_settings()):
         mock_client = _make_mock_client([_make_ollama_response([[0.1] * 1024])])
         mock_cls.return_value = mock_client
@@ -120,8 +120,7 @@ def test_ollama_query_prefix_uses_instruction():
 
         call_args = mock_client.post.call_args
         input_field = call_args[1]["json"]["input"]
-        assert input_field[0].startswith("Instruct: Retrieve personal notes")
-        assert "hello" in input_field[0]
+        assert input_field[0] == "hello"
 
 
 @pytest.mark.unit
@@ -161,7 +160,7 @@ def test_openrouter_query_uses_search_query_type():
         mock_client = _make_mock_client([_make_openrouter_response([[0.1] * 256])])
         mock_cls.return_value = mock_client
 
-        embed_texts_sync(["hello"], prefix=EMBED_PREFIX_QUERY, provider="openrouter")
+        embed_texts_sync(["hello"], prefix=EMBED_PREFIX_QUERY, provider="openrouter", is_query=True)
 
         body = mock_client.post.call_args[1]["json"]
         assert body["input_type"] == "search_query"
@@ -319,8 +318,7 @@ def test_embed_query_sync_uses_query_provider():
 
         call_args = mock_client.post.call_args
         input_field = call_args[1]["json"]["input"]
-        assert input_field[0].startswith("Instruct: Retrieve personal notes")
-        assert "test query" in input_field[0]
+        assert input_field[0] == "test query"
 
 
 @pytest.mark.unit

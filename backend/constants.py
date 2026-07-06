@@ -21,7 +21,7 @@ DEFAULT_SIMILAR_THRESHOLD = 0.75
 # Embedding
 BATCH_SIZE = 50
 EMBED_PREFIX_DOC = ""
-EMBED_PREFIX_QUERY = "Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: "
+EMBED_PREFIX_QUERY = ""
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_EMBED_BATCH_SIZE = 10
 

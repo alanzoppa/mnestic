@@ -110,6 +110,7 @@ def embed_texts_sync(
     _depth: int = 0,
     *,
     provider: str | None = None,
+    is_query: bool = False,
 ) -> list[list[float]]:
     """Embed texts synchronously, one batch at a time. Suitable for small lists."""
     if not texts:
@@ -129,7 +130,7 @@ def embed_texts_sync(
             full_batch = [_prefix_text(t, prefix) for t in batch]
             try:
                 if resolved_provider == "openrouter":
-                    input_type = "search_document" if prefix == EMBED_PREFIX_DOC else "search_query"
+                    input_type = "search_query" if is_query else "search_document"
                     results.extend(
                         _embed_batch_openrouter(
                             client,
@@ -145,19 +146,19 @@ def embed_texts_sync(
                 if len(batch) > 1:
                     logger.debug("Bisecting batch of %d texts due to HTTP error (depth=%d): %s", len(batch), _depth, e)
                     mid = (len(batch) + 1) // 2
-                    results.extend(embed_texts_sync(batch[:mid], prefix, _depth + 1, provider=resolved_provider))
-                    results.extend(embed_texts_sync(batch[mid:], prefix, _depth + 1, provider=resolved_provider))
+                    results.extend(embed_texts_sync(batch[:mid], prefix, _depth + 1, provider=resolved_provider, is_query=is_query))
+                    results.extend(embed_texts_sync(batch[mid:], prefix, _depth + 1, provider=resolved_provider, is_query=is_query))
                 elif len(batch[0]) > MAX_CHARS:
-                    results.extend(embed_texts_sync([batch[0][:MAX_CHARS]], prefix, _depth + 1, provider=resolved_provider))
+                    results.extend(embed_texts_sync([batch[0][:MAX_CHARS]], prefix, _depth + 1, provider=resolved_provider, is_query=is_query))
                 else:
                     short_text = batch[0][: max(len(batch[0]) // 2, 500)]
-                    results.extend(embed_texts_sync([short_text], prefix, _depth + 1, provider=resolved_provider))
+                    results.extend(embed_texts_sync([short_text], prefix, _depth + 1, provider=resolved_provider, is_query=is_query))
             except Exception as e:
                 if len(batch) > 1:
                     logger.debug("Bisecting batch of %d texts due to error (depth=%d): %s", len(batch), _depth, e)
                     mid = (len(batch) + 1) // 2
-                    results.extend(embed_texts_sync(batch[:mid], prefix, _depth + 1, provider=resolved_provider))
-                    results.extend(embed_texts_sync(batch[mid:], prefix, _depth + 1, provider=resolved_provider))
+                    results.extend(embed_texts_sync(batch[:mid], prefix, _depth + 1, provider=resolved_provider, is_query=is_query))
+                    results.extend(embed_texts_sync(batch[mid:], prefix, _depth + 1, provider=resolved_provider, is_query=is_query))
                 else:
                     raise
     return results
@@ -173,6 +174,7 @@ def embed_texts_bulk(
     provider: str | None = None,
     max_workers: int | None = None,
     on_batch_done: Callable[[int, int], None] | None = None,
+    is_query: bool = False,
 ) -> list[list[float]]:
     """Embed large lists concurrently using connection reuse. Suitable for bulk ingest.
 
@@ -224,7 +226,7 @@ def embed_texts_bulk(
                 futures = {}
                 for orig_idx, batch in pending:
                     if resolved_provider == "openrouter":
-                        input_type = "search_document" if prefix == EMBED_PREFIX_DOC else "search_query"
+                        input_type = "search_query" if is_query else "search_document"
                         future = executor.submit(
                             _embed_batch_openrouter,
                             client,
@@ -288,4 +290,4 @@ def embed_texts_bulk(
 
 def embed_query_sync(text: str) -> list[float]:
     provider = settings.embed_provider_query
-    return embed_texts_sync([text], EMBED_PREFIX_QUERY, provider=provider)[0]
+    return embed_texts_sync([text], EMBED_PREFIX_QUERY, provider=provider, is_query=True)[0]

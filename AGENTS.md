@@ -96,7 +96,7 @@ mnestic/
   — use `.metadata.title`, `.id`, etc. (attribute access) instead of `["metadata"]["title"]`, `["id"]`, etc. (dict access)
   — call `.model_dump()` on models when you need a plain dict (e.g., for JSON serialization)
 - Embedding prefix is handled by `embed_texts_sync()` in `embed.py`
-  — documents: no prefix (raw text); queries: `Instruct: Retrieve personal notes about people, projects, and meetings by semantic similarity\nQuery: ` prefix
+  — documents: no prefix (raw text); queries: no prefix (raw text). Task type is signaled via `input_type` parameter (`search_document` / `search_query`) for OpenRouter/Gemini, and via `is_query` flag for Ollama fallback.
   — do NOT prepend prefixes yourself; the function handles it
 
 ### File organization
